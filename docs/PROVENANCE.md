@@ -96,6 +96,11 @@ Decidido template padrão dos 4 agentes: System (papel→regras→few-shot, cach
 | 05-15 | Persistir conteúdo, nunca PDF | derivado regenerável grátis |
 | 05-15 | Deploy Vercel + auth mínima | Stefany acessa por URL |
 | 05-15 | Docs por cadência (SPEC vivo / PROVENANCE append-only / pitch) | cadências de atualização distintas |
+| 05-15 | Arquitetura async: Vercel UI + worker container + jobs | plan-review: pipeline 90-160s estoura serverless |
+| 05-15 | `pdftotext`/chromium no Dockerfile do worker (sem Python) | 3 bloqueantes de infra colapsam na decisão async |
+| 05-15 | Gate A roda baseline matcher em TODAS as leis | fechar falso-negativo do extractor; remover sinal "incerto" fantasma |
+| 05-15 | Eval: Tier 0 property-based no V0; acurácia/decisão V1 da telemetria | observabilidade-sobre-eval-a-priori; uso real define o que testar |
+| 05-15 | Auth V0 = segredo env + cookie assinado (single-user) | decidir antes do build (era gate de done vago) |
 
 ## 16. Lições metodológicas (transferíveis)
 
@@ -104,3 +109,31 @@ Decidido template padrão dos 4 agentes: System (papel→regras→few-shot, cach
 3. Engajamento morno → liderar por produto, não pedir mais feedback.
 4. Schema e baseline evoluem contra editais reais, não hipótese.
 5. Defense in depth: nenhuma camada de segurança sozinha basta; verificação difícil até manualmente → curadoria com proveniência + contenção.
+6. Plan-review adversarial antes de executar paga 10x: pegou furos de premissa e infra que custariam caro em build.
+7. Decisões corretas colapsam problemas: a escolha async dissolveu 3 bloqueantes de infra (timeout, pdftotext, chromium) de uma vez — não force solução nova (Python) pra problema que outra decisão já resolve.
+8. Eval honesto é dirigido por consequência de falha e uso real, não pelos artefatos que se acumulou; segurança catastrófica é property-based e embarca antes do 1º uso, acurácia nasce da telemetria.
+
+---
+
+## 17. Plan-review adversarial do plano V0 (2026-05-15)
+
+Subagente fresco (skill plan-review) revisou `docs/plans/2026-05-15-pleito-v0.md` contra o código real. Verdict **NEEDS REVISION**, 10 required changes. Bloqueantes:
+
+- **Timeout serverless (furo do SPEC §11):** pipeline ~90-160s; Vercel Hobby 10s / Pro 60-300s. Rota síncrona inviável.
+- **`pdftotext` ausente no Vercel (furo SPEC §6/plano):** POC "funcionou" só local.
+- **Playwright/chromium idem** no PDF export.
+- **"Portar sem reescrever" falso:** `extract.ts`/`spike-verifier.ts` são scripts CLI (`main()`, GABARITO hardcoded, `generateText`+regex), sem `montarPrompt`/injeção de model; few-shot do SPEC §7 **não existem no POC**.
+- **Gate A falso-negativo (furo lógico SPEC §5):** dispara só se extractor marcou `revogada=true`; sinal "incerto" não existe no schema.
+- Menores: fixture `fixtures/editais/jaborandi.zip` inexistente; normalização de `numero` não especificada (núcleo do moat); Prisma serverless (pooling/directUrl/generate); tsconfig `include` não cobre `domain/`; auth adiada; `next@latest` sem pin.
+
+## 18. Correção de arquitetura (2026-05-15)
+
+Os 3 bloqueantes de infra tinham causa raiz comum (constraint serverless Vercel). Decisão async → pipeline sai pro **worker container** controlado: `pdftotext -layout` (validado no POC) e chromium voltam via Dockerfile; sem timeout. **Python não necessário** (só se justificaria por qualidade que o POC já provou suficiente — YAGNI). Vercel fica thin (UI/API/polling/export). Ver SPEC §3/§4/§14.
+
+## 19. Fix do Gate A (2026-05-15)
+
+Baseline matcher passa a rodar em TODAS as `leisReferenciadas` (lookup local determinístico, custo zero), não só nas flagradas. Pega lei revogada conhecida mesmo com extractor em falso-negativo. Sinal "incerto" (inexistente) removido do design. Ver SPEC §5.
+
+## 20. Reframe do eval (2026-05-15)
+
+Crítica do usuário: o eval proposto era dirigido pelos artefatos acumulados, não pela consequência da falha. Re-derivado por dano: #0 ofício externo falso (catastrófico, irreversível) → #1 omitir/inventar bloqueador (severo, silencioso) → #2 prazo/requisito crítico → #3 ruído → #4 cosmético. Reframe: checks catastróficos são **propriedade estrutural** (generalizam, não dependem de corpus). Pivô final do usuário: **construir + observar uso real**; eval de acurácia/decisão nasce da telemetria (V1), não a-priori. **Tier 0 (contenção/faithfulness, determinístico) embarca no V0** — dano catastrófico não pode "aprender com o uso". Sinal-ouro: diff ofício gerado×exportado. Ver SPEC §11.
