@@ -1,0 +1,331 @@
+{
+  "version": "0.2.0",
+  "atualizadoEm": "2026-05-15",
+  "descricao": "Tabela curada de status autoritativo de normas recorrentes em editais de licitação funerária brasileiros. Anteposta ao Norma Verifier: hit aqui = status determinístico (não chama web grounding). Construída a partir de base-rate de 24 editais (13 UFs) + horda de 4 agentes de gap scan (pregão N/NE/CO, concessão S/SE, credenciamento/leilão, verificação de pendentes). Cada entrada exige fonte autoritativa, data de verificação e categoria. Cauda municipal obscura NÃO entra aqui (fica no verifier/pergunta).",
+  "categorias": {
+    "revogada-notoria": "revogada, amplamente documentada — Drafter pode afirmar revogação com segurança",
+    "revogada-confirmada": "revogada, verificada em fonte autoritativa — afirmar revogação citando a sucessora",
+    "vigente-ancora": "VIGENTE de alta recorrência — âncora anti-falso-positivo (modelo tende a alucinar revogação de norma do regime atual)",
+    "zona-cinzenta": "status juridicamente disputado / recepção supletiva controversa — Drafter NUNCA afirma status binário no ofício externo; vira questionamento",
+    "citacao-suspeita": "norma inexistente, escopo trocado ou objeto trocado na citação do edital — sinalizar incoerência de citação, não status de vigência"
+  },
+  "regras": {
+    "uso": "match por numero+ano+escopo+tipoNorma; aliases ajudam fuzzy match contra output do extractor",
+    "drafter": "categoria zona-cinzenta e citacao-suspeita nunca viram afirmação no ofício externo — viram pergunta ao órgão; revogada-* podem ser afirmadas; vigente-ancora serve só para suprimir falso-positivo de revogação"
+  },
+  "entries": [
+    {
+      "id": "lei-8666-1993",
+      "categoria": "revogada-notoria",
+      "match": { "numero": "8.666", "ano": 1993, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei 8.666/93", "Lei nº 8.666", "Lei Federal nº 8.666"] },
+      "descricao": "Lei de Licitações e Contratos (antiga)",
+      "status": "revogada",
+      "normaRevogadora": "Lei 14.133/2021 (art. 193; revogação plena em 30/12/2023)",
+      "contestada": false,
+      "nota": "Citação anacrônica em editais regidos pela 14.133 é endêmica (copy-paste de template). Asserção segura.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l8666cons.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-10520-2002",
+      "categoria": "revogada-notoria",
+      "match": { "numero": "10.520", "ano": 2002, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei do Pregão", "Lei 10.520/02", "Lei nº 10.520"] },
+      "descricao": "Lei do Pregão (antiga)",
+      "status": "revogada",
+      "normaRevogadora": "Lei 14.133/2021 (art. 193, II)",
+      "contestada": false,
+      "nota": "Mesma dinâmica de copy-paste da 8.666. Asserção segura.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/2002/l10520.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "dec-5940-2006",
+      "categoria": "revogada-confirmada",
+      "match": { "numero": "5.940", "ano": 2006, "escopo": "federal", "tipoNorma": "decreto", "aliases": ["Decreto nº 5.940, de 2006", "Decreto 5.940/2006"] },
+      "descricao": "Decreto nº 5.940/2006 — coleta seletiva solidária na administração pública federal",
+      "status": "revogada",
+      "normaRevogadora": "Decreto nº 10.936/2022. Obrigação substantiva persiste sob o novo decreto.",
+      "contestada": false,
+      "nota": "Ao mencionar, citar a sucessora (10.936/2022) — apontar só 'revogado' é meia-verdade.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/decreto/d5940.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "port-mte-1421-2014",
+      "categoria": "revogada-confirmada",
+      "match": { "numero": "1.421", "ano": 2014, "escopo": "federal", "tipoNorma": "portaria", "aliases": ["Portaria MTE nº 1421, de 12 de setembro de 2014", "Portaria MTE 1.421/2014"] },
+      "descricao": "Portaria MTE nº 1.421/2014 — Certidão de Débitos da Fiscalização do Trabalho",
+      "status": "revogada",
+      "normaRevogadora": "Portaria MTP nº 667/2021",
+      "contestada": false,
+      "nota": "Relevância marginal a editais funerários.",
+      "fonte": "https://www.legisweb.com.br/legislacao/?id=275143",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "in-seges-05-2017",
+      "categoria": "zona-cinzenta",
+      "match": { "numero": "5", "ano": 2017, "escopo": "federal", "tipoNorma": "instrucao-normativa", "aliases": ["IN SEGES/MP nº 05/2017", "IN SEGES 5/2017", "Instrução Normativa nº 05, de 2017", "IN SEGES/MP n. 5/2017"] },
+      "descricao": "IN SEGES/MP nº 05/2017 — contratação de serviços continuados sob execução indireta",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": true,
+      "nota": "CORRIGIDO (gabarito v1 estava errado). IN SEGES/ME 98/2022 NÃO revogou expressamente a 05/2017 — apenas autoriza aplicá-la 'no que couber' sob a Lei 14.133. Formalmente VIGENTE, recepcionada supletivamente. Alcance de 'no que couber' é interpretativamente controverso. Drafter NUNCA afirma 'vigente' nem 'revogada' no ofício externo — vira questionamento sobre a norma aplicável.",
+      "fonte": "https://www.in.gov.br/materia/-/asset_publisher/Kujrw0TZC2Mb/content/id/20239255 ; análise IN 98/2022",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "in-slti-01-2010",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "1", "ano": 2010, "escopo": "federal", "tipoNorma": "instrucao-normativa", "aliases": ["IN SLTI/MP nº 01/2010", "Instrução Normativa SLTI MPOG n° 1, de 19 de janeiro de 2010", "IN nº 01, de 19 de janeiro de 2010"] },
+      "descricao": "IN SLTI/MP nº 01/2010 — critérios de sustentabilidade ambiental em licitações",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "Vigente, complementar ao Decreto 7.746/2012 e à Lei 14.133/2021. Gemini puro deu falso-positivo de revogação com conf=alta no base rate — âncora crítica.",
+      "fonte": "https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas/instrucao-normativa-no-01-de-19-de-janeiro-de-2010",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "dec-8538-2015",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "8.538", "ano": 2015, "escopo": "federal", "tipoNorma": "decreto", "aliases": ["Decreto nº 8.538, de 06 de outubro de 2015", "Decreto 8.538/2015"] },
+      "descricao": "Decreto nº 8.538/2015 — tratamento favorecido a ME/EPP em licitações",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE (alterado pelo Decreto 10.273/2020, não revogado). Regulamenta arts. 42-49 da LC 123/2006, acolhidos pela Lei 14.133/2021. Gemini puro deu falso-positivo conf=alta — âncora crítica.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/decreto/d8538.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "in-seges-03-2018",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "3", "ano": 2018, "escopo": "federal", "tipoNorma": "instrucao-normativa", "aliases": ["IN SEGES/MP nº 03, de 26 de abril de 2018", "IN nº 3/2018"] },
+      "descricao": "IN SEGES/MP nº 03/2018 — SICAF Digital",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE (alterada por INs posteriores 10/2020, 107/2020; não revogada). Recorre 3× no base rate.",
+      "fonte": "https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas/instrucao-normativa-no-3-de-26-de-abril-de-2018",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "in-seges-102-2020",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "102", "ano": 2020, "escopo": "federal", "tipoNorma": "instrucao-normativa", "aliases": ["IN SLTI/MP nº 102, de 2020", "IN SEGES nº 102, de 16 de outubro de 2020"] },
+      "descricao": "IN SEGES nº 102/2020 (atribuição corrigida: é SEGES, não SLTI) — norma 'faxina' que revogou diversas INs/ONs antigas",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "É a norma revogadora, não a revogada. Editais que a citam como 'SLTI/MP' erram a atribuição. VIGENTE.",
+      "fonte": "https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas-revogadas",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "dec-11462-2023",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "11.462", "ano": 2023, "escopo": "federal", "tipoNorma": "decreto", "aliases": ["Decreto nº 11.462/2023", "Decreto 11462"] },
+      "descricao": "Decreto nº 11.462/2023 — regulamenta o Sistema de Registro de Preços (Lei 14.133, arts. 82-86)",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE (alterado pelo Decreto 12.343/2024, não revogado). Sucessor funcional do Decreto 7.892/2013 no regime 14.133. Alta recorrência em SRP funerário — âncora crítica.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2023/decreto/d11462.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "dec-11246-2022",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "11.246", "ano": 2022, "escopo": "federal", "tipoNorma": "decreto", "aliases": ["Decreto nº 11.246/2022", "Decreto 11246"] },
+      "descricao": "Decreto nº 11.246/2022 — agente de contratação e equipe de apoio (Lei 14.133, art. 8º)",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE. Recorrente em editais sob 14.133. Âncora anti-falso-positivo.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2022/decreto/d11246.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "dec-11878-2024",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "11.878", "ano": 2024, "escopo": "federal", "tipoNorma": "decreto", "aliases": ["Decreto nº 11.878/2024", "Decreto 11878"] },
+      "descricao": "Decreto nº 11.878/2024 — regulamento federal do credenciamento (Lei 14.133, art. 79)",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE. Norma federal estruturante da modalidade credenciamento — relevante para editais funerários de credenciamento/permissão. Inclusão preventiva.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2024/decreto/d11878.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-12846-2013",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "12.846", "ano": 2013, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei Anticorrupção", "Lei nº 12.846/2013"] },
+      "descricao": "Lei nº 12.846/2013 — Lei Anticorrupção / responsabilização administrativa",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE. Recorrência máxima (cláusula de integridade em quase todo edital). Âncora.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/lei/l12846.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-13709-2018",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "13.709", "ano": 2018, "escopo": "federal", "tipoNorma": "lei", "aliases": ["LGPD", "Lei nº 13.709/2018"] },
+      "descricao": "Lei nº 13.709/2018 — Lei Geral de Proteção de Dados (LGPD)",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE. Recorrente em cláusulas de tratamento de dados. Âncora.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lc-147-2014",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "147", "ano": 2014, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei Complementar nº 147/2014", "LC 147/2014"] },
+      "descricao": "Lei Complementar nº 147/2014 — altera a LC 123/2006 (tratamento ME/EPP)",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE. Complementar de habilitação ME/EPP. Âncora.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp147.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-12440-2011",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "12.440", "ano": 2011, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei nº 12.440/2011", "CNDT"] },
+      "descricao": "Lei nº 12.440/2011 — Certidão Negativa de Débitos Trabalhistas (CNDT)",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE. Base da exigência de CNDT na habilitação. Âncora.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2011/lei/l12440.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-8987-1995",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "8.987", "ano": 1995, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei de Concessões", "Lei nº 8.987/1995", "Lei Geral de Concessões"] },
+      "descricao": "Lei nº 8.987/1995 — Lei Geral de Concessões e Permissões de serviços públicos",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE. Núcleo obrigatório de qualquer edital de concessão/permissão de cemitério ou serviço funerário. Âncora crítica para a classe concessão.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l8987cons.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-9074-1995",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "9.074", "ano": 1995, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei nº 9.074/1995"] },
+      "descricao": "Lei nº 9.074/1995 — normas para outorga e prorrogação de concessões e permissões",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE. Par obrigatório da Lei 8.987/95 em editais de concessão. Âncora.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l9074cons.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-11079-2004",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "11.079", "ano": 2004, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei de PPP", "Lei nº 11.079/2004"] },
+      "descricao": "Lei nº 11.079/2004 — Parcerias Público-Privadas (PPP)",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE. Recorrente em modelagem de concessão patrocinada/administrativa de cemitérios. Âncora.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2004/lei/l11079.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-8742-1993-loas",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "8.742", "ano": 1993, "escopo": "federal", "tipoNorma": "lei", "aliases": ["LOAS", "Lei Orgânica da Assistência Social", "Lei nº 8.742/1993"] },
+      "descricao": "Lei nº 8.742/1993 — Lei Orgânica da Assistência Social (LOAS)",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE. Fundamento recorrente do serviço funerário como benefício eventual da assistência social (art. 22). Eixo que diferencia editais funerários assistenciais. Âncora crítica.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l8742.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-12435-2011",
+      "categoria": "vigente-ancora",
+      "match": { "numero": "12.435", "ano": 2011, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei nº 12.435/2011"] },
+      "descricao": "Lei nº 12.435/2011 — altera a LOAS, estrutura o SUAS e benefícios eventuais",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "VIGENTE. Recorre junto à LOAS em editais funerários assistenciais. Âncora.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2011/lei/l12435.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-9704-licitacao-inexistente",
+      "categoria": "citacao-suspeita",
+      "match": { "numero": "9.704", "ano": 1995, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei Federal nº 9.704", "Lei 9.704/1995"] },
+      "descricao": "Lei nº 9.704/1995 citada como norma de licitação/ME-EPP",
+      "status": "inexistente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "NÃO EXISTE Lei 9.704/1995 de licitação. A Lei 9.704 real é de 17/11/1998 e trata de órgãos jurídicos da AGU. Citação fabricada na origem do edital — sinalizar referência incorreta, não revogação.",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l9704.htm",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-13144-2021-fantasma",
+      "categoria": "citacao-suspeita",
+      "match": { "numero": "13.144", "ano": 2021, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei nº 13.144/2021"] },
+      "descricao": "Lei nº 13.144/2021 citada como reguladora de leilão",
+      "status": "inexistente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "Não há Lei federal 13.144/2021 com esse objeto. Citação provavelmente equivocada (análoga à Lei 9.704). Regulação de leilão/leiloeiro pertinente: Decreto 21.981/1932, Decreto 11.461/2023, IN DREI 72/2019. Sinalizar como referência incorreta.",
+      "fonte": "verificação negativa em planalto.gov.br/ccivil_03",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "lei-6544-1989-estadual-sp",
+      "categoria": "citacao-suspeita",
+      "match": { "numero": "6.544", "ano": 1989, "escopo": "federal", "tipoNorma": "lei", "aliases": ["Lei nº 6.544, de 22 de novembro de 1989", "Lei 6.544/1989"] },
+      "descricao": "Lei nº 6.544/1989 citada como norma FEDERAL",
+      "status": "vigente",
+      "escopoReal": "estadual",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "ARMADILHA DE ESCOPO. É lei ESTADUAL de São Paulo (estatuto de licitações da Administração paulista), NÃO federal. Vigente. Citada fora de SP = referência equivocada — sinalizar incoerência de escopo, não revogação.",
+      "fonte": "https://www.al.sp.gov.br/repositorio/legislacao/lei/1989/lei-6544-22.11.1989.html",
+      "verificadoEm": "2026-05-15"
+    },
+    {
+      "id": "in-mare-06-1995",
+      "categoria": "citacao-suspeita",
+      "match": { "numero": "6", "ano": 1995, "escopo": "federal", "tipoNorma": "instrucao-normativa", "aliases": ["Instrução Normativa MARE Nº 6, de 1995"] },
+      "descricao": "IN MARE nº 6/1995 citada em contexto de cadastro/habilitação",
+      "status": "vigente",
+      "normaRevogadora": null,
+      "contestada": false,
+      "nota": "OBJETO TROCADO. A IN MARE 06/1995 trata de coleta seletiva de papel para reciclagem, NÃO de cadastro/SICAF. A norma de cadastro da época era a IN MARE 05/1995 (superada pelo SICAF, IN SEGES 03/2018). Provável citação equivocada — confirmar texto-fonte do edital antes de tratar.",
+      "fonte": "comprasnet.gov.br/legislacao/in/in06_95.htm",
+      "verificadoEm": "2026-05-15"
+    }
+  ],
+  "pendentesVerificacao": [
+    {
+      "match": { "numero": "13.460", "ano": 2017, "escopo": "federal", "tipoNorma": "lei" },
+      "descricao": "Lei nº 13.460/2017 — Código de Defesa do Usuário de Serviços Públicos",
+      "motivo": "Candidata vigente-ancora para classe concessão; recorrência ≥2 não plenamente confirmada"
+    },
+    {
+      "match": { "numero": "21.981", "ano": 1932, "escopo": "federal", "tipoNorma": "decreto" },
+      "descricao": "Cluster leilão: Decreto 21.981/1932 (profissão de leiloeiro), Decreto 11.461/2023, IN DREI 72/2019",
+      "motivo": "Pacote canônico de leilão, mas só 1 edital de leilão verificado — buscar mais 1-2 antes de cravar"
+    }
+  ]
+}

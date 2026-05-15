@@ -1,0 +1,27 @@
+{
+  "name": "pleito",
+  "version": "0.1.0",
+  "description": "Vertical AI para análise de licitações B2G municipais brasileiras. Wedge: setor funerário.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "extract": "tsx src/extract.ts",
+    "baserate": "tsx src/baserate.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.26.0",
+  "dependencies": {
+    "@ai-sdk/google": "^3.0.73",
+    "ai": "^6.0.182",
+    "dotenv": "^17.4.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.7.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  },
+  "type": "module"
+}
