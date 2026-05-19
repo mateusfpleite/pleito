@@ -1,28 +1,28 @@
 /**
- * Middleware de auth single-user (SPEC §14, #7).
+ * Single-user auth middleware (SPEC §14, #7).
  *
- * RUNTIME: roda no **Edge runtime** (padrão do Next.js/Vercel para
- * middleware). Por isso a verificação do cookie usa `lib/sessao.ts`, que
- * é **Web Crypto API** (`crypto.subtle`) — `node:crypto` NÃO existe no
- * Edge. A decisão pura está em `lib/middleware-auth.ts` (testada sem
- * servidor); aqui só fazemos o I/O (ler cookie, redirecionar/401).
+ * RUNTIME: runs on the **Edge runtime** (the Next.js/Vercel default for
+ * middleware). That's why the cookie check uses `lib/sessao.ts`, which is
+ * **Web Crypto API** (`crypto.subtle`) — `node:crypto` does NOT exist on
+ * the Edge. The pure decision lives in `lib/middleware-auth.ts` (tested
+ * without a server); here we only do the I/O (read cookie, redirect/401).
  *
- * Lemos `APP_SECRET` direto de `process.env` (não via `getConfig()`)
- * para não arrastar o schema completo de env (DATABASE_URL etc., só
- * relevante no Node/Prisma) para o bundle do Edge. Se `APP_SECRET`
- * faltar, FALHA FECHADO: bloqueia tudo (exceto rotas públicas).
+ * We read `APP_SECRET` straight from `process.env` (not via `getConfig()`)
+ * so we don't drag the full env schema (DATABASE_URL etc., only relevant
+ * on Node/Prisma) into the Edge bundle. If `APP_SECRET` is missing, it
+ * FAILS CLOSED: blocks everything (except public routes).
  *
- * Protege todas as rotas exceto `/login`, `/api/login`, `/api/health`
- * (inclui `/admin`, que a Phase 15 deixou aberto de propósito).
+ * Protects all routes except `/login`, `/api/login`, `/api/health`
+ * (includes `/admin`, which Phase 15 deliberately left open).
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { deveBloquear } from './lib/middleware-auth.ts';
 import { NOME_COOKIE_SESSAO } from './lib/sessao.ts';
 
 export const config = {
-  // Roda em tudo, menos assets estáticos do Next e o favicon. As
-  // exceções de auth (/login, /api/login, /api/health) são tratadas
-  // dentro de `deveBloquear` (público = libera).
+  // Runs on everything except Next's static assets and the favicon. The
+  // auth exceptions (/login, /api/login, /api/health) are handled
+  // inside `deveBloquear` (public = allow).
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
 
@@ -31,8 +31,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   const secret = process.env.APP_SECRET ?? '';
   const cookie = req.cookies.get(NOME_COOKIE_SESSAO)?.value;
 
-  // Sem APP_SECRET configurado: falha fechado. `verificarSessao` com
-  // secret '' nunca casa um cookie legítimo ⇒ deveBloquear bloqueia.
+  // No APP_SECRET configured: fails closed. `verificarSessao` with
+  // secret '' never matches a legitimate cookie ⇒ deveBloquear blocks.
   const acao = await deveBloquear(pathname, cookie, secret);
 
   if (acao === 'liberar') return NextResponse.next();
@@ -44,7 +44,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // redirect: navegação protegida sem sessão → 302 p/ /login.
+  // redirect: protected navigation without a session → 302 to /login.
   const url = req.nextUrl.clone();
   url.pathname = '/login';
   url.search = '';
