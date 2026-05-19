@@ -13,14 +13,19 @@
  *   2. tolerante  — numero+ano apenas; ignora escopo/tipoNorma porque o
  *                   extractor erra esses ~54% das vezes. Fecha o
  *                   falso-negativo do Gate A.
- *   3. alias      — substring dos dígitos do alias contém o numero (≥3
- *                   dígitos), guarda contra over-match curto.
+ *   3. alias      — `numero` é IGUAL a um TOKEN de dígitos do alias (≥3
+ *                   dígitos), não substring da concatenação. Cada grupo
+ *                   maximal de dígitos do alias ("Lei nº 8.666/93" →
+ *                   ["8666","93"] após normalizar cada grupo) é um token.
+ *                   Match só se nIn === token normalizado — substring da
+ *                   concatenação ("666" em "8666") era falso-positivo
+ *                   estrutural do moat (flip vigente→revogada).
  *
  * `domain/` é zero-dependência de runtime de app; lê apenas o JSON curado
  * versionado (fs nativo, sem ORM/SDK).
  */
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { normalizarNumero } from './norma-id.ts';
 
 export type BaselineMatch = {
@@ -56,9 +61,29 @@ export type NormaInput = {
 };
 
 // Carregado uma vez no import — dado curado versionado, não muda em runtime.
+// Caminho resolvido RELATIVO AO MÓDULO (não ao CWD): worker/adapters de
+// phases futuras podem rodar com CWD diferente → resolve('data/...') daria
+// ENOENT silencioso. import.meta.url ancora no arquivo, não no processo.
 const baseline = JSON.parse(
-  readFileSync(resolve('data/norma-baseline.json'), 'utf-8')
+  readFileSync(
+    fileURLToPath(new URL('../data/norma-baseline.json', import.meta.url)),
+    'utf-8'
+  )
 ) as { entries: BaselineEntry[] };
+
+/**
+ * Quebra um alias nos seus grupos maximais de dígitos e normaliza cada um.
+ * "Lei nº 8.666/93" → ["8666","93"]; "IN SEGES/MP nº 05/2017" → ["5","2017"].
+ * Remove o ponto separador de milhar ENTRE dígitos antes de extrair grupos,
+ * para "8.666" virar um único token "8666" (não ["8","666"]). O match de
+ * alias compara nIn por IGUALDADE contra esses tokens — nunca substring da
+ * concatenação (origem do falso-positivo estrutural do moat).
+ */
+function tokensDigitosAlias(alias: string): string[] {
+  const semSepMilhar = alias.replace(/(\d)\.(\d)/g, '$1$2');
+  const grupos = semSepMilhar.match(/\d+/g) ?? [];
+  return grupos.map(normalizarNumero).filter((t) => t.length > 0);
+}
 
 function resultado(entry: BaselineEntry, via: MatchVia): MatchResult {
   return {
@@ -75,7 +100,8 @@ function resultado(entry: BaselineEntry, via: MatchVia): MatchResult {
  *          precedência, ou `null` se nenhuma regra casar (cauda → verifier).
  */
 export function matchNorma(input: NormaInput): MatchResult | null {
-  const nIn = normalizarNumero(input.numero as string);
+  const numero: string | null = input.numero;
+  const nIn = normalizarNumero(numero ?? '');
   if (!nIn) return null; // numero:null (ex.: Constituição) não casa baseline.
 
   // 1. ESTRITO — todos os campos batem (normalizado nos 2 lados).
@@ -97,11 +123,14 @@ export function matchNorma(input: NormaInput): MatchResult | null {
     }
   }
 
-  // 3. ALIAS — dígitos do alias contêm o numero (≥3 dígitos: anti over-match).
-  for (const e of baseline.entries) {
-    for (const a of e.match.aliases ?? []) {
-      if (a.replace(/\D/g, '').includes(nIn) && nIn.length >= 3) {
-        return resultado(e, 'alias');
+  // 3. ALIAS — nIn IGUAL a um token de dígitos do alias (≥3 dígitos: anti
+  // over-match). NÃO substring da concatenação: "666" não casa "8.666".
+  if (nIn.length >= 3) {
+    for (const e of baseline.entries) {
+      for (const a of e.match.aliases ?? []) {
+        if (tokensDigitosAlias(a).includes(nIn)) {
+          return resultado(e, 'alias');
+        }
       }
     }
   }

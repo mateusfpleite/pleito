@@ -172,6 +172,60 @@ describe('matchNorma — não-regressão FALSO-POSITIVO', () => {
     expect(r!.categoria).toBe('vigente-ancora'); // não vira citacao-suspeita
   });
 
+  it('(g4-I1) numero "666" NÃO casa lei-8666-1993 via alias (substring de "8666")', () => {
+    // BUG ESTRUTURAL DO MOAT: o path de alias usava
+    // aliasDigits.includes(nIn). "666" é substring de "8666" (dígitos do
+    // alias "Lei 8.666/93") → falso-positivo que FLIPA vigente→revogada
+    // para um input fora do corpus. Pior modo de falha do moat.
+    const r = matchNorma({
+      numero: '666',
+      ano: 2020,
+      escopo: 'federal',
+      tipoNorma: 'lei',
+    });
+    expect(r).toBeNull();
+  });
+
+  it('(g5-I1) numero "520" NÃO casa lei-10520-2002 via alias (substring de "10520")', () => {
+    const r = matchNorma({
+      numero: '520',
+      ano: 2099,
+      escopo: 'federal',
+      tipoNorma: 'lei',
+    });
+    expect(r).toBeNull();
+  });
+
+  it('(g6-I1) numero "462" NÃO casa dec-11462-2023 via alias (substring de "11462")', () => {
+    const r = matchNorma({
+      numero: '462',
+      ano: 2099,
+      escopo: 'federal',
+      tipoNorma: 'decreto',
+    });
+    expect(r).toBeNull();
+  });
+
+  it('(g7-I1) regressão positiva: número que SÓ aparece num alias ainda casa via alias', () => {
+    // Nenhuma entry do corpus tem numero divergente do alias (alias=0 no
+    // spike), então construímos o cenário sintético: a entry lei-8666-1993
+    // tem alias "Lei 8.666/93" cujo token "93" é o ANO em 2 dígitos. Um
+    // input com numero exatamente igual a um TOKEN do alias (não substring
+    // da concatenação) e numero+ano que NÃO casam pelas regras 1/2 deve
+    // ainda assim casar via alias — preserva o comportamento correto.
+    // Token exato "8666" do alias "Lei 8.666/93", com ano divergente
+    // (não casa estrito nem tolerante) → casa via alias.
+    const r = matchNorma({
+      numero: '8666',
+      ano: 1900, // ano divergente: não casa estrito/tolerante
+      escopo: 'federal',
+      tipoNorma: 'lei',
+    });
+    expect(r).not.toBeNull();
+    expect(r!.entry.id).toBe('lei-8666-1993');
+    expect(r!.via).toBe('alias');
+  });
+
   it('(g3) match sempre tem numero/ano coerentes com a entry (paridade c/ spike: fpAlias=0)', () => {
     // Invariante do spike: todo match resolvido tem numero+ano batendo a
     // entry casada (fpAlias=0). Varre a baseline com ANO divergente: ou
