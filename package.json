@@ -24,12 +24,14 @@
     "next": "^15.5.18",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "unzipper": "^0.12.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^25.7.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/unzipper": "^0.10.11",
     "@vitejs/plugin-react": "^6.0.2",
     "prisma": "^7.8.0",
     "tsx": "^4.21.0",
