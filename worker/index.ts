@@ -1,18 +1,19 @@
 /**
- * Entrypoint do worker container (SPEC §3/§4/§14).
+ * Worker container entrypoint (SPEC §3/§4/§14).
  *
- * Monta as deps REAIS (Prisma + adapters Gemini via `infrastructure/
- * factories.ts`), constrói o servidor HTTP mínimo (escala-to-zero acordado
- * por `POST` do `/api/job`) e escuta na porta do container (`PORT`,
- * default 8080). Ao receber o trigger, drena a fila inteira via claim
- * atômico `FOR UPDATE SKIP LOCKED`.
+ * Assembles the REAL deps (Prisma + Gemini adapters via `infrastructure/
+ * factories.ts`), builds the minimal HTTP server (scale-to-zero, woken by
+ * a `POST` from `/api/job`) and listens on the container port (`PORT`,
+ * default 8080). On receiving the trigger, it drains the entire queue via
+ * the atomic `FOR UPDATE SKIP LOCKED` claim.
  *
- * RESÍDUO de deploy (sem Postgres/credenciais neste ambiente —
- * consistente com Phase 11, adapters/repo/client.ts): `criarPrismaClient()`
- * lança até `@prisma/adapter-pg`+`pg` instalados, `DATABASE_URL` (direta,
- * no worker) definido e migração aplicada. A composição e o laço estão
- * 100% testados (worker/processar.test.ts, server.test.ts); só falta o
- * Postgres real (onde o SKIP LOCKED de fato trava linhas) + WORKER_URL.
+ * DEPLOY RESIDUE (no Postgres/credentials in this environment —
+ * consistent with Phase 11, adapters/repo/client.ts): `criarPrismaClient()`
+ * throws until `@prisma/adapter-pg`+`pg` are installed, `DATABASE_URL`
+ * (direct, on the worker) is set and the migration is applied. The wiring
+ * and the loop are 100% tested (worker/processar.test.ts, server.test.ts);
+ * only the real Postgres (where SKIP LOCKED actually locks rows) +
+ * WORKER_URL are missing.
  */
 import { getConfig } from '../infrastructure/config.ts';
 import {
@@ -25,17 +26,17 @@ import type { ArquivoEntrada } from '../domain/ports.ts';
 import { criarServidor } from './server.ts';
 
 function main(): void {
-  getConfig(); // falha cedo se faltar env (GOOGLE_..., DATABASE_URL, etc.)
+  getConfig(); // fail fast if env is missing (GOOGLE_..., DATABASE_URL, etc.)
 
   const prisma = criarPrismaClient();
   const repos = montarRepos(prisma);
 
-  // Sink de custo de grounding (§11b) atribuído POR chamada de
-  // `analyze`. `montarAnalyzeDeps` recebe um sink ESTÁVEL que delega ao
-  // coletor da chamada corrente (`atual`): cada `analyze(input, onCusto)`
-  // aponta `atual` p/ o onCusto daquele job antes de rodar e o limpa
-  // depois. O worker drena 1 job por vez (laço sequencial), logo não há
-  // corrida entre coletores.
+  // Grounding cost sink (§11b) attributed PER `analyze` call.
+  // `montarAnalyzeDeps` receives a STABLE sink that delegates to the
+  // collector of the current call (`atual`): each `analyze(input, onCusto)`
+  // points `atual` to that job's onCusto before running and clears it
+  // afterwards. The worker drains 1 job at a time (sequential loop), so
+  // there is no race between collectors.
   let atual: ((u: {
     lei: string;
     inputTokens: number | undefined;

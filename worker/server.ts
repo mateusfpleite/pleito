@@ -1,27 +1,30 @@
 /**
- * Servidor HTTP mínimo do worker container (SPEC §3/§14, #3 wake-up).
+ * Minimal HTTP server of the worker container (SPEC §3/§14, #3 wake-up).
  *
- * O container é scale-to-zero: só desperta por HTTP. `/api/job` (Vercel)
- * faz `POST` aqui ao criar o job — ESSA requisição acorda o container. Ao
- * receber o trigger o worker drena a fila inteira via `drenarFila` (claim
- * atômico SKIP LOCKED): qualquer pending — inclusive os cujo trigger
- * falhou e ficaram repescáveis — é processado.
+ * The container is scale-to-zero: it only wakes up via HTTP. `/api/job`
+ * (Vercel) does a `POST` here when creating the job — THAT request wakes
+ * up the container. On receiving the trigger the worker drains the entire
+ * queue via `drenarFila` (atomic SKIP LOCKED claim): any pending job —
+ * including those whose trigger failed and became re-pickable — is
+ * processed.
  *
- * O trigger responde 202 IMEDIATAMENTE (não bloqueia o caller na duração
- * do pipeline); a drenagem roda em background. `/healthz` p/ probes.
+ * The trigger responds 202 IMMEDIATELY (it does not block the caller for
+ * the pipeline duration); the drain runs in the background. `/healthz`
+ * for probes.
  *
- * `iniciarDrenagem` serializa as drenagens (uma por vez): se um trigger
- * chega enquanto outra drenagem roda, ela é re-executada ao final — assim
- * jobs criados durante o processamento não ficam órfãos sem outro trigger.
+ * `iniciarDrenagem` serializes the drains (one at a time): if a trigger
+ * arrives while another drain is running, it is re-executed at the end —
+ * so jobs created during processing are not orphaned without another
+ * trigger.
  */
 import { createServer, type Server } from 'node:http';
 import type { DrenarDeps } from './processar.ts';
 import { drenarFila } from './processar.ts';
 
 /**
- * Serializa as drenagens (uma por vez). `drenar` é injetável (default:
- * `drenarFila` real) para que o teste exercite ESTA lógica de
- * serialização — não uma cópia (testing-anti-patterns).
+ * Serializes the drains (one at a time). `drenar` is injectable (default:
+ * the real `drenarFila`) so that the test exercises THIS serialization
+ * logic — not a copy (testing-anti-patterns).
  */
 export function criarDrenadorSerial(
   deps: DrenarDeps,
@@ -41,7 +44,7 @@ export function criarDrenadorSerial(
         await drenar(deps);
       } while (pendente);
     } catch (e) {
-      console.error('[worker] drenagem falhou:', e);
+      console.error('[worker] drain failed:', e);
     } finally {
       rodando = false;
     }
@@ -58,7 +61,7 @@ export function criarServidor(deps: DrenarDeps): Server {
       return;
     }
     if (req.method === 'POST') {
-      // Dispara a drenagem e responde já (não bloqueia o /api/job).
+      // Fires the drain and responds right away (does not block /api/job).
       void acordar();
       res.writeHead(202, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ acordado: true }));

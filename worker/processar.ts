@@ -1,22 +1,24 @@
 /**
- * Laço de processamento do worker (SPEC §4 — pipeline no container).
+ * Worker processing loop (SPEC §4 — pipeline in the container).
  *
- * `drenarFila` é a lógica isolada e testável: claima o próximo job
- * (claim ATÔMICO `FOR UPDATE SKIP LOCKED` no `JobRepo`), processa via
- * `analyzeEdital` (deps reais), grava `Analysis` + Job=done; em erro →
- * Job=erro com a mensagem e NÃO grava doc parcial (o Tier 0 fatal do
- * workflow já garante; aqui só persistimos o erro). Após cada job tenta
- * `claimNext` de novo até a fila esvaziar (drena), então retorna.
+ * `drenarFila` is the isolated, testable logic: it claims the next job
+ * (ATOMIC `FOR UPDATE SKIP LOCKED` claim on `JobRepo`), processes it via
+ * `analyzeEdital` (real deps), writes `Analysis` + Job=done; on error →
+ * Job=erro with the message and does NOT write a partial doc (the fatal
+ * Tier 0 of the workflow already guarantees this; here we only persist the
+ * error). After each job it tries `claimNext` again until the queue is
+ * empty (drains), then returns.
  *
- * Um erro num job NÃO derruba o laço: é capturado, vira Job=erro, e o
- * próximo pending é processado (resiliência da fila).
+ * An error in one job does NOT bring down the loop: it is caught, becomes
+ * Job=erro, and the next pending job is processed (queue resilience).
  *
- * OBSERVABILIDADE (SPEC §11b — Phase 15): por job, coleta o custo de CADA
- * chamada de grounding (sink passado ao `analyze`), e após gravar a
- * Analysis registra: 1 evento `grounding_custo` POR chamada (nunca só
- * agregado — bomba de custo silenciosa) + `analise_concluida` com a
- * latência total + o agregado. TODA telemetria é NÃO-bloqueante
- * (`registrarSeguro`): falha de telemetria só loga, jamais derruba o job.
+ * OBSERVABILITY (SPEC §11b — Phase 15): per job, it collects the cost of
+ * EACH grounding call (sink passed to `analyze`), and after writing the
+ * Analysis it records: 1 `grounding_custo` event PER call (never just the
+ * aggregate — silent cost bomb) + `analise_concluida` with the total
+ * latency + the aggregate. ALL telemetry is NON-blocking
+ * (`registrarSeguro`): a telemetry failure only logs, never brings down
+ * the job.
  */
 import type {
   AnalysisRepo,
@@ -34,7 +36,7 @@ import {
   EVENTO,
 } from '../application/telemetria.ts';
 
-/** Uso de UMA chamada de grounding capturada durante o `analyze`. */
+/** Usage of ONE grounding call captured during the `analyze`. */
 type GroundingUso = {
   lei: string;
   inputTokens: number | undefined;
@@ -46,18 +48,18 @@ export type DrenarDeps = {
   jobRepo: JobRepo;
   analysisRepo: AnalysisRepo;
   /**
-   * Roda o pipeline. Recebe um sink OPCIONAL de custo de grounding —
-   * chamado UMA vez por chamada de grounding real (o worker o usa para
-   * atribuir o custo ao analysisId após o save). Fakes de teste ignoram
-   * o 2º arg (assinatura retrocompatível).
+   * Runs the pipeline. Receives an OPTIONAL grounding cost sink —
+   * called ONCE per real grounding call (the worker uses it to
+   * attribute the cost to the analysisId after the save). Test fakes
+   * ignore the 2nd arg (backward-compatible signature).
    */
   analyze: (
     input: ArquivoEntrada,
     onGroundingCusto?: (uso: GroundingUso) => void
   ) => Promise<AnalyzeResult>;
-  /** Telemetria NÃO-bloqueante (§11b). Opcional: ausente = sem coleta. */
+  /** NON-blocking telemetry (§11b). Optional: absent = no collection. */
   telemetry?: TelemetryPort;
-  /** Relógio injetável (latência determinística nos testes). */
+  /** Injectable clock (deterministic latency in tests). */
   agora?: () => number;
 };
 
@@ -65,14 +67,14 @@ export async function drenarFila(deps: DrenarDeps): Promise<void> {
   const agora = deps.agora ?? Date.now;
   for (;;) {
     const job = await deps.jobRepo.claimNext();
-    if (!job) return; // fila drenada → dorme (scale-to-zero)
+    if (!job) return; // queue drained → sleep (scale-to-zero)
 
     try {
       const input = desempacotarInput(job.inputRef);
 
-      // Coletor de custo de grounding POR job: o sink é chamado 1x por
-      // chamada de grounding; só sabemos o analysisId após o save, então
-      // acumulamos aqui e gravamos depois (atribuído ao id correto).
+      // Grounding cost collector PER job: the sink is called 1x per
+      // grounding call; we only know the analysisId after the save, so
+      // we accumulate here and write later (attributed to the correct id).
       const groundingUsos: GroundingUso[] = [];
       const inicio = agora();
       const { extracao, oficio } = await deps.analyze(input, (uso) =>
@@ -86,29 +88,29 @@ export async function drenarFila(deps: DrenarDeps): Promise<void> {
         uf: extracao.uf,
         extracao,
         oficioGerado: oficio ?? null,
-        // PDF é projeção derivada (§9): o ofício só é "exportado" quando
-        // a Stefany clica exportar (Phase 14) — aqui ainda não há texto.
+        // PDF is a derived projection (§9): the ofício is only "exported"
+        // when Stefany clicks export (Phase 14) — there is no text yet here.
         oficioExportado: null,
         oficioExportadoEm: null,
       });
       await deps.jobRepo.marcarConcluido(job.id);
 
-      // Telemetria NÃO-bloqueante, DEPOIS do job concluído (nunca antes —
-      // nada de telemetria pode atrasar/derrubar a conclusão do job).
+      // NON-blocking telemetry, AFTER the job is done (never before —
+      // no telemetry may delay/bring down the job completion).
       if (deps.telemetry) {
         const tele = deps.telemetry;
-        // SUBMISSÃO + RE-UPLOAD (§11b): grava o hash do input. Re-upload
-        // do MESMO edital é derivável agrupando `submissao` por
-        // `inputHash` (telemetria → eval V1, §11c). O worker não tem
-        // query de telemetria (TelemetryPort é write-only por design);
-        // a /admin agrupa por hash e o repete = re-upload — assim o
-        // sinal de iteração dela é capturado sem fricção.
+        // SUBMISSION + RE-UPLOAD (§11b): records the input hash. A
+        // re-upload of the SAME edital is derivable by grouping
+        // `submissao` by `inputHash` (telemetry → eval V1, §11c). The
+        // worker has no telemetry query (TelemetryPort is write-only by
+        // design); /admin groups by hash and the repeat = re-upload — so
+        // her iteration signal is captured without friction.
         const inputHash = hashInput(input.bytes);
         await registrarSeguro(tele, registro.id, EVENTO.submissao, {
           inputHash,
           nomeArquivo: input.nomeArquivo,
         });
-        // 1 evento POR chamada de grounding (§11b — não só agregado).
+        // 1 event PER grounding call (§11b — not just the aggregate).
         let tokensTotais = 0;
         for (const u of groundingUsos) {
           tokensTotais +=
@@ -120,7 +122,7 @@ export async function drenarFila(deps: DrenarDeps): Promise<void> {
             payloadGroundingCusto(u)
           );
         }
-        // analise_concluida — latência total + custo agregado.
+        // analise_concluida — total latency + aggregate cost.
         await registrarSeguro(
           tele,
           registro.id,
@@ -135,10 +137,11 @@ export async function drenarFila(deps: DrenarDeps): Promise<void> {
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      // NÃO grava Analysis parcial — só persiste o erro no Job (o Tier 0
-      // fatal do workflow já abortou antes de qualquer doc inválido).
+      // Does NOT write a partial Analysis — only persists the error on
+      // the Job (the fatal Tier 0 of the workflow already aborted before
+      // any invalid doc).
       await deps.jobRepo.marcarErro(job.id, msg);
-      console.error(`[worker] job ${job.id} → erro: ${msg}`);
+      console.error(`[worker] job ${job.id} → error: ${msg}`);
     }
   }
 }
