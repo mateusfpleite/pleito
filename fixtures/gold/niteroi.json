@@ -1,0 +1,426 @@
+{
+  "municipio": "Niterói",
+  "uf": "RJ",
+  "ente": {
+    "tipo": "empresa-publica",
+    "razaoSocial": "EMPRESA DE INFRAESTRUTURA E OBRAS DE NITERÓI - ION",
+    "cnpj": "32104465/0001-89"
+  },
+  "modalidade": "pregao-eletronico",
+  "numero": "90005/2025",
+  "processoAdministrativo": "9900095380/2024",
+  "dataPublicacao": null,
+  "dataSessao": "2025-04-09T11:00:00-03:00",
+  "uasg": null,
+  "regimeJuridico": "lei-13303",
+  "objetoCorpo": "Registro de Preços para eventual aquisição de Urnas Mortuárias para os Cemitérios Municipais, CONFORME ESPECIFICAÇÃO NO TERMO DE REFERÊNCIA – ANEXO I.",
+  "objetoCapa": "AQUISIÇÃO",
+  "objetoSummary": "Registro de Preços para aquisição eventual de urnas mortuárias destinadas aos cemitérios municipais de Niterói, RJ.",
+  "tipoObjeto": [
+    "fornecimento-urnas"
+  ],
+  "secretariaDemandante": "Área Técnica Demandante",
+  "valor": {
+    "estimado": null,
+    "sigiloso": true,
+    "procedencia": "preambulo"
+  },
+  "moeda": "BRL",
+  "criterioJulgamento": "menor-preco",
+  "agrupamento": "item",
+  "modoDisputa": "aberto",
+  "regimeExecucao": "preco-unitario",
+  "vigenciaContrato": {
+    "meses": null,
+    "prorrogavelAteMeses": null
+  },
+  "vigenciaAtaRP": {
+    "meses": null,
+    "prorrogavelAteMeses": 12
+  },
+  "validadeProposta": {
+    "dias": 60
+  },
+  "habilitacao": {
+    "juridica": [
+      {
+        "exigencia": "Cédula de identidade e CPF dos sócios ou dos diretores.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Registro Comercial, no caso de empresário pessoa física.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Ato constitutivo, estatuto ou contrato social em vigor, devidamente registrado na Junta Comercial, em se tratando de sociedades empresárias, e, no caso de sociedades por ações, acompanhado de documentos de eleição de seus administradores.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Inscrição do ato constitutivo, no caso de sociedades simples, acompanhada de prova da diretoria em exercício.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Decreto de autorização, em se tratando de empresa ou sociedade estrangeira em funcionamento no país, e ato de registro ou autorização para funcionamento expedido pelo órgão competente, quando a atividade assim o exigir.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "A sociedade simples que não adotar um dos tipos regulados nos artigos 1.039 a 1.092 (Código Civil), deverá mencionar, no contrato social, por força do art. 997, inciso VI, as pessoas naturais incumbidas da administração.",
+        "baseLegal": "Lei nº 10.406/2002",
+        "observacao": "Referência ao Código Civil."
+      },
+      {
+        "exigencia": "Declaração de que cumprem os requisitos previstos na Lei Complementar nº 123, de 14/12/2006, em especial o seu art. 3º, caso se enquadre como Microempresa ou Empresa de Pequeno Porte (Anexo III).",
+        "baseLegal": "Lei Complementar nº 123/2006",
+        "observacao": null
+      }
+    ],
+    "fiscalTrabalhista": [
+      {
+        "exigencia": "Prova de inscrição no Cadastro Nacional da Pessoa Jurídica (CNPJ) ou no Cadastro da Pessoa Física (CPF), conforme o caso.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de inscrição no cadastro de contribuintes estadual ou municipal, se houver, relativo ao domicílio ou sede do licitante, ou outra equivalente, na forma da lei.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de regularidade fiscal perante a Fazenda Federal, mediante apresentação de certidão expedida conjuntamente pela Secretaria da Receita Federal do Brasil (RFB) e pela Procuradoria–Geral da Fazenda Nacional (PGFN), referente a todos os créditos tributários federais e a Dívida Ativa da União (DAU) por elas administrados, inclusive aqueles relativos a Seguridade Social.",
+        "baseLegal": "Portaria Conjunta nº 1.751/2014",
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de regularidade fiscal perante a Fazenda Estadual (Estado do Rio de Janeiro), mediante apresentação da certidão negativa de débitos, expedida pela Secretaria Estadual da Fazenda; bem como a certidão negativa de Dívida Ativa, expedida pela Procuradoria Geral do Estado. Licitante isento de inscrição Estadual deverá apresentar certidão nesse sentido.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de regularidade fiscal perante a Fazenda Municipal, mediante apresentação da Certidão Negativa de Débitos, ou Certidão Positiva com efeito de Negativa do Imposto sobre Serviços de Qualquer Natureza – ISS, ou, se for o caso, certidão comprobatória de que o licitante, em razão do objeto social, não esteja sujeito à inscrição municipal.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Declaração de que a empresa não possui empregados menores de 18 (dezoito) anos em trabalho noturno, perigoso ou insalubre, tampouco menores de 16 (dezesseis) anos, salvo na condição de aprendiz, a partir de 14 (quatorze) anos (Anexo II).",
+        "baseLegal": "Constituição Federal, Art. 7º, Inc. XXXIII",
+        "observacao": null
+      },
+      {
+        "exigencia": "Declaração de que não é adotada relação trabalhista caracterizando trabalho forçado ou análogo a trabalho escravo.",
+        "baseLegal": "Leis nº 9.777/1998 e nº 10.803/2003",
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de inexistência de débitos inadimplidos perante a Justiça do Trabalho, mediante a apresentação de Certidão Negativa de Débitos Trabalhistas (CNDT) ou da Certidão Positiva de Débitos Trabalhistas com os mesmos efeitos da CNDT.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Certificado de Regularidade perante o Fundo de Garantia por Tempo de Serviço – FGTS/CRF.",
+        "baseLegal": null,
+        "observacao": null
+      }
+    ],
+    "economicoFinanceira": [
+      {
+        "exigencia": "Balanço Patrimonial e Demonstrações Contábeis do último exercício social, desde que já exigíveis e apresentados na forma da Lei, incluindo Termo de Abertura e Encerramento do livro contábil, que comprovem a boa situação financeira da Empresa.",
+        "baseLegal": null,
+        "observacao": "Quando encerrados há mais de três meses da data da apresentação da proposta, admitir-se-á atualização dos valores, por índices oficiais, sendo vedada a substituição das demonstrações financeiras por balancetes ou balanços provisórios. Deverão estar registrados na Junta Comercial ou órgão equivalente."
+      },
+      {
+        "exigencia": "Certidões negativas de falências e recuperação judicial e extrajudicial expedidas pelos distribuidores da sede da pessoa jurídica, ou de execução patrimonial, expedida no domicílio da pessoa física. Se o licitante não for sediado na Comarca da Capital do Estado do Rio de Janeiro, as certidões deverão vir acompanhadas de declaração oficial da autoridade judiciária competente, relacionando os distribuidores que, na Comarca de sua sede, tenham atribuição para expedir certidões negativas de falências e recuperação judicial, ou de execução patrimonial.",
+        "baseLegal": null,
+        "observacao": "As certidões deverão ter sido expedidas em até 06 (seis) meses da data do recebimento das propostas."
+      },
+      {
+        "exigencia": "Comprovação de ser dotada, na data de apresentação da proposta, de capital social, igual ou superior a 10% (dez por cento) do valor estimado para a contratação.",
+        "baseLegal": null,
+        "observacao": "Situação esta que será averiguada após a quebra do sigilo do valor estimado."
+      },
+      {
+        "exigencia": "Índice de Liquidez Geral (ILG) igual ou maior que 1,00 (um inteiro).",
+        "baseLegal": null,
+        "observacao": "Apurado nas demonstrações financeiras do último exercício financeiro."
+      },
+      {
+        "exigencia": "Índice de Garantia de capitais de terceiros (IGC) igual ou maior que 1,00 (um inteiro).",
+        "baseLegal": null,
+        "observacao": "Apurado nas demonstrações financeiras do último exercício financeiro."
+      },
+      {
+        "exigencia": "Índice de Endividamento (IE) menor ou igual a 1,00 (um inteiro).",
+        "baseLegal": null,
+        "observacao": "Apurado nas demonstrações financeiras do último exercício financeiro."
+      }
+    ],
+    "tecnica": [
+      {
+        "exigencia": "Apresentar Atestado(s), Certidão(ões) de capacidade técnica(s) ou Contrato(s) de fornecimento que comprove(m) que tenha prestado satisfatoriamente, para órgãos públicos ou empresas privadas, serviços de natureza idêntica ou similares do presente termo compatíveis em características com o objeto desta licitação.",
+        "baseLegal": null,
+        "observacao": "Os atestados devem ter sido emitidos por pessoa jurídica de direito público ou privado, registrados nas entidades profissionais competentes, quando for o caso, e conter nome, endereço e telefone de contato dos atestadores."
+      }
+    ]
+  },
+  "exigenciasRegulatorias": {
+    "licencaSanitaria": false,
+    "alvaraFuncionamento": false,
+    "vistoria": false,
+    "amostra": true,
+    "outros": []
+  },
+  "itensLicitados": [],
+  "leisReferenciadas": [
+    {
+      "descricao": "Lei Federal nº 13.303, de 30/06/2016",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "13303",
+      "ano": 2016,
+      "contextoNoEdital": "Regime jurídico principal do edital, base para condições de participação, valor estimado, critério de julgamento, garantias contratuais e alterações.",
+      "revogada": false
+    },
+    {
+      "descricao": "Regulamento de Licitações e Contratos da ION",
+      "escopo": "municipal",
+      "tipoNorma": "regulamento-interno",
+      "numero": null,
+      "ano": null,
+      "contextoNoEdital": "Norma interna subsidiária para o regime jurídico, prazos de ata de registro de preços, habilitação, recursos, sanções e alterações contratuais.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei Complementar n° 123, de 14/12/2006",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "123",
+      "ano": 2006,
+      "contextoNoEdital": "Tratamento favorecido para Microempresas e Empresas de Pequeno Porte (ME/EPP), e direito de preferência.",
+      "revogada": false
+    },
+    {
+      "descricao": "Decreto Municipal n° 10.414, de 17/11/2008",
+      "escopo": "municipal",
+      "tipoNorma": "decreto",
+      "numero": "10414",
+      "ano": 2008,
+      "contextoNoEdital": "Vedações de participação relacionadas a nepotismo no âmbito municipal.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei Ordinária 2.849/2011",
+      "escopo": "municipal",
+      "tipoNorma": "lei",
+      "numero": "2849",
+      "ano": 2011,
+      "contextoNoEdital": "Regulamentação do tratamento favorecido, diferenciado e simplificado para ME/EPP.",
+      "revogada": false
+    },
+    {
+      "descricao": "Decreto n.º 31.864/2002",
+      "escopo": "municipal",
+      "tipoNorma": "decreto",
+      "numero": "31864",
+      "ano": 2002,
+      "contextoNoEdital": "Disposições sobre cadastramento e certificação no Comprasnet.",
+      "revogada": false
+    },
+    {
+      "descricao": "Portaria Conjunta nº 1.751, de 02/10/2014, do Secretário da Receita Federal do Brasil e da Procuradoria-Geral da Fazenda Nacional",
+      "escopo": "federal",
+      "tipoNorma": "portaria",
+      "numero": "1751",
+      "ano": 2014,
+      "contextoNoEdital": "Regulamenta a prova de regularidade fiscal perante a Fazenda Federal.",
+      "revogada": false
+    },
+    {
+      "descricao": "Código Tributário Nacional - CTN (Lei nº 5.172/1966)",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "5172",
+      "ano": 1966,
+      "contextoNoEdital": "Referência para comprovação de regularidade fiscal por certidão positiva com efeitos de negativa (Art. 206).",
+      "revogada": false
+    },
+    {
+      "descricao": "Constituição Federal",
+      "escopo": "constitucional",
+      "tipoNorma": "constituicao",
+      "numero": null,
+      "ano": 1988,
+      "contextoNoEdital": "Base legal para declaração de não possuir empregados menores em condições de trabalho proibidas (Art. 7º, Inc. XXXIII).",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 9.777/1998",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "9777",
+      "ano": 1998,
+      "contextoNoEdital": "Base legal para declaração de não adotar trabalho forçado ou análogo à escravidão.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 10.803/2003",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "10803",
+      "ano": 2003,
+      "contextoNoEdital": "Base legal para declaração de não adotar trabalho forçado ou análogo à escravidão.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 3.466/2020",
+      "escopo": "municipal",
+      "tipoNorma": "lei",
+      "numero": "3466",
+      "ano": 2020,
+      "contextoNoEdital": "Exigência de programa de integridade para assinatura do contrato.",
+      "revogada": false
+    },
+    {
+      "descricao": "Decreto Municipal nº 14.235/2021",
+      "escopo": "municipal",
+      "tipoNorma": "decreto",
+      "numero": "14235",
+      "ano": 2021,
+      "contextoNoEdital": "Exigência de programa de integridade para assinatura do contrato.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 12.846/2013",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "12846",
+      "ano": 2013,
+      "contextoNoEdital": "Lei Anticorrupção, referenciada para exigências contratuais de integridade e sanções.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 8.429, de 02 de junho de 1992 (Lei de Improbidade Administrativa)",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "8429",
+      "ano": 1992,
+      "contextoNoEdital": "Mencionada nas disposições anticorrupção do contrato.",
+      "revogada": false
+    },
+    {
+      "descricao": "Código Civil (Lei nº 10.406/2002)",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "10406",
+      "ano": 2002,
+      "contextoNoEdital": "Referência para indenização suplementar em caso de prejuízo superior à multa rescisória (Art. 416, parágrafo único).",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei Federal nº 13.709, de 14 de agosto de 2018 (Lei Geral de Proteção de Dados Pessoais – LGPD)",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "13709",
+      "ano": 2018,
+      "contextoNoEdital": "Disposições sobre política de privacidade e proteção de dados no contrato.",
+      "revogada": false
+    },
+    {
+      "descricao": "Deliberação TCE-RJ n. 3112/2020",
+      "escopo": "estadual",
+      "tipoNorma": "deliberacao",
+      "numero": "3112",
+      "ano": 2020,
+      "contextoNoEdital": "Regulamenta o envio de informações ao TCE-RJ após a publicação no Diário Oficial.",
+      "revogada": false
+    }
+  ],
+  "anexos": [
+    {
+      "numero": "I",
+      "titulo": "Termo de Referência",
+      "tipo": "termo-referencia",
+      "descricaoBreve": "Documento que contém a especificação detalhada e as quantidades das urnas mortuárias.",
+      "presenteNoArquivo": false,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "II",
+      "titulo": "Modelo de Declaração de Atendimento ao Disposto no Art. 7º, Inciso XXXIII - CF",
+      "tipo": "modelo-declaracao",
+      "descricaoBreve": "Modelo de declaração sobre a não contratação de menores em condições proibidas por lei.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "III",
+      "titulo": "Modelo de Declarações de Enquadramento ou não nos Requisitos Previstos na Lei Complementar n° 123 de 14/12/2006",
+      "tipo": "modelo-declaracao",
+      "descricaoBreve": "Modelo de declaração para Microempresas e Empresas de Pequeno Porte.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "IV",
+      "titulo": "Modelo de Declaração de Inexistência de Penalidade",
+      "tipo": "modelo-declaracao",
+      "descricaoBreve": "Modelo de declaração de que a licitante não foi declarada inidônea.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "V",
+      "titulo": "Modelo de Declaração de Atendimento aos Requisitos de Habilitação",
+      "tipo": "modelo-declaracao",
+      "descricaoBreve": "Modelo de declaração de que a licitante cumpre plenamente os requisitos de habilitação.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "VI",
+      "titulo": "Minuta de Contrato",
+      "tipo": "minuta-contrato",
+      "descricaoBreve": "Minuta do contrato a ser celebrado com o vencedor da licitação.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    }
+  ],
+  "incoerencias": [
+    {
+      "tipo": "objeto-divergente",
+      "descricao": "O objeto na capa do edital ('AQUISIÇÃO') é genérico e diverge do detalhamento fornecido no corpo do edital, que especifica 'Registro de Preços para eventual aquisição de Urnas Mortuárias para os Cemitérios Municipais'.",
+      "severidade": "alta"
+    },
+    {
+      "tipo": "valor-divergente",
+      "descricao": "Há divergência nos prazos de validade da Ata de Registro de Preços. O item 12.9 menciona '2 (dois) anos... incluídas eventuais prorrogações' e 12.9.1 'prorrogado uma vez, por igual período'. Contudo, o item 12.10, citando o Art. 159 do Regulamento de Licitações e Contratos da ION, estabelece que 'O prazo de validade da ata de registro de preços não será superior a 12 (doze) meses, incluídas eventuais prorrogações'.",
+      "severidade": "alta"
+    },
+    {
+      "tipo": "valor-divergente",
+      "descricao": "Há divergência no prazo de validade da proposta. O item 10.1.6 exige validade 'não inferior a 60 (sessenta) dias corridos', enquanto o item 12.6.2 da seção da Ata de Registro de Preços exige validade 'mínima de 90 dias'.",
+      "severidade": "media"
+    }
+  ],
+  "trechosAmbiguos": [
+    {
+      "trechoLiteral": "A entrega deverá ser realizada no prazo de XX (extenso) dias, contados da retirada da Nota de Empenho, que deverá ocorrer no prazo máximo de XX (extenso) dias úteis após a sua emissão.",
+      "porQueAmbiguo": "Os prazos para entrega e retirada da Nota de Empenho estão indicados por placeholders ('XX (extenso) dias'), exigindo preenchimento manual no documento final ou minuta, o que pode gerar incerteza até a formalização.",
+      "secaoOndeAparece": "Minuta de Contrato - CLÁUSULA SEXTA – DO PRAZO"
+    },
+    {
+      "trechoLiteral": "O valor total da presente contratação é de R$ XXXX",
+      "porQueAmbiguo": "O valor total do contrato é um placeholder ('R$ XXXX'), indicando que o valor será definido posteriormente, mantendo a indefinição no documento atual.",
+      "secaoOndeAparece": "Minuta de Contrato - CLÁUSULA SÉTIMA – VALOR DO CONTRATO"
+    }
+  ],
+  "fonte": {
+    "pdfNativo": true,
+    "ocr": false,
+    "paginas": 25,
+    "url": null
+  }
+}

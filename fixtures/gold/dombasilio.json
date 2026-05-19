@@ -1,0 +1,639 @@
+{
+  "municipio": "Dom Basílio",
+  "uf": "BA",
+  "ente": {
+    "tipo": "prefeitura",
+    "razaoSocial": "Prefeitura Municipal de Dom Basílio",
+    "cnpj": "13.673.314/0001-05"
+  },
+  "modalidade": "pregao-eletronico",
+  "numero": "90065/2025",
+  "processoAdministrativo": "139/2025",
+  "dataPublicacao": "2025-10-16",
+  "dataSessao": "2025-11-03T10:00:00-03:00",
+  "uasg": "983501",
+  "regimeJuridico": "lei-14133",
+  "objetoCorpo": "CONTRATAÇÃO DE EMPRESA PARA PRESTAÇÃO DE SERVIÇOS FUNERÁRIOS E FORNECIMENTO DE URNAS MORTUÁRIAS PARA ATENDER AS NECESSIDADES DA SECRETARIA MUNICIPAL DE ASSISTÊNCIA SOCIAL, CONFORME QUANTIDADES E EXIGÊNCIAS ESTABELECIDAS NO EDITAL E SEUS ANEXOS.",
+  "objetoCapa": null,
+  "objetoSummary": "Contratação de empresa para prestação de serviços funerários e fornecimento de urnas mortuárias para atender às necessidades da Secretaria Municipal de Assistência Social.",
+  "tipoObjeto": [
+    "fornecimento-urnas",
+    "servicos-funerarios-completos",
+    "transporte-funerario",
+    "coroa-flores",
+    "tanatopraxia",
+    "outro"
+  ],
+  "secretariaDemandante": "Secretaria Municipal de Assistência Social",
+  "valor": {
+    "estimado": 265960,
+    "sigiloso": false,
+    "procedencia": "termo-referencia"
+  },
+  "moeda": "BRL",
+  "criterioJulgamento": "maior-desconto",
+  "agrupamento": "item",
+  "modoDisputa": "aberto-fechado",
+  "regimeExecucao": "preco-unitario",
+  "vigenciaContrato": {
+    "meses": 12,
+    "prorrogavelAteMeses": 120
+  },
+  "vigenciaAtaRP": {
+    "meses": null,
+    "prorrogavelAteMeses": null
+  },
+  "validadeProposta": {
+    "dias": 60
+  },
+  "habilitacao": {
+    "juridica": [
+      {
+        "exigencia": "Cédula de identidade (RG) ou documento equivalente para pessoa física.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Inscrição no Registro Público de Empresas Mercantis para empresário individual.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Certificado da Condição de Microempreendedor Individual (CCMEI) para MEI.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Inscrição do ato constitutivo, estatuto ou contrato social no Registro Público de Empresas Mercantis, acompanhado de documento comprobatório de administradores, para sociedade empresária, SLU ou EIRELI.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Portaria de autorização de funcionamento no Brasil, publicada no DOU e arquivada na Junta Comercial, para sociedade empresária estrangeira.",
+        "baseLegal": "Instrução Normativa DREI/ME n.º 77, de 18 de março de 2020",
+        "observacao": null
+      },
+      {
+        "exigencia": "Inscrição do ato constitutivo no Registro Civil de Pessoas Jurídicas, acompanhada de documento comprobatório de administradores, para sociedade simples.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Inscrição do ato constitutivo da filial, sucursal ou agência no Registro Civil das Pessoas Jurídicas ou no Registro Público de Empresas Mercantis onde opera, com averbação no Registro onde tem sede a matriz.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Ata de fundação e estatuto social, com ata da assembleia que o aprovou, arquivada na Junta Comercial ou inscrita no Registro Civil de Pessoas Jurídicas, além do registro do art. 107 da Lei nº 5.764, de 1971, para sociedade cooperativa.",
+        "baseLegal": "Lei nº 5.764, de 16 de dezembro de 1971, art. 107",
+        "observacao": null
+      },
+      {
+        "exigencia": "Declaração de Aptidão ao Pronaf – DAP ou DAP-P válida, ou outros documentos definidos pela Secretaria Especial de Agricultura Familiar e do Desenvolvimento Agrário, para agricultor familiar.",
+        "baseLegal": "Decreto nº 10.880, de 2 de dezembro de 2021, art. 4º, §2º",
+        "observacao": null
+      },
+      {
+        "exigencia": "Matrícula no Cadastro Específico do INSS – CEI, que comprove a qualificação como produtor rural pessoa física, para produtor rural.",
+        "baseLegal": "Instrução Normativa RFB n. 971, de 13 de novembro de 2009",
+        "observacao": null
+      },
+      {
+        "exigencia": "Documentos acompanhados de todas as alterações ou da consolidação respectiva.",
+        "baseLegal": null,
+        "observacao": null
+      }
+    ],
+    "fiscalTrabalhista": [
+      {
+        "exigencia": "Prova de inscrição no Cadastro Nacional de Pessoas Jurídicas ou no Cadastro de Pessoas Físicas.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de regularidade fiscal perante a Fazenda Nacional (RFB e PGFN), referente a todos os créditos tributários federais e à Dívida Ativa da União, inclusive Seguridade Social.",
+        "baseLegal": "Portaria Conjunta nº 1.751, de 02 de outubro de 2014",
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de regularidade com o Fundo de Garantia do Tempo de Serviço (FGTS).",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de inexistência de débitos inadimplidos perante a Justiça do Trabalho (Certidão Negativa ou Positiva com efeito de negativa).",
+        "baseLegal": "Decreto-Lei nº 5.452, de 1º de maio de 1943 (CLT, Título VII-A)",
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de inscrição no cadastro de contribuintes Estadual ou Municipal relativo ao domicílio ou sede do fornecedor.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de regularidade com a Fazenda Estadual e Municipal do domicílio ou sede do fornecedor.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Comprovação de isenção, mediante declaração da Fazenda respectiva, caso o fornecedor seja isento dos tributos Estadual ou Municipal.",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "MEI está dispensado da prova de inscrição nos cadastros de contribuintes estadual e municipal.",
+        "baseLegal": "Lei Complementar n. 123, de 2006",
+        "observacao": null
+      }
+    ],
+    "economicoFinanceira": [
+      {
+        "exigencia": "Certidão negativa de insolvência civil expedida pelo distribuidor do domicílio ou sede do licitante, para pessoa física ou sociedade simples, se admitida sua participação.",
+        "baseLegal": "Instrução Normativa Seges/ME nº 116, de 2021, art. 5º, inciso II, alínea “c”",
+        "observacao": null
+      },
+      {
+        "exigencia": "Certidão negativa de falência expedida pelo distribuidor da sede do fornecedor.",
+        "baseLegal": "Lei nº 14.133, de 2021, art. 69, caput, inciso II",
+        "observacao": null
+      },
+      {
+        "exigencia": "Índices de Liquidez Geral (LG), Solvência Geral (SG) e Liquidez Corrente (LC) superiores a 1 (um), comprovados por balanço patrimonial, DRE e demais demonstrações contábeis dos 2 (dois) últimos exercícios sociais.",
+        "baseLegal": null,
+        "observacao": "Fórmulas para cálculo dos índices fornecidas."
+      },
+      {
+        "exigencia": "Capital mínimo de 10% do valor total estimado da contratação, caso os índices LG, SG ou LC sejam inferiores ou iguais a 1 (um).",
+        "baseLegal": null,
+        "observacao": null
+      },
+      {
+        "exigencia": "Empresas criadas no exercício financeiro da licitação poderão substituir os demonstrativos contábeis pelo balanço de abertura.",
+        "baseLegal": "Lei nº 14.133, de 2021, art. 65, §1º",
+        "observacao": null
+      },
+      {
+        "exigencia": "Balanço patrimonial, demonstração de resultado de exercício e demais demonstrações contábeis limitar-se-ão ao último exercício no caso de pessoa jurídica constituída há menos de 2 (dois) anos.",
+        "baseLegal": "Lei nº 14.133, de 2021, art. 69, §6º",
+        "observacao": null
+      },
+      {
+        "exigencia": "Atendimento dos índices econômicos atestado mediante declaração assinada por profissional habilitado da área contábil.",
+        "baseLegal": null,
+        "observacao": null
+      }
+    ],
+    "tecnica": [
+      {
+        "exigencia": "Comprovação de aptidão para o fornecimento de bens similares de complexidade tecnológica e operacional equivalente com os itens pertinentes, por meio de certidões ou atestados, emitidos por pessoas jurídicas de direito público ou privado, ou regularmente pelo conselho profissional competente.",
+        "baseLegal": null,
+        "observacao": "Será admitido o somatório de diferentes atestados executados de forma concomitante. Atestados podem ser apresentados em nome da matriz ou filial. O fornecedor deverá disponibilizar informações para comprovação da legitimidade dos atestados, se solicitado."
+      },
+      {
+        "exigencia": "Documentação complementar para cooperativas, incluindo relação de cooperados que atenderão aos requisitos técnicos, declaração de regularidade de situação do contribuinte individual (DRSCI), comprovação de capital social proporcional, registro na Lei nº 5.764/1971, comprovação de integração de quotas-partes, documentos de regularidade jurídica da cooperativa e última auditoria contábil-financeira ou declaração de não exigência.",
+        "baseLegal": "Lei n. 5.764, de 1971",
+        "observacao": null
+      }
+    ]
+  },
+  "exigenciasRegulatorias": {
+    "licencaSanitaria": false,
+    "alvaraFuncionamento": false,
+    "vistoria": false,
+    "amostra": false,
+    "outros": []
+  },
+  "itensLicitados": [
+    {
+      "numero": "1",
+      "descricao": "Urna funerária simples adulto",
+      "tipo": "urna",
+      "publicoAlvo": "adulto",
+      "unidade": "unid",
+      "quantidade": 80,
+      "valorUnitarioReferencial": 970
+    },
+    {
+      "numero": "2",
+      "descricao": "Urna funerária simples juvenil",
+      "tipo": "urna",
+      "publicoAlvo": "juvenil",
+      "unidade": "unid",
+      "quantidade": 12,
+      "valorUnitarioReferencial": 850
+    },
+    {
+      "numero": "3",
+      "descricao": "Urna funerária simples infantil",
+      "tipo": "urna",
+      "publicoAlvo": "infantil",
+      "unidade": "unid",
+      "quantidade": 10,
+      "valorUnitarioReferencial": 600
+    },
+    {
+      "numero": "4",
+      "descricao": "Urna funerária simples recém-nascido",
+      "tipo": "urna",
+      "publicoAlvo": "recem-nascido",
+      "unidade": "unid",
+      "quantidade": 4,
+      "valorUnitarioReferencial": 300
+    },
+    {
+      "numero": "5",
+      "descricao": "Urna funerária simples adulto obeso",
+      "tipo": "urna",
+      "publicoAlvo": "adulto-obeso",
+      "unidade": "unid",
+      "quantidade": 18,
+      "valorUnitarioReferencial": 1100
+    },
+    {
+      "numero": "6",
+      "descricao": "Vestimento fúnebre confeccionada em tecido de qualidade - adulta",
+      "tipo": "vestimento",
+      "publicoAlvo": "adulto",
+      "unidade": "unid",
+      "quantidade": 80,
+      "valorUnitarioReferencial": 55
+    },
+    {
+      "numero": "7",
+      "descricao": "Vestimento fúnebre confeccionada em tecido de qualidade - infantil",
+      "tipo": "vestimento",
+      "publicoAlvo": "infantil",
+      "unidade": "unid",
+      "quantidade": 20,
+      "valorUnitarioReferencial": 43
+    },
+    {
+      "numero": "8",
+      "descricao": "Coroa de flores artificias",
+      "tipo": "coroa",
+      "publicoAlvo": "qualquer",
+      "unidade": "unid",
+      "quantidade": 60,
+      "valorUnitarioReferencial": 140
+    },
+    {
+      "numero": "9",
+      "descricao": "Coroa de flores naturais",
+      "tipo": "coroa",
+      "publicoAlvo": "qualquer",
+      "unidade": "unid",
+      "quantidade": 60,
+      "valorUnitarioReferencial": 450
+    },
+    {
+      "numero": "10",
+      "descricao": "Translado fúnebre: transporte terrestre do corpo",
+      "tipo": "translado",
+      "publicoAlvo": "qualquer",
+      "unidade": "KM",
+      "quantidade": 5000,
+      "valorUnitarioReferencial": 2.2
+    },
+    {
+      "numero": "11",
+      "descricao": "Preparo do corpo: limpeza, aplicação de medicamentos para conservação do corpo, colocação de roupa e véu. Flores artificiais, mínimo de dez dúzias distribuídas em torno do corpo. Mínimo de duas velas. Suporte para caixão e cortina",
+      "tipo": "preparo-corpo",
+      "publicoAlvo": "qualquer",
+      "unidade": "unid",
+      "quantidade": 100,
+      "valorUnitarioReferencial": 995
+    }
+  ],
+  "leisReferenciadas": [
+    {
+      "descricao": "Lei nº 14.133, de 2021",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "14133",
+      "ano": 2021,
+      "contextoNoEdital": "Regime jurídico principal da licitação, regulamenta diversas fases e requisitos da contratação pública, incluindo participação, habilitação, recursos, sanções, vigência contratual e cláusulas diversas.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei Complementar nº 123, de 2006",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "123",
+      "ano": 2006,
+      "contextoNoEdital": "Concede tratamento favorecido para microempresas e empresas de pequeno porte na licitação, incluindo desempate e dispensa de algumas provas de regularidade fiscal.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 6.404, de 15 de dezembro de 1976",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "6404",
+      "ano": 1976,
+      "contextoNoEdital": "Citada para definir relações entre empresas controladoras, controladas ou coligadas, vedando a participação em conjunto na licitação.",
+      "revogada": false
+    },
+    {
+      "descricao": "Constituição Federal",
+      "escopo": "constitucional",
+      "tipoNorma": "constituicao",
+      "numero": null,
+      "ano": 1988,
+      "contextoNoEdital": "Mencionada em declarações de conformidade com direitos trabalhistas (art. 7°, XXXIII) e para proteção da dignidade da pessoa humana e vedação de trabalho degradante/forçado (incisos III e IV do art. 1º e inciso III do art. 5º).",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 5.764, de 16 de dezembro de 1971",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "5764",
+      "ano": 1971,
+      "contextoNoEdital": "Estabelece exigências documentais adicionais para participação de sociedades cooperativas na licitação, como o registro de que trata o art. 107 e referência ao art. 112 (auditoria contábil-financeira).",
+      "revogada": false
+    },
+    {
+      "descricao": "Decreto nº 10.880, de 2 de dezembro de 2021",
+      "escopo": "federal",
+      "tipoNorma": "decreto",
+      "numero": "10880",
+      "ano": 2021,
+      "contextoNoEdital": "Regulamenta a comprovação da condição de agricultor familiar (art. 4º, §2º).",
+      "revogada": false
+    },
+    {
+      "descricao": "Instrução Normativa RFB n. 971, de 13 de novembro de 2009",
+      "escopo": "federal",
+      "tipoNorma": "instrucao-normativa",
+      "numero": "971",
+      "ano": 2009,
+      "contextoNoEdital": "Define a comprovação da qualificação como produtor rural pessoa física (arts. 17 a 19 e 165).",
+      "revogada": false
+    },
+    {
+      "descricao": "Portaria Conjunta nº 1.751, de 02 de outubro de 2014",
+      "escopo": "federal",
+      "tipoNorma": "portaria",
+      "numero": "1751",
+      "ano": 2014,
+      "contextoNoEdital": "Orienta a prova de regularidade fiscal perante a Fazenda Nacional (RFB e PGFN).",
+      "revogada": false
+    },
+    {
+      "descricao": "Decreto-Lei nº 5.452, de 1º de maio de 1943",
+      "escopo": "federal",
+      "tipoNorma": "decreto",
+      "numero": "5452",
+      "ano": 1943,
+      "contextoNoEdital": "Conhecido como Consolidação das Leis do Trabalho (CLT), é referido para a prova de inexistência de débitos inadimplidos perante a Justiça do Trabalho (Título VII-A).",
+      "revogada": false
+    },
+    {
+      "descricao": "Instrução Normativa DREI/ME n.º 77, de 18 de março de 2020",
+      "escopo": "federal",
+      "tipoNorma": "instrucao-normativa",
+      "numero": "77",
+      "ano": 2020,
+      "contextoNoEdital": "Regulamenta a documentação para habilitação de sociedade empresária estrangeira.",
+      "revogada": false
+    },
+    {
+      "descricao": "Instrução Normativa nº 3/2018",
+      "escopo": "federal",
+      "tipoNorma": "instrucao-normativa",
+      "numero": "3",
+      "ano": 2018,
+      "contextoNoEdital": "Regulamenta a verificação de ocorrências impeditivas indiretas no CEIS e a comprovação de requisitos via SICAF.",
+      "revogada": false
+    },
+    {
+      "descricao": "Instrução Normativa SEGES nº 73, de 30 de setembro de 2022",
+      "escopo": "federal",
+      "tipoNorma": "instrucao-normativa",
+      "numero": "73",
+      "ano": 2022,
+      "contextoNoEdital": "Orientação para julgamento de propostas, apresentação de documentos de habilitação, e pesquisa de preços.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei n° 8.429, de 1992",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "8429",
+      "ano": 1992,
+      "contextoNoEdital": "Referenciada para consulta de sócio majoritário e vedação de atos de improbidade administrativa (art. 12).",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 12.187, de 29 de dezembro de 2009",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "12187",
+      "ano": 2009,
+      "contextoNoEdital": "Considerada como critério de desempate para empresas que comprovem a prática de mitigação.",
+      "revogada": false
+    },
+    {
+      "descricao": "Decreto nº 8.660, de 29 de janeiro de 2016",
+      "escopo": "federal",
+      "tipoNorma": "decreto",
+      "numero": "8660",
+      "ano": 2016,
+      "contextoNoEdital": "Disposições sobre apostilamento de documentos para empresas estrangeiras.",
+      "revogada": false
+    },
+    {
+      "descricao": "Instrução Normativa Seges/ME nº 116, de 2021",
+      "escopo": "federal",
+      "tipoNorma": "instrucao-normativa",
+      "numero": "116",
+      "ano": 2021,
+      "contextoNoEdital": "Mencionada em relação à certidão negativa de insolvência civil para habilitação econômico-financeira (art. 5º, inciso II, alínea “c”).",
+      "revogada": false
+    },
+    {
+      "descricao": "Decreto nº 8.538, de 2015",
+      "escopo": "federal",
+      "tipoNorma": "decreto",
+      "numero": "8538",
+      "ano": 2015,
+      "contextoNoEdital": "Regulamenta o tratamento favorecido a ME/EPP e a dispensa de prova de regularidade fiscal e trabalhista para contratação.",
+      "revogada": false
+    },
+    {
+      "descricao": "Decreto nº 11.246, de 2022",
+      "escopo": "federal",
+      "tipoNorma": "decreto",
+      "numero": "11246",
+      "ano": 2022,
+      "contextoNoEdital": "Estabelece diretrizes para a gestão e fiscalização de contratos, definindo papéis e responsabilidades do fiscal técnico, administrativo e gestor do contrato.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 8.078, de 1990",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "8078",
+      "ano": 1990,
+      "contextoNoEdital": "Código de Defesa do Consumidor (CDC), invocado para responsabilização do contratado por vícios e danos decorrentes da execução do objeto.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 8.742/1993",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "8742",
+      "ano": 1993,
+      "contextoNoEdital": "Lei Orgânica da Assistência Social (LOAS), justifica a necessidade da contratação para atender famílias em vulnerabilidade social.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 12.846, de 2013",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "12846",
+      "ano": 2013,
+      "contextoNoEdital": "Lei Anticorrupção, trata de infrações administrativas e atos lesivos cometidos na licitação e execução de contratos.",
+      "revogada": false
+    },
+    {
+      "descricao": "Instrução Normativa SEGES/ME nº 77, de 2022",
+      "escopo": "federal",
+      "tipoNorma": "instrucao-normativa",
+      "numero": "77",
+      "ano": 2022,
+      "contextoNoEdital": "Regulamenta os prazos e procedimentos de liquidação e pagamento das despesas.",
+      "revogada": false
+    },
+    {
+      "descricao": "Instrução Normativa SEGES/ME nº 53, de 8 de julho de 2020",
+      "escopo": "federal",
+      "tipoNorma": "instrucao-normativa",
+      "numero": "53",
+      "ano": 2020,
+      "contextoNoEdital": "Define procedimentos para cessão fiduciária de direitos creditícios com instituição financeira.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei nº 13.709, de 14 de agosto de 2018",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "13709",
+      "ano": 2018,
+      "contextoNoEdital": "Lei Geral de Proteção de Dados Pessoais (LGPD), estabelece obrigações para o tratamento de dados pessoais no âmbito do contrato.",
+      "revogada": false
+    },
+    {
+      "descricao": "Lei n. 12.527, de 2011",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "12527",
+      "ano": 2011,
+      "contextoNoEdital": "Lei de Acesso à Informação (LAI), mencionada para a publicação do instrumento no sítio oficial na Internet.",
+      "revogada": false
+    },
+    {
+      "descricao": "Decreto n. 7.724, de 2012",
+      "escopo": "federal",
+      "tipoNorma": "decreto",
+      "numero": "7724",
+      "ano": 2012,
+      "contextoNoEdital": "Regulamenta a LAI, citado para a publicação do instrumento no sítio oficial na Internet.",
+      "revogada": false
+    },
+    {
+      "descricao": "Instrução Normativa SEGES/ME nº 26, de 13 de abril de 2022",
+      "escopo": "federal",
+      "tipoNorma": "instrucao-normativa",
+      "numero": "26",
+      "ano": 2022,
+      "contextoNoEdital": "Trata da compensação de débitos do contratado com créditos devidos pela Administração.",
+      "revogada": false
+    }
+  ],
+  "anexos": [
+    {
+      "numero": "I",
+      "titulo": "Termo de Referência",
+      "tipo": "termo-referencia",
+      "descricaoBreve": "Detalha o objeto da licitação, quantidades, estimativa de preços e condições de execução.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "I",
+      "titulo": "Estudo Técnico Preliminar e Análise de Riscos",
+      "tipo": "estudo-tecnico-preliminar",
+      "descricaoBreve": "Apêndice do Termo de Referência, detalha a necessidade da contratação, solução, quantitativos e análise de riscos.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "II",
+      "titulo": "Minuta de Termo de Contrato",
+      "tipo": "minuta-contrato",
+      "descricaoBreve": "Minuta do contrato administrativo a ser assinado com o licitante vencedor, detalhando cláusulas contratuais.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "III",
+      "titulo": "Minuta da Ata de Registro de Preços",
+      "tipo": "minuta-ata",
+      "descricaoBreve": "Modelo da Ata de Registro de Preços para futuras contratações.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "IV",
+      "titulo": "Modelo de Proposta de Preços",
+      "tipo": "modelo-proposta",
+      "descricaoBreve": "Formulário para apresentação da proposta de preços e percentuais de desconto por item.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    }
+  ],
+  "incoerencias": [
+    {
+      "tipo": "valor-divergente",
+      "descricao": "O 'Valor Total da Contratação' na capa do edital é R$ 265.690,00, enquanto a tabela 1.1 e o item 8.1 do Termo de Referência indicam R$ 265.960,00. O valor do Termo de Referência está mais detalhado pela soma dos itens.",
+      "severidade": "alta"
+    },
+    {
+      "tipo": "outro",
+      "descricao": "O 'Critério de Julgamento' na capa do edital e no Anexo IV (Modelo de Proposta) indica 'Maior desconto por item', o que é consistente com o agrupamento por item. No entanto, o Termo de Referência (item 7.1) afirma 'MAIOR DESCONTO GLOBAL'. A interpretação do edital como um todo, com itens individualizados e possibilidade de desconto por item, sugere que o critério 'maior desconto por item' é o mais aplicável.",
+      "severidade": "media"
+    },
+    {
+      "tipo": "numeracao-quebrada",
+      "descricao": "No Termo de Referência, a Qualificação Técnica, item 7.27, é repetida na numeração, quando deveria ser 7.27, 7.27.1, 7.27.2, 7.27.3. Em seguida o item 7.28, com seus subitens 7.28.1 a 7.28.7.",
+      "severidade": "baixa"
+    }
+  ],
+  "trechosAmbiguos": [
+    {
+      "trechoLiteral": "Comprovação de aptidão para o fornecimento de bens similares de complexidade tecnológica e operacional equivalente",
+      "porQueAmbiguo": "A expressão 'complexidade tecnológica e operacional equivalente' é subjetiva e carece de métricas objetivas para sua avaliação, podendo gerar interpretações diversas e disputas.",
+      "secaoOndeAparece": "Corpo 7.45 (Habilitação Técnica) e Termo de Referência 7.27 (Qualificação Técnica)"
+    },
+    {
+      "trechoLiteral": "a critério da Administração",
+      "porQueAmbiguo": "Esta frase concede ampla discricionariedade à Administração sem especificar limites claros ou critérios objetivos para a tomada de decisão, o que pode levar a decisões arbitrárias ou contestáveis.",
+      "secaoOndeAparece": "Corpo 2.8 (Participação), 5.23.5 (Lances), 6.8.1 (Julgamento), Termo de Referência 6.25 (Liquidação)"
+    },
+    {
+      "trechoLiteral": "Se a operação implicar mudança da pessoa jurídica contratada, deverá ser formalizado termo aditivo para alteração subjetiva.",
+      "porQueAmbiguo": "O edital não especifica quais tipos de 'operação' podem implicar a 'mudança da pessoa jurídica contratada', nem detalha o processo para avaliar essa mudança e a formalização do termo aditivo, deixando margem para interpretação sobre a continuidade ou não do contrato.",
+      "secaoOndeAparece": "Minuta do Contrato 13.3.2.1 (Extinção Contratual)"
+    },
+    {
+      "trechoLiteral": "A vigência da Ata de Registro de Preço será até XX/XX/XXXX",
+      "porQueAmbiguo": "A data de vigência da Ata de Registro de Preços é apresentada como um placeholder ('XX/XX/XXXX'), o que impede a determinação exata do período de validade do instrumento, criando incerteza para os licitantes e a Administração.",
+      "secaoOndeAparece": "Anexo III – Minuta da Ata de Registro de Preços (CLÁUSULA TERCEIRA)"
+    }
+  ],
+  "fonte": {
+    "pdfNativo": true,
+    "ocr": false,
+    "paginas": 45,
+    "url": null
+  }
+}

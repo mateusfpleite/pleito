@@ -1,0 +1,231 @@
+{
+  "okCount": 24,
+  "total": 24,
+  "allLaws": [
+    {
+      "arquivo": "al-mata-grande-pe017-2026.txt",
+      "municipio": "Mata Grande",
+      "uf": "AL",
+      "descricao": "Lei do Pregão",
+      "escopo": "federal",
+      "numero": "10520",
+      "ano": 2002,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "al-teotonio-vilela-pe003-2026.txt",
+      "municipio": "Teotônio Vilela",
+      "uf": "AL",
+      "descricao": "Instrução Normativa SLTI/MP nº 01, de 19 de janeiro de 2010",
+      "escopo": "infralegal",
+      "numero": "01",
+      "ano": 2010,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "al-teotonio-vilela-pe003-2026.txt",
+      "municipio": "Teotônio Vilela",
+      "uf": "AL",
+      "descricao": "Instrução Normativa SEGES/MP nº 03, de 26 de abril, de 2018 e alterações",
+      "escopo": "infralegal",
+      "numero": "03",
+      "ano": 2018,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "al-teotonio-vilela-pe003-2026.txt",
+      "municipio": "Teotônio Vilela",
+      "uf": "AL",
+      "descricao": "Decreto n° 8.538, de 06 de outubro de 2015",
+      "escopo": "federal",
+      "numero": "8.538",
+      "ano": 2015,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "al-teotonio-vilela-pe003-2026.txt",
+      "municipio": "Teotônio Vilela",
+      "uf": "AL",
+      "descricao": "Instrução Normativa SLTI/MP nº 102, de 2020",
+      "escopo": "infralegal",
+      "numero": "102",
+      "ano": 2020,
+      "revogada": true,
+      "confianca": "media"
+    },
+    {
+      "arquivo": "ba-santa-rita-de-cassia-cc079-2025.txt",
+      "municipio": "Santa Rita de Cássia",
+      "uf": "BA",
+      "descricao": "Lei Federal nº 9.704",
+      "escopo": "federal",
+      "numero": "9704",
+      "ano": 1995,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "ba-santa-rita-de-cassia-cc079-2025.txt",
+      "municipio": "Santa Rita de Cássia",
+      "uf": "BA",
+      "descricao": "Lei Federal nº 8.666",
+      "escopo": "federal",
+      "numero": "8666",
+      "ano": 1993,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "es-guarapari-cc034-2025.txt",
+      "municipio": "Guarapari",
+      "uf": "ES",
+      "descricao": "Instrução Normativa/SEGES nº 05/2017",
+      "escopo": "federal",
+      "numero": "05",
+      "ano": 2017,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "es-guarapari-cc034-2025.txt",
+      "municipio": "Guarapari",
+      "uf": "ES",
+      "descricao": "Instrução Normativa SEGES/MP nº 5, de 2017",
+      "escopo": "federal",
+      "numero": "5",
+      "ano": 2017,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "ma-sao-luis-pe767-2026.txt",
+      "municipio": "São Luís",
+      "uf": "MA",
+      "descricao": "Instrução Normativa MARE Nº 6, de 1995",
+      "escopo": "federal",
+      "numero": "6",
+      "ano": 1995,
+      "revogada": true,
+      "confianca": "media"
+    },
+    {
+      "arquivo": "ma-sao-luis-pe767-2026.txt",
+      "municipio": "São Luís",
+      "uf": "MA",
+      "descricao": "Decreto nº 5.940, de 2006",
+      "escopo": "federal",
+      "numero": "5.940",
+      "ano": 2006,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "ma-sao-luis-pe767-2026.txt",
+      "municipio": "São Luís",
+      "uf": "MA",
+      "descricao": "Instrução Normativa SEGES/MP nº 05, de 2017",
+      "escopo": "federal",
+      "numero": "5",
+      "ano": 2017,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "ma-sao-luis-pe767-2026.txt",
+      "municipio": "São Luís",
+      "uf": "MA",
+      "descricao": "Instrução Normativa SLTI MPOG n° 1, de 19 de janeiro de 2010",
+      "escopo": "federal",
+      "numero": "1",
+      "ano": 2010,
+      "revogada": true,
+      "confianca": "media"
+    },
+    {
+      "arquivo": "pa-capanema-pe174-2025.txt",
+      "municipio": "Capanema",
+      "uf": "PA",
+      "descricao": "Portaria MTE nº 1421, de 12 de setembro de 2014",
+      "escopo": "federal",
+      "numero": "1.421",
+      "ano": 2014,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "pa-capanema-pe174-2025.txt",
+      "municipio": "Capanema",
+      "uf": "PA",
+      "descricao": "IN SEGES/MP n. 5/2017",
+      "escopo": "federal",
+      "numero": "5",
+      "ano": 2017,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "pa-capanema-pe174-2025.txt",
+      "municipio": "Capanema",
+      "uf": "PA",
+      "descricao": "Instrução Normativa nº 01, de 19 de janeiro de 2010",
+      "escopo": "federal",
+      "numero": "01",
+      "ano": 2010,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "pr-arapoti-pe047-2026.txt",
+      "municipio": "ARAPOTI",
+      "uf": "PR",
+      "descricao": "IN nº 3/2018",
+      "escopo": "infralegal",
+      "numero": "3",
+      "ano": 2018,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "sc-camboriu-pe063-2024.txt",
+      "municipio": "Camboriú",
+      "uf": "SC",
+      "descricao": "Lei nº 6.544, de 22 de novembro de 1989",
+      "escopo": "federal",
+      "numero": "6544",
+      "ano": 1989,
+      "revogada": true,
+      "confianca": "baixa"
+    },
+    {
+      "arquivo": "sc-camboriu-pe063-2024.txt",
+      "municipio": "Camboriú",
+      "uf": "SC",
+      "descricao": "Lei nº 8.666/1993",
+      "escopo": "federal",
+      "numero": "8666",
+      "ano": 1993,
+      "revogada": true,
+      "confianca": "alta"
+    },
+    {
+      "arquivo": "sp-batatais-pe101-2026.txt",
+      "municipio": "Batatais",
+      "uf": "SP",
+      "descricao": "Instrução Normativa SEGES/MP nº 3, de 2018",
+      "escopo": "infralegal",
+      "numero": "3",
+      "ano": 2018,
+      "revogada": true,
+      "confianca": "alta"
+    }
+  ],
+  "byClass": {
+    "federal-notoria": 3,
+    "infralegal": 5,
+    "federal-outra": 12
+  }
+}

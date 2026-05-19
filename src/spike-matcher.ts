@@ -5,8 +5,10 @@ import { resolve } from 'node:path';
  * Spike do baseline matcher contra CORPUS REAL (nao casos inventados).
  * Valida o bloqueante #1 da plan-review: o falso-negativo do Gate A esta
  * fechado de verdade quando o input e o que o extractor produz de fato?
- * Fontes: output/{dombasilio,jaborandi,niteroi}.json (schema cheio, tem tipoNorma)
- *       + output/baserate-result.json allLaws (subset revogada, SEM tipoNorma).
+ * Fontes: fixtures/gold/{dombasilio,jaborandi,niteroi}.json (schema cheio,
+ *   tem tipoNorma) + fixtures/gold/baserate-result.json allLaws (subset
+ *   revogada, SEM tipoNorma). Corpus de regressão VERSIONADO (Phase 4):
+ *   antes lia de output/ (gitignored); agora reproduzível pós-Phase 4.
  */
 
 type BaselineEntry = {
@@ -66,11 +68,11 @@ function matchNorma(input: {
 type RealLei = { numero: string; ano: number | null; escopo: string; tipoNorma?: string; descricao: string; origem: string };
 const corpus: RealLei[] = [];
 for (const f of ['dombasilio', 'jaborandi', 'niteroi']) {
-  const d = JSON.parse(readFileSync(resolve(`output/${f}.json`), 'utf-8'));
+  const d = JSON.parse(readFileSync(resolve(`fixtures/gold/${f}.json`), 'utf-8'));
   for (const l of d.leisReferenciadas ?? [])
     corpus.push({ numero: l.numero, ano: l.ano, escopo: l.escopo, tipoNorma: l.tipoNorma, descricao: l.descricao, origem: f });
 }
-const br = JSON.parse(readFileSync(resolve('output/baserate-result.json'), 'utf-8'));
+const br = JSON.parse(readFileSync(resolve('fixtures/gold/baserate-result.json'), 'utf-8'));
 for (const l of br.allLaws ?? [])
   corpus.push({ numero: l.numero, ano: l.ano, escopo: l.escopo, tipoNorma: undefined, descricao: l.descricao, origem: 'baserate:' + l.arquivo });
 
