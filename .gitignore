@@ -12,3 +12,6 @@ docs/*.html
 docs/*.pdf
 *.log
 .DS_Store
+
+# Documentos privados de terceiros (não publicar)
+docs/inputs/
