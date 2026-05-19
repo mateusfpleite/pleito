@@ -1,17 +1,17 @@
 /**
- * Decisão PURA de bloqueio do middleware de auth (SPEC §14, #7).
+ * PURE auth-middleware blocking decision (SPEC §14, #7).
  *
- * Extraída do `middleware.ts` para ser testável sem subir servidor: dado
- * o path, o valor do cookie de sessão e o secret, decide
- *   - `liberar`   → segue (rota pública OU cookie válido);
- *   - `redirect`  → 302 p/ /login (navegação protegida sem sessão);
- *   - `unauthorized` → 401 (rota /api/* protegida sem sessão).
+ * Extracted from `middleware.ts` to be testable without booting a server:
+ * given the path, the session cookie value and the secret, it decides
+ *   - `liberar`   → proceed (public route OR valid cookie);
+ *   - `redirect`  → 302 to /login (protected navigation without session);
+ *   - `unauthorized` → 401 (protected /api/* route without session).
  *
- * Públicas (não exigem sessão): `/login`, `/api/login`, `/api/health`.
- * Tudo o mais — incluindo `/admin` (Phase 15 ficou aberto de propósito)
- * — exige cookie de sessão com HMAC válido e não expirado.
+ * Public (no session required): `/login`, `/api/login`, `/api/health`.
+ * Everything else — including `/admin` (Phase 15 deliberately left open)
+ * — requires a session cookie with a valid, non-expired HMAC.
  *
- * Usa `verificarSessao` (Web Crypto) → compatível com Edge runtime.
+ * Uses `verificarSessao` (Web Crypto) → compatible with the Edge runtime.
  */
 import { verificarSessao } from './sessao.ts';
 
@@ -19,18 +19,18 @@ export type AcaoAuth = 'liberar' | 'redirect' | 'unauthorized';
 
 const ROTAS_PUBLICAS = new Set(['/login', '/api/login', '/api/health']);
 
-/** Rota dispensa sessão? (match exato — sem prefixos curinga). */
+/** Does the route skip the session check? (exact match — no wildcard prefixes). */
 export function ehRotaPublica(path: string): boolean {
   return ROTAS_PUBLICAS.has(path);
 }
 
 /**
- * Decide o que o middleware deve fazer.
- * - Rota pública → sempre `liberar` (mesmo sem cookie).
- * - Rota protegida + sessão válida → `liberar`.
- * - Rota protegida + sem sessão/ inválida/expirada:
- *     - path começa com `/api/` → `unauthorized` (401);
- *     - caso contrário (navegação) → `redirect` (302 → /login).
+ * Decides what the middleware should do.
+ * - Public route → always `liberar` (even without a cookie).
+ * - Protected route + valid session → `liberar`.
+ * - Protected route + missing/invalid/expired session:
+ *     - path starts with `/api/` → `unauthorized` (401);
+ *     - otherwise (navigation) → `redirect` (302 → /login).
  */
 export async function deveBloquear(
   path: string,

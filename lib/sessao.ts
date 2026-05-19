@@ -1,28 +1,30 @@
 /**
- * Assinatura/verificação de cookie de sessão single-user (SPEC §14, #7).
+ * Single-user session-cookie signing/verification (SPEC §14, #7).
  *
- * Universal: usa **Web Crypto API** (`crypto.subtle` HMAC-SHA256), que
- * está disponível tanto no Edge runtime (middleware Next.js) quanto no
- * Node runtime (rotas Prisma) e no Vercel. Por isso este módulo NÃO
- * importa `node:crypto` — o middleware roda no Edge por padrão e
- * `node:crypto` não existe lá. Mantê-lo Web-Crypto-only garante que a
- * MESMA lógica de verificação rode no middleware e nos handlers.
+ * Universal: uses the **Web Crypto API** (`crypto.subtle` HMAC-SHA256),
+ * which is available both in the Edge runtime (Next.js middleware) and
+ * the Node runtime (Prisma routes) and on Vercel. That is why this module
+ * does NOT import `node:crypto` — the middleware runs on the Edge by
+ * default and `node:crypto` does not exist there. Keeping it Web-Crypto-
+ * only guarantees that the SAME verification logic runs in the middleware
+ * and in the handlers.
  *
- * Cookie = `${payloadB64url}.${hmacB64url}` onde `payload` é JSON
- * `{ exp: <epoch ms> }` e o HMAC cobre o payload codificado. Verificação:
- * recomputa o HMAC e compara em tempo constante (defesa contra timing
- * em forja de assinatura); checa expiração. Tudo puro/determinístico —
- * testável sem servidor.
+ * Cookie = `${payloadB64url}.${hmacB64url}` where `payload` is JSON
+ * `{ exp: <epoch ms> }` and the HMAC covers the encoded payload.
+ * Verification: recomputes the HMAC and compares in constant time
+ * (defense against timing attacks on signature forgery); checks
+ * expiration. Everything is pure/deterministic — testable without a
+ * server.
  */
 
 export const NOME_COOKIE_SESSAO = 'pleito_sessao';
 
-/** Duração padrão da sessão: 7 dias. */
+/** Default session lifetime: 7 days. */
 export const DURACAO_SESSAO_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type ResultadoVerificacao = {
   valido: boolean;
-  /** true quando a assinatura confere mas o `exp` já passou. */
+  /** true when the signature matches but `exp` has already passed. */
   expirado?: boolean;
 };
 
@@ -54,10 +56,10 @@ async function hmac(payloadB64: string, secret: string): Promise<string> {
   return b64urlEncode(new Uint8Array(sig));
 }
 
-/** Comparação em tempo constante de duas strings ASCII (b64url). */
+/** Constant-time comparison of two ASCII strings (b64url). */
 function igualTempoConstante(a: string, b: string): boolean {
-  // Compara sempre o mesmo nº de iterações: o tamanho não-igual é
-  // detectado por flag, sem early-return dependente de conteúdo.
+  // Always compares the same number of iterations: a length mismatch is
+  // detected via a flag, without a content-dependent early return.
   const len = Math.max(a.length, b.length);
   let diff = a.length ^ b.length;
   for (let i = 0; i < len; i++) {
@@ -67,25 +69,25 @@ function igualTempoConstante(a: string, b: string): boolean {
 }
 
 /**
- * Gera o valor do cookie de sessão, assinado com HMAC sobre o `secret`.
- * `agora` injetável p/ testes determinísticos. Default: expira em 7d.
+ * Builds the session-cookie value, signed with HMAC over `secret`.
+ * `agora` is injectable for deterministic tests. Default: expires in 7d.
  */
 export async function assinarSessao(
   secret: string,
   opts: { agora?: number; duracaoMs?: number } = {}
 ): Promise<string> {
-  // GUARD EXPLÍCITO (I1): NUNCA assinar com secret vazio/ausente —
-  // emitir um cookie HMAC com chave vazia seria emitir credencial
-  // insegura (forjável trivialmente). Fail-closed INTENCIONAL: lança
-  // ANTES de qualquer crypto.subtle, sem depender do `DataError`
-  // incidental da Web Crypto p/ chave de tamanho zero. Callers
-  // legítimos (handler de login) só assinam após validar a senha
-  // contra `APP_SECRET`, que o schema de config exige não-vazio
-  // (z.string().min(1)) — logo este throw não quebra fluxo válido.
+  // EXPLICIT GUARD (I1): NEVER sign with an empty/missing secret —
+  // issuing an HMAC cookie with an empty key would issue an insecure
+  // credential (trivially forgeable). INTENTIONAL fail-closed: throws
+  // BEFORE any crypto.subtle, without relying on Web Crypto's incidental
+  // `DataError` for a zero-length key. Legitimate callers (the login
+  // handler) only sign after validating the password against
+  // `APP_SECRET`, which the config schema requires to be non-empty
+  // (z.string().min(1)) — so this throw never breaks a valid flow.
   if (!secret) {
     throw new Error(
-      'assinarSessao: APP_SECRET ausente/vazio — recusando assinar ' +
-        'cookie de sessão inseguro (fail-closed)'
+      'assinarSessao: APP_SECRET missing/empty — refusing to sign an ' +
+        'insecure session cookie (fail-closed)'
     );
   }
   const agora = opts.agora ?? Date.now();
@@ -96,9 +98,9 @@ export async function assinarSessao(
 }
 
 /**
- * Verifica o cookie: assinatura HMAC válida (tempo constante) E não
- * expirado. Cookie ausente/malformado/adulterado/secret errado →
- * `{ valido: false }`. Assinatura OK mas vencido →
+ * Verifies the cookie: valid HMAC signature (constant time) AND not
+ * expired. Missing/malformed/tampered cookie or wrong secret →
+ * `{ valido: false }`. Valid signature but expired →
  * `{ valido: false, expirado: true }`.
  */
 export async function verificarSessao(
@@ -106,14 +108,14 @@ export async function verificarSessao(
   secret: string,
   opts: { agora?: number } = {}
 ): Promise<ResultadoVerificacao> {
-  // GUARD EXPLÍCITO (I1): secret vazio/ausente ⇒ fail-closed
-  // INTENCIONAL e imediato. Esta é a garantia PRIMÁRIA de que um
-  // misconfig de `APP_SECRET` (env faltando no Edge/middleware) nunca
-  // aceita um cookie — em vez de depender do side-effect não
-  // documentado de `crypto.subtle.importKey` lançar p/ chave vazia
-  // (mascarado pelo `catch` amplo abaixo, que confundiria misconfig
-  // com cookie meramente "inválido"). O try/catch em volta de hmac()
-  // permanece como defesa secundária, mas este guard vem ANTES.
+  // EXPLICIT GUARD (I1): empty/missing secret ⇒ INTENTIONAL, immediate
+  // fail-closed. This is the PRIMARY guarantee that an `APP_SECRET`
+  // misconfig (env missing on the Edge/middleware) never accepts a
+  // cookie — instead of relying on the undocumented side effect of
+  // `crypto.subtle.importKey` throwing for an empty key (masked by the
+  // broad `catch` below, which would confuse a misconfig with a merely
+  // "invalid" cookie). The try/catch around hmac() remains as a
+  // secondary defense, but this guard comes FIRST.
   if (!secret) return { valido: false };
   if (!cookie || typeof cookie !== 'string') return { valido: false };
   const ponto = cookie.indexOf('.');
