@@ -1,63 +1,64 @@
-# fixtures/gold — corpus de regressão versionado
+# fixtures/gold — versioned regression corpus
 
-Extrações **congeladas** do POC, usadas como corpus de regressão
-reproduzível. Diferente de `output/` (gitignored, recriável a cada run),
-este diretório é **versionado**: garante que o spike-matcher, o gate
-Tier 0 e os testes E2E rodem contra um input estável e auditável.
+**Frozen** POC extractions, used as a reproducible regression corpus.
+Unlike `output/` (gitignored, recreated on each run), this directory is
+**versioned**: it ensures the spike-matcher, the Tier 0 gate and the E2E
+tests run against a stable, auditable input.
 
-## Proveniência
+## Provenance
 
-- **Origem:** extrações geradas no POC pelo pipeline com **Gemini 2.5
-  Flash** (`src/extract.ts`), a partir dos editais reais em `fixtures/`.
+- **Origin:** extractions generated in the POC by the pipeline with
+  **Gemini 2.5 Flash** (`src/extract.ts`), from the real editais in
+  `fixtures/`.
 - **Schema:** `domain/schema.ts` (schema v3 — SPEC §6).
-- **Congelado em:** Phase 4 / Task 4.1 do plano
-  `docs/plans/2026-05-15-pleito-v0.md`, copiado de `output/` 1:1.
+- **Frozen at:** Phase 4 / Task 4.1 of the plan
+  `docs/plans/2026-05-15-pleito-v0.md`, copied from `output/` 1:1.
 
-## Arquivos
+## Files
 
-| Arquivo                | Conteúdo                                                       |
+| File                   | Content                                                        |
 | ---------------------- | -------------------------------------------------------------- |
-| `dombasilio.json`      | Extração full (schema v3) — caso valor divergente.             |
-| `jaborandi.json`       | Extração full (schema v3) — caso capa mentirosa.               |
-| `niteroi.json`         | Extração full (schema v3) — caso valor sigiloso.               |
-| `baserate-result.json` | Base rate: **24 editais, 13 UFs**; `allLaws` preserva os casos |
-|                        | de lei revogada que sustentam o spike-matcher (0/37            |
-|                        | falso-negativo). Sem isto o spike não é reproduzível pós-P4.   |
-| `synthetic-verificado.json` | **Fixture SINTÉTICA de auto-teste** (não é POC). 1 lei |
-|                        | 8666/1993 com `statusVerificado:"vigente"` — DIVERGENTE da     |
-|                        | baseline curada (`revogada-notoria` → esperado `revogada`).    |
-|                        | Existe para EXERCITAR a checagem 3 (`baseline-divergente`) do  |
-|                        | Tier 0, inerte no resto do corpus (tudo `nao-verificado`). O   |
-|                        | runner a trata em modo auto-teste: DEVE produzir a violação    |
-|                        | esperada, senão a checagem está quebrada → gate falha.         |
+| `dombasilio.json`      | Full extraction (schema v3) — divergent-value case.            |
+| `jaborandi.json`       | Full extraction (schema v3) — lying-cover case.                |
+| `niteroi.json`         | Full extraction (schema v3) — confidential-value case.         |
+| `baserate-result.json` | Base rate: **24 editais, 13 UFs**; `allLaws` preserves the     |
+|                        | revogada-law cases that underpin the spike-matcher (0/37       |
+|                        | false-negative). Without it the spike is not reproducible post-P4. |
+| `synthetic-verificado.json` | **SYNTHETIC self-test fixture** (not POC). 1 law       |
+|                        | 8666/1993 with `statusVerificado:"vigente"` — DIVERGENT from   |
+|                        | the curated baseline (`revogada-notoria` → expected `revogada`). |
+|                        | It exists to EXERCISE check 3 (`baseline-divergente`) of       |
+|                        | Tier 0, inert across the rest of the corpus (all `nao-verificado`). The |
+|                        | runner handles it in self-test mode: it MUST produce the       |
+|                        | expected violation, otherwise the check is broken → gate fails. |
 
-## Consumidores
+## Consumers
 
-- `src/spike-matcher.ts` — lê daqui (antes lia de `output/`); valida o
-  bloqueante #1 (falso-negativo do Gate A) contra corpus real,
-  reproduzível.
-- **Gate Tier 0** (`eval/tier0.ts`, Phase 9) e **E2E**
-  (`tests/e2e/corpus.test.ts`, Phase 17) — corpus de regressão.
-- `promoverParaCorpus(id)` (Phase 15) grava novas análises curadas aqui.
+- `src/spike-matcher.ts` — reads from here (it used to read from
+  `output/`); validates blocker #1 (Gate A false-negative) against the
+  real corpus, reproducibly.
+- **Tier 0 Gate** (`eval/tier0.ts`, Phase 9) and **E2E**
+  (`tests/e2e/corpus.test.ts`, Phase 17) — regression corpus.
+- `promoverParaCorpus(id)` (Phase 15) writes new curated analyses here.
 
-## Arquivos promovidos (Phase 15, §11b)
+## Promoted files (Phase 15, §11b)
 
-`promovido-<municipio>-<uf>.json` — gravados pelo
-`promoverParaCorpus(analysisId)` (botão no `/admin` ou
-`POST /api/admin/promover/:id`). Mesmo shape das extrações gold (o
-`EditalExtraction` na raiz) + bloco `_proveniencia` (chave `_*` stripada
-pelo schema → não quebra o `safeParse` do runner Tier 0). Entram
-automaticamente no gate Tier 0 / E2E na rodada seguinte: promote-to-corpus
-em 1 passo fecha o loop telemetria → fixture de regressão.
+`promovido-<municipio>-<uf>.json` — written by
+`promoverParaCorpus(analysisId)` (a button in `/admin` or
+`POST /api/admin/promover/:id`). Same shape as the gold extractions (the
+`EditalExtraction` at the root) + a `_proveniencia` block (the `_*` key is
+stripped by the schema → does not break the Tier 0 runner's `safeParse`).
+They enter the Tier 0 / E2E gate automatically on the next run:
+promote-to-corpus in 1 step closes the telemetry → regression-fixture loop.
 
-## Regra
+## Rule
 
-Não editar à mão os arquivos de proveniência POC (`dombasilio`,
-`jaborandi`, `niteroi`, `baserate-result`). Alterações neles só via
-promoção curada de telemetria (Phase 15) ou re-congelamento explícito do
-POC, sempre com commit dedicado documentando a mudança de proveniência.
+Do not hand-edit the POC provenance files (`dombasilio`,
+`jaborandi`, `niteroi`, `baserate-result`). Changes to them only via
+curated telemetry promotion (Phase 15) or an explicit re-freeze of the
+POC, always with a dedicated commit documenting the provenance change.
 
-`synthetic-verificado.json` é EXCEÇÃO declarada: fixture sintética de
-auto-teste (não-POC), introduzida no commit de contenção estrutural real
-do Drafter (C1 reincidente) para tornar a checagem 3 do Tier 0
-efetivamente exercitada. Editável apenas com commit dedicado.
+`synthetic-verificado.json` is a declared EXCEPTION: a synthetic self-test
+fixture (non-POC), introduced in the real structural-containment commit
+of the Drafter (recurring C1) to make Tier 0's check 3
+effectively exercised. Editable only with a dedicated commit.
