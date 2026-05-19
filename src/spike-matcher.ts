@@ -2,13 +2,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
- * Spike do baseline matcher contra CORPUS REAL (nao casos inventados).
- * Valida o bloqueante #1 da plan-review: o falso-negativo do Gate A esta
- * fechado de verdade quando o input e o que o extractor produz de fato?
- * Fontes: fixtures/gold/{dombasilio,jaborandi,niteroi}.json (schema cheio,
- *   tem tipoNorma) + fixtures/gold/baserate-result.json allLaws (subset
- *   revogada, SEM tipoNorma). Corpus de regressão VERSIONADO (Phase 4):
- *   antes lia de output/ (gitignored); agora reproduzível pós-Phase 4.
+ * Spike of the baseline matcher against the REAL CORPUS (not invented cases).
+ * Validates blocker #1 from the plan-review: is the Gate A false-negative
+ * actually closed when the input is what the extractor really produces?
+ * Sources: fixtures/gold/{dombasilio,jaborandi,niteroi}.json (full schema,
+ *   has tipoNorma) + fixtures/gold/baserate-result.json allLaws (subset
+ *   revogada, NO tipoNorma). VERSIONED regression corpus (Phase 4):
+ *   previously read from output/ (gitignored); now reproducible post-Phase 4.
  */
 
 type BaselineEntry = {
@@ -134,9 +134,9 @@ for (const l of corpus) {
   if (!casaSemNorm) missSemNorm++;
 }
 
-// ---- direcao oposta: FALSO-POSITIVO ----
-// (a) match via alias cujo numero+ano NAO bate (over-match do alias path)
-// (b) match tolerante que atravessa escopo (estadual citado casando entry federal, etc.)
+// ---- opposite direction: FALSE-POSITIVE ----
+// (a) match via alias whose numero+ano does NOT match (alias-path over-match)
+// (b) tolerant match that crosses escopo (a cited estadual matching a federal entry, etc.)
 let fpAlias = 0;
 let escopoCross = 0;
 const fpDetalhe: string[] = [];

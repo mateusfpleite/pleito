@@ -5,7 +5,7 @@ import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { z } from 'zod';
 
-// Schema focado: só o que o estudo de base rate precisa.
+// Focused schema: only what the base rate study needs.
 const LeiSchema = z.object({
   descricao: z.string(),
   escopo: z.enum([
@@ -30,7 +30,7 @@ const LeiSchema = z.object({
   numero: z.string().nullable(),
   ano: z.number().nullable(),
   revogada: z.boolean(),
-  // Confiança do próprio modelo na avaliação de vigência.
+  // The model's own confidence in the in-force assessment.
   confiancaRevogada: z.enum(['alta', 'media', 'baixa']),
   contextoNoEdital: z.string(),
 });
@@ -147,7 +147,7 @@ async function main() {
     }
   }
 
-  // Tabulação final
+  // Final tabulation
   console.log(`\n${'='.repeat(60)}\nTABULAÇÃO\n${'='.repeat(60)}`);
   console.log(`Editais processados com sucesso: ${okCount}/${files.length}`);
   console.log(`Total de findings revogada=true: ${allLaws.length}`);

@@ -6,12 +6,13 @@ import { resolve } from 'node:path';
 import { z } from 'zod';
 
 /**
- * Spike v2 do Norma Verifier.
- * Mudanças vs v1:
- *  - injeta data/norma-baseline.json como âncora autoritativa no prompt
- *  - gabarito da IN 05/2017 CORRIGIDO (não foi revogada; vigente c/ recepção
- *    supletiva — v1 herdou gabarito errado da 1ª verificação manual)
- *  - zona-cinzenta aceita {vigente|incerto} como correto; só "revogada" é erro
+ * Spike v2 of the Norma Verifier.
+ * Changes vs v1:
+ *  - injects data/norma-baseline.json as an authoritative anchor in the prompt
+ *  - ground truth for IN 05/2017 CORRECTED (it was not revoked; in force with
+ *    supplementary reception — v1 inherited a wrong ground truth from the 1st
+ *    manual verification)
+ *  - zona-cinzenta accepts {vigente|incerto} as correct; only "revogada" is an error
  */
 
 type Caso = {
@@ -24,7 +25,7 @@ type Caso = {
     existe: boolean;
     escopoReal: 'federal' | 'estadual' | 'municipal' | 'inexistente';
     status: 'vigente' | 'revogada' | 'inexistente';
-    statusAceitos?: string[]; // zona-cinzenta: mais de um desfecho é seguro
+    statusAceitos?: string[]; // zona-cinzenta: more than one outcome is safe
     nota: string;
   };
 };
