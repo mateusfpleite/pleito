@@ -108,3 +108,5 @@ app/(analyzer)/components/Dashboard.tsx:624:624
 app/(analyzer)/components/Dashboard.tsx:625:625
 app/(analyzer)/components/Dashboard.tsx:672:672
 application/promover-corpus.ts:70:73
+adapters/verifier/gemini.ts:167:182
+adapters/repo/client.ts:60:64
