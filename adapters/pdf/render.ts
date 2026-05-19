@@ -145,11 +145,11 @@ function fmtMoedaBRL(v: number | null): string {
 }
 
 /**
- * HTML do relatório no formato "Principais pontos" (pitch da Stefany,
- * SPEC §8 / docs/pitch-stefany.md): resumo organizado + leis citadas com
- * status + pontos de atenção/inconsistências/ambíguos em destaque por
- * severidade. PROJEÇÃO PURA do JSON (regenerável). Todo dado dinâmico é
- * escapado (anti-XSS: campos vêm de PDFs de terceiros).
+ * Report HTML in the "Main points" format (SPEC §8): an organized summary
+ * + cited laws with status + pontos de atenção/inconsistencies/ambiguous
+ * excerpts highlighted by severity. PURE PROJECTION of the JSON
+ * (regenerable). All dynamic data is escaped (anti-XSS: fields come from
+ * third-party PDFs).
  */
 export function montarHtmlRelatorio(e: EditalExtraction): string {
   const esc = escaparHtml;
