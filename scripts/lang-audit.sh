@@ -7,6 +7,7 @@ BASE=scripts/protected-hashes.txt
 tmp=$(mktemp)
 while IFS=: read -r f s e; do
   [ -z "$f" ] && continue
+  case "$f" in '#'*) continue ;; esac
   h=$(sed -n "${s},${e}p" "$f" | sha256sum | cut -d' ' -f1)
   echo "$f:$s:$e $h" >> "$tmp"
 done < "$RANGES"
