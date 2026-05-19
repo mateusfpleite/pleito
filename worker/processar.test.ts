@@ -7,6 +7,7 @@ import type {
   AnalysisRepo,
   Job,
   JobRepo,
+  TelemetryPort,
 } from '../domain/ports.ts';
 import type { AnalyzeResult } from '../application/analyze-edital.ts';
 
@@ -142,6 +143,9 @@ function fakeAnalysisRepo(): AnalysisRepo & { saved: AnaliseRegistro[] } {
       r.oficioExportadoEm = new Date();
       return r;
     },
+    async listarRecentes() {
+      return [...saved].reverse();
+    },
   };
 }
 
@@ -218,5 +222,155 @@ describe('drenarFila (laço do worker)', () => {
     const analyze = vi.fn(async () => okResult);
     await drenarFila({ jobRepo, analysisRepo, analyze });
     expect(analyze).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * SPEC §11b (Phase 15) — observabilidade do worker. Telemetria fake
+ * in-memory; sem Postgres/LLM (testing-anti-patterns). Invariantes:
+ *  - 1 evento `grounding_custo` POR chamada de grounding (NÃO só
+ *    agregado), atribuído ao analysisId real (após o save);
+ *  - `analise_concluida` com latência (relógio injetado) + agregado;
+ *  - telemetria NÃO-bloqueante: adapter que LANÇA não derruba o job.
+ */
+function fakeTelemetry(): TelemetryPort & {
+  eventos: Array<{
+    analysisId: string;
+    evento: string;
+    payload: Record<string, unknown>;
+  }>;
+} {
+  const eventos: Array<{
+    analysisId: string;
+    evento: string;
+    payload: Record<string, unknown>;
+  }> = [];
+  return {
+    eventos,
+    async registrar(analysisId, evento, payload) {
+      eventos.push({ analysisId, evento, payload });
+    },
+    async listarPorAnalises(ids) {
+      return eventos
+        .filter((e) => ids.includes(e.analysisId))
+        .map((e) => ({ ...e, createdAt: new Date(0) }));
+    },
+  };
+}
+
+describe('drenarFila — telemetria de observabilidade (§11b)', () => {
+  it('grounding: 1 evento de custo POR chamada + analise_concluida com latência', async () => {
+    const jobRepo = fakeJobRepo();
+    const analysisRepo = fakeAnalysisRepo();
+    const tele = fakeTelemetry();
+    jobRepo.add(empacotarInput('e.txt', new TextEncoder().encode('E')));
+
+    // O `analyze` fake simula 2 chamadas de grounding via o sink que
+    // `drenarFila` injeta — exatamente como o Verifier real faria.
+    const analyze = vi.fn(
+      async (
+        _input,
+        onGroundingCusto?: (u: {
+          lei: string;
+          inputTokens: number | undefined;
+          outputTokens: number | undefined;
+          totalTokens: number | undefined;
+        }) => void
+      ) => {
+        onGroundingCusto?.({
+          lei: '1234/2001',
+          inputTokens: 100,
+          outputTokens: 20,
+          totalTokens: 120,
+        });
+        onGroundingCusto?.({
+          lei: '5678/2002',
+          inputTokens: 80,
+          outputTokens: 10,
+          totalTokens: undefined,
+        });
+        return okResult;
+      }
+    );
+
+    // Relógio injetado: 1ª leitura=1000, 2ª=1000+90000 → latência 90s.
+    const leituras = [1000, 91_000];
+    let i = 0;
+    await drenarFila({
+      jobRepo,
+      analysisRepo,
+      analyze,
+      telemetry: tele,
+      agora: () => leituras[i++],
+    });
+
+    const analysisId = analysisRepo.saved[0].id;
+    const custos = tele.eventos.filter(
+      (e) => e.evento === 'grounding_custo'
+    );
+    // 1 evento POR chamada (não agregado num só) — a prova central §11b.
+    expect(custos).toHaveLength(2);
+    expect(custos.every((c) => c.analysisId === analysisId)).toBe(true);
+    expect(custos.map((c) => c.payload.lei).sort()).toEqual([
+      '1234/2001',
+      '5678/2002',
+    ]);
+    // 2ª chamada sem totalTokens → soma input+output (80+10=90).
+    const c2 = custos.find((c) => c.payload.lei === '5678/2002')!;
+    expect(c2.payload.totalTokens).toBe(90);
+    expect(c2.payload.estimativa).toBe(true);
+
+    const concl = tele.eventos.find(
+      (e) => e.evento === 'analise_concluida'
+    )!;
+    expect(concl.analysisId).toBe(analysisId);
+    expect(concl.payload.latenciaMs).toBe(90_000);
+    expect(concl.payload.groundingChamadas).toBe(2);
+    expect(concl.payload.groundingTokensTotais).toBe(210); // 120 + 90
+  });
+
+  it('sem grounding: só analise_concluida (0 eventos de custo)', async () => {
+    const jobRepo = fakeJobRepo();
+    const analysisRepo = fakeAnalysisRepo();
+    const tele = fakeTelemetry();
+    jobRepo.add(empacotarInput('e.txt', new TextEncoder().encode('E')));
+    await drenarFila({
+      jobRepo,
+      analysisRepo,
+      analyze: vi.fn(async () => okResult),
+      telemetry: tele,
+      agora: () => 0,
+    });
+    expect(
+      tele.eventos.filter((e) => e.evento === 'grounding_custo')
+    ).toHaveLength(0);
+    const concl = tele.eventos.find(
+      (e) => e.evento === 'analise_concluida'
+    )!;
+    expect(concl.payload.groundingChamadas).toBe(0);
+  });
+
+  it('telemetria que LANÇA não derruba o job (não-bloqueante §11b)', async () => {
+    const jobRepo = fakeJobRepo();
+    const analysisRepo = fakeAnalysisRepo();
+    jobRepo.add(empacotarInput('e.txt', new TextEncoder().encode('E')));
+    const tele: TelemetryPort = {
+      async registrar() {
+        throw new Error('telemetria DB caiu');
+      },
+      async listarPorAnalises() {
+        return [];
+      },
+    };
+    await drenarFila({
+      jobRepo,
+      analysisRepo,
+      analyze: vi.fn(async () => okResult),
+      telemetry: tele,
+      agora: () => 0,
+    });
+    // O job CONCLUIU mesmo com a telemetria falhando.
+    expect(jobRepo.jobs[0].status).toBe('done');
+    expect(analysisRepo.saved).toHaveLength(1);
   });
 });

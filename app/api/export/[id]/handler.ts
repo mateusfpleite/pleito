@@ -18,16 +18,27 @@
  * `id` é o JOB id (a UI nunca conhece o id da Analysis). Job inexistente
  * ou sem análise → 404.
  */
-import type { AnalysisRepo } from '../../../../domain/ports.ts';
+import type {
+  AnalysisRepo,
+  TelemetryPort,
+} from '../../../../domain/ports.ts';
 import {
   renderRelatorioPdf,
   renderOficioPdf,
   type PdfEngine,
 } from '../../../../adapters/pdf/render.ts';
+import {
+  registrarSeguro,
+  calcularDiffOficio,
+  payloadOficioDiff,
+  EVENTO,
+} from '../../../../application/telemetria.ts';
 
 export type ExportPostDeps = {
   analysisRepo: AnalysisRepo;
   pdfEngine: PdfEngine;
+  /** Telemetria NÃO-bloqueante (§11b). Falha aqui nunca derruba o export. */
+  telemetry: TelemetryPort;
 };
 
 export type ExportCtx = { params: Promise<{ id: string }> };
@@ -104,6 +115,10 @@ export function criarExportPOST(deps: ExportPostDeps) {
         analise.extracao,
         deps.pdfEngine
       );
+      // Evento implícito de uso (§11b) — não-bloqueante.
+      await registrarSeguro(deps.telemetry, analise.id, EVENTO.export, {
+        tipo: 'relatorio',
+      });
       return respostaPdf(pdf, 'relatorio', jobId);
     }
 
@@ -129,6 +144,43 @@ export function criarExportPOST(deps: ExportPostDeps) {
       atualizado.oficioExportado as string,
       deps.pdfEngine
     );
+
+    // SINAL-OURO (§11b): diff ofício gerado × exportado. O `oficioGerado`
+    // (markdown original do Drafter) é PRESERVADO no registro — o delta
+    // vs o texto exportado é rótulo direto e não-supervisionado de
+    // erro/lacuna do Drafter. FALLBACK DE SINAL VAZIO: se ela exportou
+    // sem editar (diff vazio) OU não há ofício gerado, o sinal-ouro é
+    // NULO; o payload já carrega `exportou:true` como sinal de RESERVA
+    // (export-sim + o 👍/👎 cobre o resto). Toda telemetria aqui é
+    // não-bloqueante (registrarSeguro) — nunca derruba o export.
+    const markdownGerado = analise.oficioGerado?.markdown ?? null;
+    if (markdownGerado !== null) {
+      const diff = calcularDiffOficio(markdownGerado, textoOficio);
+      await registrarSeguro(
+        deps.telemetry,
+        analise.id,
+        EVENTO.oficioDiff,
+        payloadOficioDiff(diff, true)
+      );
+      if (diff.foiEditado) {
+        await registrarSeguro(
+          deps.telemetry,
+          analise.id,
+          EVENTO.oficioEditado,
+          {
+            distanciaCaracteres: diff.distanciaCaracteres,
+            linhasAdicionadas: diff.linhasAdicionadas,
+            linhasRemovidas: diff.linhasRemovidas,
+          }
+        );
+      }
+    }
+    await registrarSeguro(deps.telemetry, analise.id, EVENTO.export, {
+      tipo: 'oficio',
+      // RESERVA explícito: export-sim + houve edição? (§11b).
+      foiEditado:
+        markdownGerado !== null && markdownGerado !== textoOficio,
+    });
     return respostaPdf(pdf, 'oficio', jobId);
   };
 }

@@ -5,8 +5,28 @@ import type {
   AnaliseRegistro,
   AnalysisRepo,
   OficioGerado,
+  TelemetryPort,
 } from '../../../../domain/ports.ts';
 import type { PdfEngine } from '../../../../adapters/pdf/render.ts';
+
+/** Telemetria fake in-memory — captura os eventos p/ asserção (§11b). */
+function fakeTelemetry(): TelemetryPort & {
+  eventos: Array<{ evento: string; payload: Record<string, unknown> }>;
+} {
+  const eventos: Array<{
+    evento: string;
+    payload: Record<string, unknown>;
+  }> = [];
+  return {
+    eventos,
+    async registrar(_id, evento, payload) {
+      eventos.push({ evento, payload });
+    },
+    async listarPorAnalises() {
+      return [];
+    },
+  };
+}
 
 /**
  * Testes DETERMINÍSTICOS de POST /api/export/:jobId. Sem chromium (engine
@@ -110,6 +130,9 @@ function fakeRepo(registro: AnaliseRegistro | null): AnalysisRepo & {
         texto;
       return atual;
     },
+    async listarRecentes() {
+      return atual ? [atual] : [];
+    },
   };
 }
 
@@ -152,7 +175,12 @@ describe('POST /api/export/:jobId', () => {
   it('oficio: PERSISTE o texto editado e renderiza A PARTIR do persistido (NÃO do JSON) — §9', async () => {
     const repo = fakeRepo(registroBase());
     const eng = fakeEngine();
-    const POST = criarExportPOST({ analysisRepo: repo, pdfEngine: eng });
+    const tele = fakeTelemetry();
+    const POST = criarExportPOST({
+      analysisRepo: repo,
+      pdfEngine: eng,
+      telemetry: tele,
+    });
 
     const TEXTO_EDITADO =
       '# Ofício EDITADO pela Stefany\n\n' +
@@ -175,6 +203,86 @@ describe('POST /api/export/:jobId', () => {
     // ...e NÃO regenerou do JSON original (oficioGerado.markdown).
     expect(html).not.toContain('Ofício GERADO pelo robô');
     expect(html).not.toContain('Texto automático que será SUBSTITUÍDO');
+
+    // SINAL-OURO (§11b): editou → oficio_diff com sinalOuro=true +
+    // oficio_editado + export. O markdown gerado foi PRESERVADO p/ o diff.
+    const tipos = tele.eventos.map((x) => x.evento);
+    expect(tipos).toContain('oficio_diff');
+    expect(tipos).toContain('oficio_editado');
+    expect(tipos).toContain('export');
+    const diffEv = tele.eventos.find((x) => x.evento === 'oficio_diff')!;
+    expect(diffEv.payload.sinalOuro).toBe(true);
+    expect(diffEv.payload.foiEditado).toBe(true);
+    expect(
+      diffEv.payload.distanciaCaracteres as number
+    ).toBeGreaterThan(0);
+    expect(diffEv.payload.exportou).toBe(true); // reserva também presente
+  });
+
+  it('oficio SEM edição → FALLBACK: oficio_diff sinalOuro=false, sem oficio_editado, reserva exportou=true (§11b)', async () => {
+    const repo = fakeRepo(registroBase());
+    const tele = fakeTelemetry();
+    const POST = criarExportPOST({
+      analysisRepo: repo,
+      pdfEngine: fakeEngine(),
+      telemetry: tele,
+    });
+    // Exporta EXATAMENTE o markdown gerado (aceitou sem editar) → o
+    // sinal-ouro é NULO; o RESERVA (export-sim) cobre.
+    const res = await POST(
+      req({
+        tipo: 'oficio',
+        textoOficio: OFICIO_GERADO_JSON.markdown,
+      }),
+      ctx()
+    );
+    expect(res.status).toBe(200);
+    const tipos = tele.eventos.map((x) => x.evento);
+    expect(tipos).toContain('oficio_diff');
+    // diff vazio: NÃO emite oficio_editado.
+    expect(tipos).not.toContain('oficio_editado');
+    const diffEv = tele.eventos.find((x) => x.evento === 'oficio_diff')!;
+    expect(diffEv.payload.sinalOuro).toBe(false);
+    expect(diffEv.payload.foiEditado).toBe(false);
+    // FALLBACK: o reserva (exportou) é o sinal disponível quando o ouro
+    // é nulo (ela aceitou sem editar).
+    expect(diffEv.payload.exportou).toBe(true);
+    const exportEv = tele.eventos.find((x) => x.evento === 'export')!;
+    expect(exportEv.payload.tipo).toBe('oficio');
+    expect(exportEv.payload.foiEditado).toBe(false);
+  });
+
+  it('relatorio → evento export tipo=relatorio (uso implícito §11b)', async () => {
+    const repo = fakeRepo(registroBase());
+    const tele = fakeTelemetry();
+    const POST = criarExportPOST({
+      analysisRepo: repo,
+      pdfEngine: fakeEngine(),
+      telemetry: tele,
+    });
+    await POST(req({ tipo: 'relatorio' }), ctx());
+    expect(tele.eventos).toEqual([
+      { evento: 'export', payload: { tipo: 'relatorio' } },
+    ]);
+  });
+
+  it('telemetria que LANÇA não derruba o export (não-bloqueante §11b)', async () => {
+    const repo = fakeRepo(registroBase());
+    const POST = criarExportPOST({
+      analysisRepo: repo,
+      pdfEngine: fakeEngine(),
+      telemetry: {
+        async registrar() {
+          throw new Error('telemetria DB caiu');
+        },
+        async listarPorAnalises() {
+          return [];
+        },
+      },
+    });
+    const res = await POST(req({ tipo: 'relatorio' }), ctx());
+    // O export ainda RETORNA 200 — falha de telemetria só loga.
+    expect(res.status).toBe(200);
   });
 
   it('oficio: persiste ANTES de renderizar (ordem §9 — sem perda de sinal)', async () => {
@@ -189,6 +297,7 @@ describe('POST /api/export/:jobId', () => {
           throw new Error('chromium indisponível');
         },
       },
+      telemetry: fakeTelemetry(),
     });
     await expect(
       POST(req({ tipo: 'oficio', textoOficio: 'texto final' }), ctx())
@@ -199,7 +308,12 @@ describe('POST /api/export/:jobId', () => {
   it('relatorio: projeta do JSON da extração (sem escrever no repo)', async () => {
     const repo = fakeRepo(registroBase());
     const eng = fakeEngine();
-    const POST = criarExportPOST({ analysisRepo: repo, pdfEngine: eng });
+    const tele = fakeTelemetry();
+    const POST = criarExportPOST({
+      analysisRepo: repo,
+      pdfEngine: eng,
+      telemetry: tele,
+    });
 
     const res = await POST(req({ tipo: 'relatorio' }), ctx());
 
@@ -215,6 +329,7 @@ describe('POST /api/export/:jobId', () => {
     const POST = criarExportPOST({
       analysisRepo: repo,
       pdfEngine: fakeEngine(),
+      telemetry: fakeTelemetry(),
     });
     const res = await POST(req({ tipo: 'relatorio' }), ctx());
     expect(res.headers.get('content-type')).toBe('application/pdf');
@@ -230,6 +345,7 @@ describe('POST /api/export/:jobId', () => {
     const POST = criarExportPOST({
       analysisRepo: repo,
       pdfEngine: fakeEngine(),
+      telemetry: fakeTelemetry(),
     });
     const res = await POST(req({ tipo: 'relatorio' }), ctx('nao-existe'));
     expect(res.status).toBe(404);
@@ -240,6 +356,7 @@ describe('POST /api/export/:jobId', () => {
     const POST = criarExportPOST({
       analysisRepo: repo,
       pdfEngine: fakeEngine(),
+      telemetry: fakeTelemetry(),
     });
     const res = await POST(req({ tipo: 'planilha' }), ctx());
     expect(res.status).toBe(400);
@@ -250,6 +367,7 @@ describe('POST /api/export/:jobId', () => {
     const POST = criarExportPOST({
       analysisRepo: repo,
       pdfEngine: fakeEngine(),
+      telemetry: fakeTelemetry(),
     });
     const res = await POST(req({ tipo: 'oficio' }), ctx());
     expect(res.status).toBe(400);

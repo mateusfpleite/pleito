@@ -224,6 +224,93 @@ function OficioEditavel({
   );
 }
 
+/**
+ * Feedback explícito MÍNIMO (SPEC §11b: 👍/👎 + texto opcional). Sinal de
+ * RESERVA quando o sinal-ouro (diff ofício) é nulo. Fricção baixa: 2
+ * botões + textarea opcional → POST /api/feedback/:jobId.
+ */
+function FeedbackMinimo({ jobId }: { jobId: string }) {
+  const [util, setUtil] = useState<boolean | null>(null);
+  const [texto, setTexto] = useState('');
+  const [enviado, setEnviado] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function enviar(u: boolean) {
+    setUtil(u);
+    setErro(null);
+    try {
+      const r = await fetch(`/api/feedback/${jobId}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ util: u, texto: texto || undefined }),
+      });
+      if (!r.ok) {
+        const b = (await r.json().catch(() => ({}))) as {
+          erro?: string;
+        };
+        throw new Error(b.erro ?? `HTTP ${r.status}`);
+      }
+      setEnviado(true);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  if (enviado) {
+    return (
+      <p style={{ fontSize: 13, color: '#1a5e1a' }}>
+        Obrigado pelo feedback ({util ? '👍' : '👎'}).
+      </p>
+    );
+  }
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: '#555', marginTop: 0 }}>
+        Esta análise foi útil?
+      </p>
+      <textarea
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder="Comentário opcional…"
+        style={{
+          width: '100%',
+          minHeight: 60,
+          fontSize: 13,
+          padding: 8,
+          border: '1px solid #ccc',
+          borderRadius: 6,
+          boxSizing: 'border-box',
+          marginBottom: 8,
+        }}
+      />
+      <div style={{ display: 'flex', gap: 10 }}>
+        <button
+          type="button"
+          onClick={() => void enviar(true)}
+          style={{ fontSize: 14, padding: '6px 14px', cursor: 'pointer' }}
+        >
+          👍 Útil
+        </button>
+        <button
+          type="button"
+          onClick={() => void enviar(false)}
+          style={{ fontSize: 14, padding: '6px 14px', cursor: 'pointer' }}
+        >
+          👎 Não útil
+        </button>
+      </div>
+      {erro && (
+        <div
+          role="alert"
+          style={{ marginTop: 6, fontSize: 12, color: '#a31515' }}
+        >
+          Falha ao enviar: {erro}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ExportarRelatorio({ jobId }: { jobId: string }) {
   const [exportando, setExportando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -581,6 +668,10 @@ export function Dashboard({
           <OficioEditavel oficio={oficio} jobId={jobId} />
         </Painel>
       )}
+
+      <Painel titulo="Feedback" colapsavel={false}>
+        <FeedbackMinimo jobId={jobId} />
+      </Painel>
     </div>
   );
 }

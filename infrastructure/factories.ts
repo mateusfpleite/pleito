@@ -24,7 +24,10 @@ import type {
 } from '../domain/ports.ts';
 import { Preprocessor } from '../adapters/pdf/preprocessor.ts';
 import { GeminiExtractor } from '../adapters/extractor/gemini.ts';
-import { GeminiNormaVerifier } from '../adapters/verifier/gemini.ts';
+import {
+  GeminiNormaVerifier,
+  type GroundingCustoSink,
+} from '../adapters/verifier/gemini.ts';
 import { GeminiRiskAnalyst } from '../adapters/risk-analyst/gemini.ts';
 import { GeminiDrafter } from '../adapters/drafter/gemini.ts';
 import { PrismaJobRepo } from '../adapters/repo/job.ts';
@@ -64,11 +67,22 @@ export function montarRepos(
 export function montarAnalyzeDeps(opts: {
   model?: LanguageModel;
   normaCache: NormaCache;
+  /**
+   * Sink OPCIONAL de custo de grounding POR chamada (SPEC §11b). O worker
+   * injeta um coletor por-job (acumula e grava telemetria após o save,
+   * com o analysisId real); ausente = no-op (não há instrumentação fora
+   * do worker).
+   */
+  onGroundingCusto?: GroundingCustoSink;
 }): AnalyzeDeps {
   return {
     preprocessor: new Preprocessor(),
     extractor: new GeminiExtractor(opts.model),
-    normaVerifier: new GeminiNormaVerifier(opts.normaCache, opts.model),
+    normaVerifier: new GeminiNormaVerifier(
+      opts.normaCache,
+      opts.model,
+      opts.onGroundingCusto
+    ),
     riskAnalyst: new GeminiRiskAnalyst(opts.model),
     drafter: new GeminiDrafter(opts.model),
   };

@@ -35,6 +35,20 @@ import type { LanguageModel } from 'ai';
 import { z } from 'zod';
 import type { EditalExtraction } from '../../domain/schema.ts';
 import type { NormaCache, NormaVerifierPort, NormaStatus } from '../../domain/ports.ts';
+
+/**
+ * Sink de custo de grounding (SPEC §11b — POR chamada, NÃO só agregado:
+ * bomba de custo silenciosa se só agregado). Injetado pelo caller (worker)
+ * que conhece o id de correlação; opcional (testes/baseline não passam).
+ * O Verifier chama UMA vez por chamada de grounding REAL (após o LLM,
+ * antes do cache) — não em hit de baseline nem cache.
+ */
+export type GroundingCustoSink = (uso: {
+  lei: string;
+  inputTokens: number | undefined;
+  outputTokens: number | undefined;
+  totalTokens: number | undefined;
+}) => void;
 import { matchNorma } from '../../domain/norma-baseline.ts';
 import type { BaselineEntry } from '../../domain/norma-baseline.ts';
 import { categoriaParaStatus as categoriaParaStatusCanonico } from '../../domain/categoria-status.ts';
@@ -73,9 +87,15 @@ export class GeminiNormaVerifier implements NormaVerifierPort {
    * `google(config.EXTRACTOR_MODEL)` resolvido preguiçosamente — não exige
    * env/API key nos testes que injetam, e nos casos baseline nem é tocado).
    */
+  /**
+   * @param onGroundingCusto sink OPCIONAL de custo por chamada de
+   * grounding (§11b). O worker injeta um que grava telemetria
+   * (não-bloqueante); testes injetam um spy; ausente = no-op.
+   */
   constructor(
     private readonly cache: NormaCache,
-    model?: LanguageModel
+    model?: LanguageModel,
+    private readonly onGroundingCusto?: GroundingCustoSink
   ) {
     this.model = model ?? google(getConfig().EXTRACTOR_MODEL);
   }
@@ -156,13 +176,24 @@ Determine o status:
 - "inexistente": a norma citada não existe ou tem escopo/objeto trocado.
 Use "fonte" = URL autoritativa que sustenta o veredito.`;
 
-    const { experimental_output } = await generateText({
+    const { experimental_output, usage } = await generateText({
       model: this.model,
       tools: { google_search: google.tools.googleSearch({}) },
       // Saída ESTRUTURADA (substitui generateText+regex do spike). No AI SDK
       // structured output coexiste com grounding via `output` + `tools`.
       experimental_output: Output.object({ schema: VerdictSchema }),
       prompt,
+    });
+
+    // SPEC §11b: custo de grounding logado POR CHAMADA (não só agregado —
+    // a cauda municipal real aciona grounding pago; bomba silenciosa se
+    // só agregado). Emitido AQUI, dentro do ramo que realmente chamou o
+    // LLM (nunca em hit de baseline/cache). Sink é não-bloqueante.
+    this.onGroundingCusto?.({
+      lei: `${lei.numero}/${lei.ano}`,
+      inputTokens: usage?.inputTokens,
+      outputTokens: usage?.outputTokens,
+      totalTokens: usage?.totalTokens,
     });
 
     return {

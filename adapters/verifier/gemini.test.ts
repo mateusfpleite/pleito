@@ -256,3 +256,91 @@ describe('GeminiNormaVerifier — grounding na cauda (miss baseline) + cache', (
     expect(r.leisReferenciadas).toHaveLength(1);
   });
 });
+
+/**
+ * SPEC §11b — custo de grounding logado POR CHAMADA (não só agregado).
+ * Prova-se com o sink injetado + spy real de chamadas: cada chamada de
+ * grounding gera EXATAMENTE 1 evento de custo; hit de baseline/cache gera
+ * ZERO. (testing-anti-patterns: model fake + telemetry fake — provamos a
+ * instrumentação determinística, não o LLM.)
+ */
+describe('GeminiNormaVerifier — custo de grounding POR chamada (§11b)', () => {
+  it('cada chamada de grounding → exatamente 1 evento de custo', async () => {
+    const { model, state } = spyModel({
+      status: 'revogada',
+      fonte: 'https://planalto.gov.br/x',
+    });
+    const eventos: Array<{
+      lei: string;
+      inputTokens: number | undefined;
+      totalTokens: number | undefined;
+    }> = [];
+    const verifier = new GeminiNormaVerifier(
+      fakeCache(),
+      model as never,
+      (u) =>
+        eventos.push({
+          lei: u.lei,
+          inputTokens: u.inputTokens,
+          totalTokens: u.totalTokens,
+        })
+    );
+
+    // 2 leis fora-baseline distintas → 2 chamadas de grounding.
+    const e = baseExtraction([
+      lei({ numero: '7777', ano: 2001, escopo: 'municipal', tipoNorma: 'lei' }),
+      lei({ numero: '8888', ano: 2002, escopo: 'estadual', tipoNorma: 'lei' }),
+    ]);
+    await verifier.verificar(e);
+
+    expect(state.calls).toBe(2); // 2 groundings reais
+    // 1 evento de custo POR chamada — não agregado num só.
+    expect(eventos).toHaveLength(2);
+    expect(eventos.map((x) => x.lei).sort()).toEqual([
+      '7777/2001',
+      '8888/2002',
+    ]);
+    // O uso da chamada é repassado (do `usage` do generateText fake).
+    expect(eventos[0].inputTokens).toBe(1);
+    expect(eventos[0].totalTokens).toBe(2);
+  });
+
+  it('hit de baseline NÃO emite evento de custo (não houve grounding)', async () => {
+    const { model, state } = spyModel({ status: 'vigente', fonte: 'x' });
+    const eventos: unknown[] = [];
+    const verifier = new GeminiNormaVerifier(
+      fakeCache(),
+      model as never,
+      () => eventos.push(1)
+    );
+    // 8666/1993 casa baseline → precedência, sem grounding.
+    await verifier.verificar(
+      baseExtraction([
+        lei({ numero: '8666', ano: 1993, escopo: 'federal', tipoNorma: 'lei' }),
+      ])
+    );
+    expect(state.calls).toBe(0);
+    expect(eventos).toHaveLength(0);
+  });
+
+  it('cache hit NÃO emite novo evento de custo (só a 1ª chamada)', async () => {
+    const { model } = spyModel({
+      status: 'revogada',
+      fonte: 'https://planalto.gov.br/y',
+    });
+    const eventos: unknown[] = [];
+    const cache = fakeCache();
+    const verifier = new GeminiNormaVerifier(
+      cache,
+      model as never,
+      () => eventos.push(1)
+    );
+    const mk = () =>
+      baseExtraction([
+        lei({ numero: '6543', ano: 2010, escopo: 'municipal', tipoNorma: 'lei' }),
+      ]);
+    await verifier.verificar(mk()); // grounding real → 1 evento
+    await verifier.verificar(mk()); // cache hit → NENHUM evento novo
+    expect(eventos).toHaveLength(1);
+  });
+});

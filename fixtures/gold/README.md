@@ -40,6 +40,16 @@ Tier 0 e os testes E2E rodem contra um input estável e auditável.
   (`tests/e2e/corpus.test.ts`, Phase 17) — corpus de regressão.
 - `promoverParaCorpus(id)` (Phase 15) grava novas análises curadas aqui.
 
+## Arquivos promovidos (Phase 15, §11b)
+
+`promovido-<municipio>-<uf>.json` — gravados pelo
+`promoverParaCorpus(analysisId)` (botão no `/admin` ou
+`POST /api/admin/promover/:id`). Mesmo shape das extrações gold (o
+`EditalExtraction` na raiz) + bloco `_proveniencia` (chave `_*` stripada
+pelo schema → não quebra o `safeParse` do runner Tier 0). Entram
+automaticamente no gate Tier 0 / E2E na rodada seguinte: promote-to-corpus
+em 1 passo fecha o loop telemetria → fixture de regressão.
+
 ## Regra
 
 Não editar à mão os arquivos de proveniência POC (`dombasilio`,

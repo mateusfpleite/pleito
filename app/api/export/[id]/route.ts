@@ -11,6 +11,7 @@
  */
 import { criarPrismaClient } from '../../../../adapters/repo/client.ts';
 import { PrismaAnalysisRepo } from '../../../../adapters/repo/analysis.ts';
+import { PrismaTelemetry } from '../../../../adapters/repo/telemetry.ts';
 import { chromiumPdfEngine } from '../../../../adapters/pdf/render.ts';
 import { criarExportPOST, type ExportCtx } from './handler.ts';
 
@@ -20,9 +21,11 @@ export async function POST(
   req: Request,
   ctx: ExportCtx
 ): Promise<Response> {
+  const prisma = criarPrismaClient();
   const handler = criarExportPOST({
-    analysisRepo: new PrismaAnalysisRepo(criarPrismaClient()),
+    analysisRepo: new PrismaAnalysisRepo(prisma),
     pdfEngine: chromiumPdfEngine(),
+    telemetry: new PrismaTelemetry(prisma),
   });
   return handler(req, ctx);
 }

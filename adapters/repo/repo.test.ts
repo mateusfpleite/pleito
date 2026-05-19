@@ -85,6 +85,47 @@ function makeTable<T extends { [k: string]: unknown }>(pk: keyof T) {
       }
       return matches[0] ?? null;
     },
+    findMany: async ({
+      where,
+      orderBy,
+      take,
+    }: {
+      where?: Record<string, unknown>;
+      orderBy?: Record<string, 'asc' | 'desc'>;
+      take?: number;
+    } = {}) => {
+      let matches = [...rows.values()].filter((row) => {
+        if (!where) return true;
+        return Object.entries(where).every(([k, v]) => {
+          const cell = (row as Record<string, unknown>)[k];
+          // Suporta o operador `{ in: [...] }` (telemetria por análises).
+          if (
+            v &&
+            typeof v === 'object' &&
+            'in' in (v as Record<string, unknown>)
+          ) {
+            return (v as { in: unknown[] }).in.includes(cell);
+          }
+          return cell === v;
+        });
+      });
+      if (orderBy) {
+        const [[campo, dir]] = Object.entries(orderBy);
+        matches = matches.sort((a, b) => {
+          const av = (a as Record<string, unknown>)[campo] as
+            | Date
+            | number
+            | string;
+          const bv = (b as Record<string, unknown>)[campo] as
+            | Date
+            | number
+            | string;
+          const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+          return dir === 'desc' ? -cmp : cmp;
+        });
+      }
+      return take != null ? matches.slice(0, take) : matches;
+    },
     update: async ({
       where,
       data,
@@ -369,6 +410,38 @@ describe('PrismaAnalysisRepo', () => {
     expect(achado!.municipio).toBe('Nova');
   });
 
+  it('listarRecentes devolve as análises mais novas primeiro (/admin §11b)', async () => {
+    const prisma = fakePrisma();
+    const repo = new PrismaAnalysisRepo(prisma);
+    await repo.salvar({
+      jobId: 'job-a',
+      municipio: 'Antiga',
+      uf: 'AL',
+      extracao: baseExtraction({ municipio: 'Antiga' }),
+      oficioGerado: null,
+      oficioExportado: null,
+      oficioExportadoEm: null,
+    });
+    await prisma.analysis.create({
+      data: {
+        jobId: 'job-b',
+        municipio: 'Nova',
+        uf: 'BA',
+        extractionJson: baseExtraction({ municipio: 'Nova', uf: 'BA' }),
+        oficioGerado: undefined,
+        oficioExportado: null,
+        createdAt: new Date('2026-07-01T00:00:00Z'),
+      },
+    });
+    const lista = await repo.listarRecentes();
+    expect(lista).toHaveLength(2);
+    expect(lista[0].municipio).toBe('Nova'); // desc por createdAt
+    expect(lista[1].municipio).toBe('Antiga');
+    const limitada = await repo.listarRecentes(1);
+    expect(limitada).toHaveLength(1);
+    expect(limitada[0].municipio).toBe('Nova');
+  });
+
   it('registrarOficioExportado grava o texto editado + carimbo (Phase 14 / §9)', async () => {
     const repo = new PrismaAnalysisRepo(fakePrisma());
     const salvo = await repo.salvar({
@@ -620,6 +693,23 @@ describe('PrismaTelemetry', () => {
       usd: 0.0021,
       lei: '14133/2021',
     });
+  });
+
+  it('listarPorAnalises devolve só os eventos das análises pedidas (/admin)', async () => {
+    const prisma = fakePrisma();
+    const tele = new PrismaTelemetry(prisma);
+    await tele.registrar('a-1', 'feedback', { util: true });
+    await tele.registrar('a-1', 'export', { tipo: 'oficio' });
+    await tele.registrar('a-2', 'feedback', { util: false });
+
+    const r1 = await tele.listarPorAnalises(['a-1']);
+    expect(r1).toHaveLength(2);
+    expect(r1.every((e) => e.analysisId === 'a-1')).toBe(true);
+    expect(r1[0].createdAt).toBeInstanceOf(Date);
+
+    const r12 = await tele.listarPorAnalises(['a-1', 'a-2']);
+    expect(r12).toHaveLength(3);
+    expect(await tele.listarPorAnalises([])).toEqual([]);
   });
 });
 

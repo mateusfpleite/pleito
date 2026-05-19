@@ -43,6 +43,9 @@ function analyses(...rs: AnaliseRegistro[]): AnalysisRepo {
     async registrarOficioExportado() {
       throw new Error('n/a');
     },
+    async listarRecentes() {
+      return [...rs];
+    },
   };
 }
 

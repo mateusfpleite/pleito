@@ -91,6 +91,18 @@ export class PrismaAnalysisRepo implements AnalysisRepo {
    * (handler de export) renderiza o PDF a partir deste texto persistido —
    * nunca regenera do JSON/markdown original.
    */
+  /**
+   * Superfície de revisão interna (`/admin`, SPEC §11b). Lista as
+   * análises mais recentes (desc por `createdAt`). Read-only.
+   */
+  async listarRecentes(limite = 50): Promise<AnaliseRegistro[]> {
+    const rows = (await this.prisma.analysis.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limite,
+    })) as AnalysisRow[];
+    return rows.map(paraRegistro);
+  }
+
   async registrarOficioExportado(
     id: string,
     texto: string

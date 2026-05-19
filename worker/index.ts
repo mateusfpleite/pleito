@@ -29,14 +29,44 @@ function main(): void {
 
   const prisma = criarPrismaClient();
   const repos = montarRepos(prisma);
+
+  // Sink de custo de grounding (§11b) atribuído POR chamada de
+  // `analyze`. `montarAnalyzeDeps` recebe um sink ESTÁVEL que delega ao
+  // coletor da chamada corrente (`atual`): cada `analyze(input, onCusto)`
+  // aponta `atual` p/ o onCusto daquele job antes de rodar e o limpa
+  // depois. O worker drena 1 job por vez (laço sequencial), logo não há
+  // corrida entre coletores.
+  let atual: ((u: {
+    lei: string;
+    inputTokens: number | undefined;
+    outputTokens: number | undefined;
+    totalTokens: number | undefined;
+  }) => void) | null = null;
   const analyzeDeps = montarAnalyzeDeps({
     normaCache: repos.normaCache,
+    onGroundingCusto: (u) => atual?.(u),
   });
 
   const server = criarServidor({
     jobRepo: repos.jobRepo,
     analysisRepo: repos.analysisRepo,
-    analyze: (input: ArquivoEntrada) => analyzeEdital(input, analyzeDeps),
+    telemetry: repos.telemetry,
+    analyze: async (
+      input: ArquivoEntrada,
+      onGroundingCusto?: (u: {
+        lei: string;
+        inputTokens: number | undefined;
+        outputTokens: number | undefined;
+        totalTokens: number | undefined;
+      }) => void
+    ) => {
+      atual = onGroundingCusto ?? null;
+      try {
+        return await analyzeEdital(input, analyzeDeps);
+      } finally {
+        atual = null;
+      }
+    },
   });
 
   const port = Number(process.env.PORT ?? 8080);

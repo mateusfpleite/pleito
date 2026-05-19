@@ -139,6 +139,12 @@ export interface AnalysisRepo {
     id: string,
     texto: string
   ): Promise<AnaliseRegistro>;
+  /**
+   * Lista as análises mais recentes (desc por `createdAt`) — superfície
+   * de revisão interna (`/admin`, SPEC §11b: "sem isso o loop não
+   * fecha"). `limite` default razoável; read-only.
+   */
+  listarRecentes(limite?: number): Promise<AnaliseRegistro[]>;
 }
 
 export type JobStatus = 'pending' | 'running' | 'done' | 'erro';
@@ -185,9 +191,20 @@ export interface NormaCache {
   ): Promise<void>;
 }
 
+/** Um evento de telemetria materializado (leitura — superfície /admin). */
+export type EventoTelemetria = {
+  analysisId: string;
+  evento: string;
+  payload: Record<string, unknown>;
+  createdAt: Date;
+};
+
 /**
  * Telemetria — eventos implícitos (export, re-upload, painéis, latência) e
  * o custo por chamada de grounding logado individualmente (SPEC §11b).
+ * Escrita NÃO-bloqueante (via `application/telemetria.registrarSeguro`); a
+ * leitura (`listarPorAnalises`) só alimenta a superfície de revisão
+ * interna (`/admin`) — read-only, fora do caminho do pipeline.
  */
 export interface TelemetryPort {
   registrar(
@@ -195,4 +212,9 @@ export interface TelemetryPort {
     evento: string,
     payload: Record<string, unknown>
   ): Promise<void>;
+  /**
+   * Eventos das análises dadas (p/ `/admin`: feedback + diffs por
+   * análise). Devolve só os eventos cujos `analysisId` ∈ `ids`.
+   */
+  listarPorAnalises(ids: string[]): Promise<EventoTelemetria[]>;
 }
