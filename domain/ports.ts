@@ -88,9 +88,14 @@ export type OficioGerado = {
  * 7. Drafter (condicional) — decide `afirmacaoVigencia` por lei e gera a
  * prosa A PARTIR dessa decisão (ordem decide→escreve). Só afirma revogação
  * se `statusVerificado=revogada`; senão pergunta ao órgão.
+ *
+ * Retorna `null` quando NADA justifica manifestação (sem incoerências,
+ * trechos ambíguos ou pontos de atenção que recomendem manifestação). O
+ * workflow (Phase 10) também aplica o gate B; o Drafter, por sua vez, é
+ * defensivo e devolve `null` se a extração não traz nada a questionar.
  */
 export interface DrafterPort {
-  redigir(e: EditalExtraction): Promise<OficioGerado>;
+  redigir(e: EditalExtraction): Promise<OficioGerado | null>;
 }
 
 /** Análise persistida (JSON da extração + ofício gerado/exportado). */
