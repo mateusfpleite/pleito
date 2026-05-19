@@ -23,11 +23,9 @@
  * `numero:null` (ex.: Constituição) não casam baseline nem têm chave de
  * cache/grounding estável → ficam `nao-verificado` (cauda → revisão humana).
  *
- * Mapeamento categoria do baseline → `statusVerificado` (SPEC §5):
- *   revogada-notoria | revogada-confirmada → 'revogada'
- *   zona-cinzenta                          → 'contestada'
- *   citacao-suspeita                       → 'inexistente'
- *   vigente-ancora                         → 'vigente'
+ * Mapeamento categoria do baseline → `statusVerificado` (SPEC §5) vive no
+ * mapa CANÔNICO ÚNICO `domain/categoria-status.ts` (importado aqui e pelo
+ * Tier 0 — é mapeamento de segurança, não pode ter cópia divergível).
  * `fonteVerificacao` = `entry.fonte` do baseline no hit.
  */
 
@@ -39,6 +37,7 @@ import type { EditalExtraction } from '../../domain/schema.ts';
 import type { NormaCache, NormaVerifierPort, NormaStatus } from '../../domain/ports.ts';
 import { matchNorma } from '../../domain/norma-baseline.ts';
 import type { BaselineEntry } from '../../domain/norma-baseline.ts';
+import { categoriaParaStatus as categoriaParaStatusCanonico } from '../../domain/categoria-status.ts';
 import { getConfig } from '../../infrastructure/config.ts';
 
 type Lei = EditalExtraction['leisReferenciadas'][number];
@@ -49,22 +48,14 @@ const VerdictSchema = z.object({
   fonte: z.string(),
 });
 
-/** Categoria curada do baseline → status verificado determinístico. */
+/**
+ * Categoria curada do baseline → status verificado determinístico. Delega ao
+ * mapa CANÔNICO ÚNICO em `domain/categoria-status.ts` (mapeamento de
+ * segurança — eliminado o duplicado divergível). Categoria desconhecida →
+ * `nao-verificado` (não inventar veredito; fallback do Verifier).
+ */
 function categoriaParaStatus(categoria: string): NormaStatus {
-  switch (categoria) {
-    case 'revogada-notoria':
-    case 'revogada-confirmada':
-      return 'revogada';
-    case 'zona-cinzenta':
-      return 'contestada';
-    case 'citacao-suspeita':
-      return 'inexistente';
-    case 'vigente-ancora':
-      return 'vigente';
-    default:
-      // Categoria nova/desconhecida no baseline: não inventar veredito.
-      return 'nao-verificado';
-  }
+  return categoriaParaStatusCanonico(categoria) ?? 'nao-verificado';
 }
 
 /** Chave de cache estável (independe de espaçamento/escopo do extractor). */

@@ -2,66 +2,65 @@
  * Montagem do prompt do Drafter (pipeline step 7, SPEC §4 / §5 #2).
  *
  * - SYSTEM (estático, cacheável): papel → regras de CONTENÇÃO → few-shot
- *   FIEL ao ofício real de Pariconha (`./fewshot.ts`). É a parte que não
- *   muda entre editais.
- * - USER: `[extração]` (contexto grande, JSON inteiro, inclui
- *   `statusVerificado` por lei) ANTES de `[tarefa]` ANTES de `[contrato de
- *   saída]` — recência long-context (SPEC §7).
+ *   FIEL ao ofício real de Pariconha (`./fewshot.ts`).
+ * - USER: `[extração]` (JSON inteiro, inclui `statusVerificado` e os índices
+ *   dos achados) ANTES de `[tarefa]` — recência long-context (SPEC §7).
  *
- * CONTENÇÃO ESTRUTURAL (SPEC §5 #2): o modelo NÃO escreve o markdown nem
- * QUALQUER frase de (não)vigência. Ele produz só, por ponto, `{titulo,
- * argumento}` (a divergência factual + o questionamento) e `leisCitadas`
- * com `afirmacaoVigencia`. O MARKDOWN final é montado DETERMINISTICAMENTE
- * pelo adapter (`gemini.ts`): afirmações de vigência são frases-template
- * keyed pelo `statusVerificado` verificado. O prompt guia; o código contém.
+ * CONTENÇÃO ESTRUTURAL REAL (SPEC §5 #2): o modelo NÃO escreve NENHUM texto
+ * que entre no documento. Ele emite SOMENTE decisões estruturadas: `tipo`,
+ * `selecoes[]` (referências por índice a achados JÁ EXISTENTES na extração)
+ * e `leisCitadas[]` com `afirmacaoVigencia`. NÃO há campo de texto livre. O
+ * corpo do ofício é montado 100% por TEMPLATES determinísticos do adapter
+ * keyed pelo TIPO estruturado do achado. O prompt guia a SELEÇÃO; o código
+ * REDIGE (templates). Vazamento de prosa de revogação é estruturalmente
+ * impossível — não há canal de prosa do modelo.
  */
 
 import type { EditalExtraction } from '../../domain/schema.ts';
 import { renderFewShots } from './fewshot.ts';
 
-const REGRAS = `Você é um advogado/analista de licitações que redige ofícios \
-formais (pedidos de esclarecimento e impugnações) endereçados ao órgão \
-licitante, em nome de uma empresa interessada no certame.
+const REGRAS = `Você é um analista de licitações que DECIDE o conteúdo de \
+ofícios formais (pedidos de esclarecimento e impugnações) endereçados ao \
+órgão licitante, em nome de uma empresa interessada no certame.
 
-Sua tarefa é, A PARTIR da extração já analisada de um edital, decidir se há \
-o que questionar e, havendo, produzir os INSUMOS estruturados do ofício. \
-Você NÃO escreve o ofício final nem qualquer frase sobre vigência de norma \
-— o sistema monta o documento deterministicamente a partir dos seus insumos.
+Você NÃO escreve, NÃO redige e NÃO produz NENHUM texto livre que entre no \
+documento. O sistema monta o ofício inteiro deterministicamente, por \
+TEMPLATES, a partir das suas DECISÕES ESTRUTURADAS. Você apenas seleciona, \
+referencia e ordena — sem prosa.
 
 CONTRATO DE SAÍDA — VOCÊ PRODUZ APENAS:
 
-1. "leisCitadas": para CADA lei do edital relevante ao questionamento, \
-decida "afirmacaoVigencia" ∈ {nenhuma, revogada, vigente}, lendo o campo \
+1. "tipo": "esclarecimento" para divergências/ambiguidades; "impugnacao" \
+quando houver ilegalidade/restrição indevida que justifique impugnar.
+
+2. "selecoes": uma lista que escolhe QUAIS achados JÁ EXISTENTES na extração \
+levantar no ofício, e em que ORDEM. Cada item é \
+{ "fonte": "incoerencia" | "trechoAmbiguo" | "pontoDeAtencao", "indice": N } \
+onde "indice" é a posição (base 0) do achado no respectivo array da extração \
+("incoerencias", "trechosAmbiguos", "pontosDeAtencao"). Só selecione achados \
+que realmente justificam manifestação: incoerências de severidade ≥ média, \
+trechos ambíguos, e pontosDeAtencao com "recomendaManifestacao": true. NÃO \
+invente achados nem índices fora do range — índices inválidos são ignorados.
+
+3. "leisCitadas": para CADA lei do edital relevante ao questionamento, \
+decida "afirmacaoVigencia" ∈ {nenhuma, revogada, vigente} lendo o campo \
 "statusVerificado" daquela lei na extração:
    - statusVerificado = "revogada"  → afirmacaoVigencia = "revogada".
    - QUALQUER OUTRO valor ("contestada", "inexistente", "nao-verificado", \
 "vigente") → afirmacaoVigencia = "nenhuma".
    "leisCitadas" só pode conter leis presentes em "leisReferenciadas" da \
-extração — NÃO invente normas, números ou anos.
+extração — NÃO invente normas, números ou anos. Mesmo essa decisão é \
+revalidada e, se necessário, sobrescrita pelo sistema.
 
-2. "pontos": uma lista de pontos a questionar; cada ponto tem só \
-"titulo" (curto) e "argumento" (a divergência factual objetiva + o \
-questionamento ao órgão). NUNCA escreva no "argumento" frases afirmando que \
-uma norma está/não está revogada, perdeu vigência, caducou, etc. — essas \
-afirmações são geradas pelo sistema a partir de "leisCitadas"/ \
-"statusVerificado", NÃO por você. Se mencionar uma norma, refira-se a ela \
-neutramente e questione (não afirme) seu regime de vigência.
-
-3. "tipo": "esclarecimento" para divergências/ambiguidades; "impugnacao" \
-quando houver ilegalidade/restrição indevida que justifique impugnar.
-
-4. Baseie os "pontos" SOMENTE no que a extração traz: "incoerencias" \
-(severidade ≥ média), "trechosAmbiguos" e "pontosDeAtencao" com \
-"recomendaManifestacao": true. Não invente vícios ausentes do edital.
-
-5. Saída deve validar contra o schema do contrato (tipo, \
-pontos[].{titulo,argumento}, leisCitadas[].{numero,ano,afirmacaoVigencia}). \
-O cabeçalho/saudação/encerramento e TODA frase de vigência são montados \
-pelo sistema — você não os escreve.`;
+REGRA ABSOLUTA: você NÃO escreve título, argumento, justificativa, descrição \
+nem qualquer frase — nem sobre vigência de norma, nem sobre nada. Qualquer \
+texto livre que você emita é DESCARTADO pelo sistema e nunca entra no \
+documento. O corpo do ofício e TODA frase de vigência são gerados por \
+templates determinísticos a partir do TIPO estruturado de cada achado \
+selecionado e do "statusVerificado" verificado.`;
 
 /**
- * SYSTEM prompt completo (estático → cacheável pelo provider): regras de
- * contenção + few-shot fiel ao ofício real de Pariconha.
+ * SYSTEM prompt completo (estático → cacheável pelo provider).
  */
 export const SYSTEM_PROMPT = `${REGRAS}
 
@@ -76,18 +75,19 @@ ${renderFewShots()}`;
  * aparece ANTES dela no prompt do usuário (recência, SPEC §7).
  */
 export const TAREFA =
-  'TAREFA: com base na extração acima, decida "afirmacaoVigencia" por lei ' +
-  'citada a partir de "statusVerificado" (revogada só se ' +
-  'statusVerificado="revogada"; senão "nenhuma") e produza "pontos" ' +
-  '(titulo+argumento) com a divergência factual e o questionamento ao ' +
-  'órgão. NÃO escreva markdown nem qualquer frase de (não)vigência — o ' +
-  'sistema monta o ofício deterministicamente. Não invente leis nem ' +
-  'vícios ausentes.';
+  'TAREFA: com base na extração acima, produza APENAS decisões ' +
+  'estruturadas: "tipo"; "selecoes" (referências {fonte,indice} a achados ' +
+  'JÁ EXISTENTES em incoerencias/trechosAmbiguos/pontosDeAtencao, na ordem ' +
+  'desejada); e "leisCitadas" com "afirmacaoVigencia" derivada de ' +
+  '"statusVerificado" (revogada só se statusVerificado="revogada"; senão ' +
+  '"nenhuma"). NÃO escreva markdown, título, argumento nem qualquer frase — ' +
+  'o sistema monta o ofício 100% por templates. Não invente leis, achados ' +
+  'nem índices fora do range.';
 
 /**
- * Monta o prompt do USUÁRIO: extração serializada (contexto grande, inclui
- * `leisReferenciadas[].statusVerificado`) primeiro, depois a tarefa — ordem
- * de recência (SPEC §7).
+ * Monta o prompt do USUÁRIO: extração serializada (inclui os arrays
+ * indexáveis de achados e `leisReferenciadas[].statusVerificado`) primeiro,
+ * depois a tarefa — ordem de recência (SPEC §7).
  */
 export function montarPrompt(e: EditalExtraction): string {
   return [

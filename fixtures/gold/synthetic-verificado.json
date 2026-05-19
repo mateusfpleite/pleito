@@ -1,0 +1,316 @@
+{
+  "municipio": "Cidade Sintetica",
+  "uf": "SP",
+  "ente": {
+    "tipo": "prefeitura",
+    "razaoSocial": "MUNICÍPIO DE JABORANDI",
+    "cnpj": "13.245.568/0001-14"
+  },
+  "modalidade": "pregao-eletronico",
+  "numero": "008/2025",
+  "processoAdministrativo": "026/2025",
+  "dataPublicacao": "2025-02-18",
+  "dataSessao": "2025-03-12T09:00:00-03:00",
+  "uasg": "989859",
+  "regimeJuridico": "lei-14133",
+  "objetoCorpo": "PREGÃO ELETRÔNICO PARA REGISTRO DE PREÇOS PARA FUTURAS E EVENTUAIS CONTRATAÇÃO DE EMPRESA PARA PRESTAÇÃO DE SERVIÇOS FUNERÁRIOS E TRASLADOS DESTINADOS AO MUNICÍPIO DE JABORANDI - BAHIA.",
+  "objetoCapa": "Pregão Eletrônico para registro de preços para futuras e eventuais contratações de empresas para prestação de serviços de locações caminhões de pipas e máquinas pesadas destinados as manutenções de estradas vicinais do Município de Jaborandi - Bahia.",
+  "objetoSummary": "Registro de preços para futuras e eventuais contratações de empresa para prestação de serviços funerários e traslados para o Município de Jaborandi - Bahia.",
+  "tipoObjeto": [
+    "fornecimento-urnas",
+    "transporte-funerario",
+    "servicos-funerarios-completos",
+    "tanatopraxia",
+    "coroa-flores"
+  ],
+  "secretariaDemandante": "Secretaria Municipal de Assistência e Bem Estar Social",
+  "valor": {
+    "estimado": 878896,
+    "sigiloso": false,
+    "procedencia": "termo-referencia"
+  },
+  "moeda": "BRL",
+  "criterioJulgamento": "menor-preco",
+  "agrupamento": "lote",
+  "modoDisputa": "aberto-fechado",
+  "regimeExecucao": "preco-unitario",
+  "vigenciaContrato": {
+    "meses": 12,
+    "prorrogavelAteMeses": 12
+  },
+  "vigenciaAtaRP": {
+    "meses": 12,
+    "prorrogavelAteMeses": 12
+  },
+  "validadeProposta": {
+    "dias": 60
+  },
+  "habilitacao": {
+    "juridica": [
+      {
+        "exigencia": "Prova de inscrição no Cadastro de Contribuintes Estadual ou Municipal, se houver, relativo ao domicílio ou sede do licitante, pertinente ao seu ramo de atividade e compatível com o objeto contratual.",
+        "baseLegal": "Cláusula 13.4.1.1 do Edital",
+        "observacao": null
+      },
+      {
+        "exigencia": "Inscrição no Registro Público de Empresas Mercantis, a cargo da Junta Comercial da respectiva sede, no caso de empresário individual.",
+        "baseLegal": "Cláusula 13.4.1.2 do Edital",
+        "observacao": null
+      },
+      {
+        "exigencia": "Certificado da Condição de Microempreendedor Individual - CCMEI, na forma da Resolução CGSIM n.º 16, de 2009, cuja aceitação ficará condicionada à verificação da autenticidade.",
+        "baseLegal": "Cláusula 13.4.1.3 do Edital",
+        "observacao": null
+      },
+      {
+        "exigencia": "Inscrição do ato constitutivo, estatuto ou contrato social no Registro Público de Empresas Mercantis (ou Registro Civil das Pessoas Jurídicas para sociedade simples), acompanhada de documento comprobatório de seus administradores, para sociedades empresárias, SLU, EIRELI ou sociedades simples.",
+        "baseLegal": "Cláusulas 13.4.1.4, 13.4.1.6 do Edital",
+        "observacao": null
+      },
+      {
+        "exigencia": "Portaria de autorização de funcionamento no Brasil, publicada no Diário Oficial da União e arquivada na Junta Comercial, para sociedade empresária estrangeira.",
+        "baseLegal": "Cláusula 13.4.1.5 do Edital",
+        "observacao": null
+      },
+      {
+        "exigencia": "Inscrição do ato constitutivo da filial, sucursal ou agência, com averbação no Registro onde tem sede a matriz.",
+        "baseLegal": "Cláusula 13.4.1.7 do Edital",
+        "observacao": "Os documentos deverão estar acompanhados de todas as alterações ou da consolidação respectiva."
+      }
+    ],
+    "fiscalTrabalhista": [
+      {
+        "exigencia": "Prova de inscrição no Cadastro Nacional de Pessoal Jurídica - CNPJ.",
+        "baseLegal": "Cláusula 13.4.2.1 do Edital",
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de Regularidade Fiscal perante a Fazenda Nacional (certidão conjunta RFB/PGFN), referente a todos os créditos tributários federais e à Dívida Ativa da União, inclusive Seguridade Social.",
+        "baseLegal": "Cláusula 13.4.2.2 do Edital, Portaria Conjunta n.º 1.751/2014",
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de regularidade para com a Fazenda Estadual (Certidão Negativa ou Positiva com efeito de Negativa).",
+        "baseLegal": "Cláusula 13.4.2.3 do Edital",
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de regularidade para com a Fazenda Municipal (certidão negativa ou positiva com efeito de negativa, relativa aos tributos municipais).",
+        "baseLegal": "Cláusula 13.4.2.4 do Edital",
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de regularidade com o Fundo de Garantia do Tempo de Serviço (Certificado de Regularidade do FGTS - CRF).",
+        "baseLegal": "Cláusula 13.4.2.5 do Edital",
+        "observacao": null
+      },
+      {
+        "exigencia": "Prova de inexistência de débitos inadimplidos perante a Justiça do Trabalho (Certidão Negativa - CNDT).",
+        "baseLegal": "Cláusula 13.4.2.6 do Edital",
+        "observacao": null
+      }
+    ],
+    "economicoFinanceira": [
+      {
+        "exigencia": "Certidão Negativa de Falência ou Recuperação Judicial, ou liquidação judicial, ou de execução patrimonial, expedida pelo distribuidor da sede do licitante.",
+        "baseLegal": "Cláusula 13.4.3.1 do Edital, Lei n.º 14.133/2021 art. 69, caput, inciso II",
+        "observacao": null
+      },
+      {
+        "exigencia": "Balanço Patrimonial e Demonstrações Contábeis dos 02 (dois) últimos exercícios sociais, já exigíveis e apresentados na forma da lei, que comprovem a boa situação financeira da empresa.",
+        "baseLegal": "Cláusula 13.4.3.2 do Edital",
+        "observacao": "Para empresas criadas no exercício financeiro da licitação, poderá ser substituído pelo balanço de abertura. Para empresas com menos de 2 anos, limitar-se-á ao último exercício."
+      },
+      {
+        "exigencia": "Apresentação de Índices de Liquidez Geral (LG), Solvência Geral (SG) e Liquidez Corrente (LC), maiores que 01 (um).",
+        "baseLegal": "Cláusula 13.4.3.2.3.3 do Edital",
+        "observacao": "Se os índices forem inferiores ou iguais a 1, poderá ser exigido capital mínimo ou patrimônio líquido mínimo de 10% do valor estimado da contratação."
+      }
+    ],
+    "tecnica": [
+      {
+        "exigencia": "Comprovação com um ou mais atestado(s) de capacidade técnica, expedido por pessoa jurídica de direito público ou privado, que comprove o serviço funerário e traslados.",
+        "baseLegal": "Cláusula 13.4.4.1 do Edital",
+        "observacao": "Os atestados devem referir-se a contratos ou serviços executados, com no mínimo 04 (quatro) itens de quaisquer um escolhido entre os 10 (dez) licitados, com execução de no mínimo 50% do quantitativo dos itens apresentados."
+      },
+      {
+        "exigencia": "Apresentação da Licença Sanitária Estadual ou Municipal, sede da empresa licitante.",
+        "baseLegal": "Cláusula 13.4.4.2 do Edital",
+        "observacao": null
+      }
+    ]
+  },
+  "exigenciasRegulatorias": {
+    "licencaSanitaria": true,
+    "alvaraFuncionamento": true,
+    "vistoria": false,
+    "amostra": false,
+    "outros": [
+      "Certidão Simplificada expedida pela Junta Comercial ou equivalente",
+      "Declaração, conforme modelo anexo, ao qual congrega as declarações necessárias à participação no certame licitatório."
+    ]
+  },
+  "itensLicitados": [
+    {
+      "numero": "1",
+      "descricao": "Urna adulto, modelo popular, madeira de pinho, com 06 (seis) alças em aço zincado para transporte, babado em forro em interno em TNT, travesseiro solto na parte interna, pintura em verniz, tampa em Eucatex e 06 (seis) chavetas na parte externa, medindo no mínimo190cm x 78cm x 40cm (CxLxA).",
+      "tipo": "urna",
+      "publicoAlvo": "adulto",
+      "unidade": "Unid.",
+      "quantidade": 130,
+      "valorUnitarioReferencial": 1173.3
+    },
+    {
+      "numero": "2",
+      "descricao": "Urna adulto comprida ou gorda, modelo popular, madeira de pinho, com 08 (oito) alças em aço zincado fixas para transporte, babado e forro interno em TNT, travesseiro solto na parte interna, pintura em verniz, tampa em Eucatex e 06 (seis) chavetas na parte externa, medindo no mínimo 210cm x 84cm x 45cm (CxLxA).",
+      "tipo": "urna",
+      "publicoAlvo": "adulto-obeso",
+      "unidade": "Unid.",
+      "quantidade": 20,
+      "valorUnitarioReferencial": 1883.3
+    },
+    {
+      "numero": "3",
+      "descricao": "Urna juvenil, modelo popular, madeira de pinho, com 06 (seis) alças em aço zincado fixas para transporte, babado e forro interno em TNT, travesseiro solto na parte interna, pintura em verniz, tampa em Eucatex e 06 (seis) chavetas na parte externa, medindo no mínimo 140cm x 30cm x 40cm (CxLxA).",
+      "tipo": "urna",
+      "publicoAlvo": "juvenil",
+      "unidade": "Unid.",
+      "quantidade": 30,
+      "valorUnitarioReferencial": 708.3
+    },
+    {
+      "numero": "4",
+      "descricao": "Urna infantil, modelo popular, madeira de pinho, com 06 (seis) alças em aço zincado fixas para transporte, babado e forro interno em TNT, travesseiro solto na parte interna, pintura em verniz, tampa em Eucatex e 06 (seis) chavetas na parte externa, medindo no mínimo 120cm x 30cm x 40cm (CxLxA).",
+      "tipo": "urna",
+      "publicoAlvo": "infantil",
+      "unidade": "Unid.",
+      "quantidade": 30,
+      "valorUnitarioReferencial": 626.6
+    },
+    {
+      "numero": "5",
+      "descricao": "Urna infantil, modelo popular, madeira de pinho, com 06 (seis) alças em aço zincado fixas para transporte, babado e forro interno em TNT, travesseiro solto na parte interna, pintura em verniz, tampa em Eucatex e 06 (seis) chavetas na parte externa, medindo no mínimo 60cm x 20cm x 30cm (CxLxA).",
+      "tipo": "urna",
+      "publicoAlvo": "recem-nascido",
+      "unidade": "Unid.",
+      "quantidade": 30,
+      "valorUnitarioReferencial": 411.6
+    },
+    {
+      "numero": "6",
+      "descricao": "Mortalha simples - sexo masculino: calça social e camisa de manga comprida cores a definir, meias sociais fina e gravata.",
+      "tipo": "vestimento",
+      "publicoAlvo": "adulto",
+      "unidade": "Unid.",
+      "quantidade": 140,
+      "valorUnitarioReferencial": 150.6
+    },
+    {
+      "numero": "7",
+      "descricao": "Mortalha feminina: Vestido confeccionado em tecido resistente, com velcro na parte de trás e cores a combinar, meias social e branca.",
+      "tipo": "vestimento",
+      "publicoAlvo": "adulto",
+      "unidade": "Unid.",
+      "quantidade": 100,
+      "valorUnitarioReferencial": 147.3
+    },
+    {
+      "numero": "8",
+      "descricao": "Ornamentação: com higienização. Tamponamento, Flores para ornamentação da urna, cordão de são Francisco, véu, vela, coroa de flores simples em TNT.",
+      "tipo": "ornamentacao",
+      "publicoAlvo": "qualquer",
+      "unidade": "Serv.",
+      "quantidade": 240,
+      "valorUnitarioReferencial": 653.3
+    },
+    {
+      "numero": "9",
+      "descricao": "Tanatopraxia: Conservação de Corpo.",
+      "tipo": "tanatopraxia",
+      "publicoAlvo": "qualquer",
+      "unidade": "Unid.",
+      "quantidade": 240,
+      "valorUnitarioReferencial": 930
+    },
+    {
+      "numero": "10",
+      "descricao": "Translado funeral, municipal, Intermunicipal e Interestadual, dentro e fora do Município. Com veículo adequado e específico para o transporte.",
+      "tipo": "translado",
+      "publicoAlvo": "qualquer",
+      "unidade": "Km",
+      "quantidade": 90000,
+      "valorUnitarioReferencial": 2.45
+    }
+  ],
+  "leisReferenciadas": [
+    {
+      "descricao": "Lei Federal nº 8.666, de 21 de junho de 1993",
+      "escopo": "federal",
+      "tipoNorma": "lei",
+      "numero": "8666",
+      "ano": 1993,
+      "contextoNoEdital": "Citada (sinteticamente) com status verificado divergente da baseline curada.",
+      "revogada": false,
+      "statusVerificado": "vigente",
+      "fonteVerificacao": "fixture-sintetica"
+    }
+  ],
+  "anexos": [
+    {
+      "numero": "I",
+      "titulo": "Termo de Referência",
+      "tipo": "termo-referencia",
+      "descricaoBreve": "Especificações técnicas dos serviços funerários e traslados, quantitativos e orçamento estimado.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "II",
+      "titulo": "Modelo de Proposta de Preços",
+      "tipo": "modelo-proposta",
+      "descricaoBreve": "Modelo para os licitantes apresentarem seus preços e declarações.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "III",
+      "titulo": "Modelo de Declaração",
+      "tipo": "modelo-declaracao",
+      "descricaoBreve": "Declarações obrigatórias para participação no certame, incluindo conformidade legal e trabalhista.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "IV",
+      "titulo": "Minuta de Contrato",
+      "tipo": "minuta-contrato",
+      "descricaoBreve": "Minuta do contrato de prestação de serviços a ser assinado com o vencedor.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "V",
+      "titulo": "Minuta do Ata de Registro de Preços",
+      "tipo": "minuta-ata",
+      "descricaoBreve": "Minuta da Ata de Registro de Preços a ser formalizada.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    },
+    {
+      "numero": "VI",
+      "titulo": "Cadastro de Reserva - Relatório",
+      "tipo": "cadastro-reserva",
+      "descricaoBreve": "Modelo para registro de empresas no cadastro de reserva.",
+      "presenteNoArquivo": true,
+      "fonteSeparada": null
+    }
+  ],
+  "incoerencias": [],
+  "trechosAmbiguos": [],
+  "fonte": {
+    "pdfNativo": false,
+    "ocr": true,
+    "paginas": 81,
+    "url": null
+  }
+}

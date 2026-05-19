@@ -9,18 +9,24 @@
  *   - `statusVerificado` (veredito do Norma Verifier por lei referenciada)
  *   - `matchNorma` (status determinístico do baseline curado)
  *
- * A contenção PRIMÁRIA é a montagem determinística do markdown no Drafter
- * (Phase 8 — afirmações de vigência = templates keyed pelo `statusVerificado`
- * verificado; o modelo nunca escreve vigência livre). Este Tier 0 é
- * REDUNDÂNCIA de verificação (defense-in-depth), não a barreira única —
- * porém é GATE DURO: qualquer violação = build falha.
+ * A CONTENÇÃO É ESTRUTURAL: o documento externo não contém NENHUMA prosa
+ * livre de LLM. O modelo do Drafter não escreve texto — só emite seleções
+ * estruturadas de achados já existentes na extração; o corpo do ofício é
+ * montado 100% por TEMPLATES determinísticos do adapter. A garantia é a
+ * AUSÊNCIA de prosa livre, não nenhum regex. Este Tier 0 é GATE DURO
+ * redundante (defense-in-depth): qualquer violação = build falha.
+ *
+ * O scan léxico (checagem 2) é TRIPWIRE DEFENSIVO, NÃO o mecanismo de
+ * contenção: se disparar, é bug estrutural (um template introduziu prosa de
+ * status sem respaldo verificado) — nunca deveria disparar.
  *
  * 4 checagens (SPEC §11a):
  *   1. afirmacao-indevida / afirmacao-vigencia-proativa — confronto
  *      estrutural afirmacaoVigencia × statusVerificado (sem regex no gate
  *      primário).
- *   2. lexico-inconsistente — backstop léxico secundário: prosa fala de
- *      revogação sem respaldo estruturado verificado.
+ *   2. lexico-inconsistente — TRIPWIRE defensivo (não a garantia): prosa
+ *      de revogação no markdown sem respaldo estruturado verificado = bug
+ *      estrutural.
  *   3. baseline-divergente — statusVerificado VERIFICADO diverge da
  *      categoria determinística do baseline curado.
  *   4. zona-cinzenta-binarizada — lei zona-cinzenta jamais vira afirmação
@@ -28,8 +34,9 @@
  */
 
 import type { EditalExtraction } from '../domain/schema.ts';
-import type { OficioGerado, LeiNoOficio } from '../domain/ports.ts';
+import type { OficioGerado } from '../domain/ports.ts';
 import { matchNorma } from '../domain/norma-baseline.ts';
+import { categoriaParaStatus } from '../domain/categoria-status.ts';
 
 type StatusVerificado =
   EditalExtraction['leisReferenciadas'][number]['statusVerificado'];
@@ -56,34 +63,25 @@ export type AnaliseParaGate = {
 };
 
 /**
- * Léxico AMPLO de (não)vigência (idêntico ao backstop interno do Drafter —
- * SPEC §5 #2 / §11a). Reconferido aqui como defense-in-depth.
+ * TRIPWIRE léxico de (não)vigência — idêntico ao tripwire interno do Drafter
+ * (SPEC §5 #2 / §11a). NÃO é o mecanismo de contenção (a contenção é a
+ * ausência de prosa livre do modelo); é defesa-em-profundidade que NUNCA
+ * deveria disparar. Expandido p/ paráfrases que vazaram em produção
+ * (ab-rogad, derrogad, não subsiste, exaurid, etc.).
  */
 const LEXICO_VIGENCIA =
-  /revogad|perdeu vig[êe]ncia|n[ãa]o est[áa] mais em vigor|deixou de viger|sem vig[êe]ncia|caducou/i;
+  /revogad|ab-?rogad|derrogad|revogou-se|perdeu vig[êe]ncia|n[ãa]o subsiste|superad|exaurid|deixou de produzir efeitos|n[ãa]o vige|sem efic[áa]cia|n[ãa]o est[áa] (mais )?em vigor|deixou de viger|sem vig[êe]ncia|caducou/i;
 
 /**
- * Categoria curada do baseline → `statusVerificado` esperado. MESMO
- * mapeamento canônico do Norma Verifier (`adapters/verifier/gemini.ts`
- * `categoriaParaStatus`). Categoria desconhecida → null (não há expectativa
- * determinística → não acusa divergência).
+ * Categoria curada do baseline → `statusVerificado` esperado. Delega ao mapa
+ * CANÔNICO ÚNICO `domain/categoria-status.ts` (MESMA fonte do Norma Verifier
+ * — mapeamento de segurança, sem cópia divergível). Categoria desconhecida →
+ * null (sem expectativa determinística → não acusa divergência).
  */
 function categoriaParaStatusEsperado(
   categoria: string
 ): StatusVerificado | null {
-  switch (categoria) {
-    case 'revogada-notoria':
-    case 'revogada-confirmada':
-      return 'revogada';
-    case 'zona-cinzenta':
-      return 'contestada';
-    case 'citacao-suspeita':
-      return 'inexistente';
-    case 'vigente-ancora':
-      return 'vigente';
-    default:
-      return null;
-  }
+  return categoriaParaStatus(categoria);
 }
 
 /** Referência textual curta de uma lei (para `detalhe`). */
@@ -171,11 +169,13 @@ function checarGatePrimario(analise: AnaliseParaGate): Violacao[] {
 }
 
 /**
- * CHECAGEM 2 — backstop léxico SECUNDÁRIO. Se o markdown casa o léxico de
- * revogação MAS não há nenhuma `leisCitadas` com `afirmacaoVigencia==='
- * revogada'` cujo `statusVerificado` correspondente seja 'revogada' que
- * justifique a prosa → inconsistência (prosa fala de revogação sem respaldo
- * estruturado verificado).
+ * CHECAGEM 2 — TRIPWIRE DEFENSIVO (não o mecanismo de contenção). Como o
+ * corpo do ofício é 100% templated e o único léxico de revogação permitido
+ * vem do template de revogação (só sob lei revogada verificada), se o
+ * markdown casa o léxico MAS nenhuma `leisCitadas` tem `afirmacaoVigencia===
+ * 'revogada'` com `statusVerificado='revogada'` que o respalde → BUG
+ * ESTRUTURAL (um template introduziu prosa de status indevida). Nunca
+ * deveria disparar — a garantia é a ausência de prosa livre, não este scan.
  */
 function checarBackstopLexico(analise: AnaliseParaGate): Violacao[] {
   const { extracao, oficio } = analise;

@@ -23,6 +23,13 @@ Tier 0 e os testes E2E rodem contra um input estável e auditável.
 | `baserate-result.json` | Base rate: **24 editais, 13 UFs**; `allLaws` preserva os casos |
 |                        | de lei revogada que sustentam o spike-matcher (0/37            |
 |                        | falso-negativo). Sem isto o spike não é reproduzível pós-P4.   |
+| `synthetic-verificado.json` | **Fixture SINTÉTICA de auto-teste** (não é POC). 1 lei |
+|                        | 8666/1993 com `statusVerificado:"vigente"` — DIVERGENTE da     |
+|                        | baseline curada (`revogada-notoria` → esperado `revogada`).    |
+|                        | Existe para EXERCITAR a checagem 3 (`baseline-divergente`) do  |
+|                        | Tier 0, inerte no resto do corpus (tudo `nao-verificado`). O   |
+|                        | runner a trata em modo auto-teste: DEVE produzir a violação    |
+|                        | esperada, senão a checagem está quebrada → gate falha.         |
 
 ## Consumidores
 
@@ -35,6 +42,12 @@ Tier 0 e os testes E2E rodem contra um input estável e auditável.
 
 ## Regra
 
-Não editar à mão. Alterações só via promoção curada de telemetria
-(Phase 15) ou re-congelamento explícito do POC, sempre com commit
-dedicado documentando a mudança de proveniência.
+Não editar à mão os arquivos de proveniência POC (`dombasilio`,
+`jaborandi`, `niteroi`, `baserate-result`). Alterações neles só via
+promoção curada de telemetria (Phase 15) ou re-congelamento explícito do
+POC, sempre com commit dedicado documentando a mudança de proveniência.
+
+`synthetic-verificado.json` é EXCEÇÃO declarada: fixture sintética de
+auto-teste (não-POC), introduzida no commit de contenção estrutural real
+do Drafter (C1 reincidente) para tornar a checagem 3 do Tier 0
+efetivamente exercitada. Editável apenas com commit dedicado.
