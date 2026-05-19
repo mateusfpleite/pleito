@@ -115,3 +115,4 @@ src/extract.ts:63:63
 src/baserate.ts:53:61
 src/baserate.ts:117:117
 src/spike-verifier.ts:121:139
+app/api/admin/promover/[id]/handler.ts:39:39
