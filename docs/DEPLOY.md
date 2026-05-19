@@ -1,38 +1,38 @@
-# Pleito V0 — Runbook de Deploy
+# Pleito V0 — Deploy Runbook
 
-> Runbook **único, acionável**, que consolida TODOS os resíduos de deploy
-> acumulados pelas Phases 0–17. Estado de código: **273 testes verdes,
-> typecheck limpo, `pnpm build` OK, `pnpm eval:tier0` = 0 violações**. O
-> que falta é EXCLUSIVAMENTE infra externa (Postgres real, Vercel,
-> container do worker, chave Gemini de produção) — nenhum bug de código
-> pendente. SPEC §14 aponta para cá; não duplicar conteúdo lá.
+> A **single, actionable** runbook consolidating ALL the deploy residuals
+> accumulated across Phases 0–17. Code state: **273 tests green,
+> typecheck clean, `pnpm build` OK, `pnpm eval:tier0` = 0 violations**. What
+> remains is EXCLUSIVELY external infra (real Postgres, Vercel, the worker
+> container, the production Gemini key) — no pending code bug. SPEC §14
+> points here; do not duplicate content there.
 
-Arquitetura (SPEC §3): **Vercel/Next.js** (UI, auth, upload→job, polling,
-export) ↔ **Supabase Postgres** (jobs/analyses/norma_cache/telemetria) ↔
-**worker container** scale-to-zero (pipeline de 7 componentes, poppler +
+Architecture (SPEC §3): **Vercel/Next.js** (UI, auth, upload→job, polling,
+export) ↔ **Supabase Postgres** (jobs/analyses/norma_cache/telemetry) ↔
+**worker container** scale-to-zero (7-component pipeline, poppler +
 chromium).
 
 ---
 
-## 1. Banco — Supabase Postgres
+## 1. Database — Supabase Postgres
 
-1. Criar projeto no Supabase. Anotar a senha do Postgres.
-2. Duas URLs (Supabase as expõe em *Project Settings → Database*):
-   - **`DATABASE_URL`** = connection string **pooled** (pgBouncer, porta
-     6543), com **`?pgbouncer=true&connection_limit=1`**. Usada pelas
-     rotas Vercel (serverless-safe).
-   - **`DIRECT_URL`** = connection string **direta** (porta 5432, sem
-     pgBouncer). Usada por `prisma db push` / `migrate deploy` (pgBouncer
-     não aceita DDL transacional) e pelo worker.
-3. Instalar o driver adapter (Prisma 7 removeu a query-engine binária
-   default — `PrismaClient` exige driver adapter em runtime):
+1. Create a project on Supabase. Note the Postgres password.
+2. Two URLs (Supabase exposes them under *Project Settings → Database*):
+   - **`DATABASE_URL`** = the **pooled** connection string (pgBouncer, port
+     6543), with **`?pgbouncer=true&connection_limit=1`**. Used by the
+     Vercel routes (serverless-safe).
+   - **`DIRECT_URL`** = the **direct** connection string (port 5432, no
+     pgBouncer). Used by `prisma db push` / `migrate deploy` (pgBouncer
+     does not accept transactional DDL) and by the worker.
+3. Install the driver adapter (Prisma 7 removed the default query-engine
+   binary — `PrismaClient` requires a driver adapter at runtime):
    ```
    pnpm add @prisma/adapter-pg pg
    pnpm add -D @types/pg
    ```
-4. **Trocar o corpo de `criarPrismaClient()`** em
-   `adapters/repo/client.ts`. O snippet EXATO já está comentado no header
-   desse arquivo (RESÍDUO DE BANCO, item "Trocar o corpo…"):
+4. **Swap the body of `criarPrismaClient()`** in
+   `adapters/repo/client.ts`. The EXACT snippet is already commented in the
+   header of that file (DATABASE RESIDUAL, item "Swap the body…"):
    ```ts
    import { PrismaClient } from '../../prisma/generated/client.ts';
    import { PrismaPg } from '@prisma/adapter-pg';
@@ -40,196 +40,196 @@ chromium).
      adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
    });
    ```
-   Hoje a função lança um erro acionável (`RESÍDUO de banco…`) — é o único
-   ponto de código que muda no deploy.
-5. **Aplicar o schema.** NÃO há pasta `prisma/migrations/` — o projeto usa
-   **`prisma db push`** (schema-first, sem histórico de migration). Rodar
-   contra a **`DIRECT_URL`**:
+   Today the function throws an actionable error (`RESÍDUO de banco…`) — it
+   is the only code point that changes at deploy.
+5. **Apply the schema.** There is NO `prisma/migrations/` folder — the
+   project uses **`prisma db push`** (schema-first, no migration history).
+   Run it against the **`DIRECT_URL`**:
    ```
-   DIRECT_URL=<direta> DATABASE_URL=<direta> pnpm prisma db push
+   DIRECT_URL=<direct> DATABASE_URL=<direct> pnpm prisma db push
    ```
-   (ou `prisma migrate deploy` se/quando migrations forem introduzidas —
-   V1). **TODAS as colunas do schema atual têm de ir**, em 4 models
+   (or `prisma migrate deploy` if/when migrations are introduced —
+   V1). **ALL the columns of the current schema must go**, across 4 models
    (`prisma/schema.prisma`): `Job`, `Analysis` (incl.
    **`oficioExportado`** + **`oficioExportadoEm`**), `NormaCache`,
-   `Telemetria`. `prisma generate` já roda no `postinstall` (offline, já
-   validado neste ambiente).
-6. **`prisma.config.ts` — ARMADILHA (Phase 11 review Minor #1):** hoje o
-   arquivo seta `shadowDatabaseUrl: directUrl` (e
-   `datasource.shadowDatabaseUrl: directUrl`). Isso é **inofensivo para
-   `db push`/`migrate deploy`** (não usam shadow DB), mas **catastrófico
-   se alguém rodar `prisma migrate dev`**: o `migrate dev` **RESETA** o
-   banco apontado por `shadowDatabaseUrl`. Apontar shadow para a
-   `DIRECT_URL` de produção = **reset da DB de produção**. Antes do
-   deploy, em `prisma.config.ts`: **OMITIR `shadowDatabaseUrl`** (deploy
-   só usa `db push`/`migrate deploy`, que não precisam dele) OU apontá-lo
-   para um **banco throwaway distinto** (jamais a produção). Nunca rodar
-   `migrate dev` com a config atual contra produção.
+   `Telemetria`. `prisma generate` already runs in `postinstall` (offline,
+   already validated in this environment).
+6. **`prisma.config.ts` — TRAP (Phase 11 review Minor #1):** today the
+   file sets `shadowDatabaseUrl: directUrl` (and
+   `datasource.shadowDatabaseUrl: directUrl`). This is **harmless for
+   `db push`/`migrate deploy`** (they do not use a shadow DB), but
+   **catastrophic if anyone runs `prisma migrate dev`**: `migrate dev`
+   **RESETS** the database pointed to by `shadowDatabaseUrl`. Pointing the
+   shadow at the production `DIRECT_URL` = **reset of the production DB**.
+   Before deploy, in `prisma.config.ts`: **OMIT `shadowDatabaseUrl`**
+   (deploy only uses `db push`/`migrate deploy`, which do not need it) OR
+   point it at a **distinct throwaway database** (never production). Never
+   run `migrate dev` with the current config against production.
 
 ---
 
 ## 2. Vercel — Next.js
 
-Deploy do repo (App Router). Rotas que tocam Prisma já estão com
-`runtime='nodejs'` (feito — não há ação).
+Deploy the repo (App Router). Routes that touch Prisma are already set with
+`runtime='nodejs'` (done — no action).
 
-**Env vars (exatas) no projeto Vercel:**
+**Env vars (exact) in the Vercel project:**
 
-| Var | Valor | Notas |
+| Var | Value | Notes |
 |---|---|---|
-| `GOOGLE_GENERATIVE_AI_API_KEY` | chave Gemini de **produção** | Em DEV usa-se a do empregamed; **revisar/rotacionar para produção** (chamadas reais custam). |
-| `DATABASE_URL` | URL **pooled** (`?pgbouncer=true&connection_limit=1`) | Rotas serverless. |
-| `DIRECT_URL` | URL **direta** | Exigida pelo `config.ts` (Zod `.min(1)`); usada por migrações. |
-| `APP_SECRET` | segredo de sessão (HMAC) | Auth single-user (SPEC §14 #7). **Passar à Stefany fora-de-banda** (mensagem direta), nunca no repo. |
-| `WORKER_URL` | URL **pública** do worker (ver §3) | A Vercel faz `POST` aqui ao criar o job (wake-up scale-to-zero). |
-| `EXTRACTOR_MODEL` | opcional | Default `gemini-2.5-flash`. |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | **production** Gemini key | In DEV the employer's is used; **review/rotate for production** (real calls cost). |
+| `DATABASE_URL` | **pooled** URL (`?pgbouncer=true&connection_limit=1`) | Serverless routes. |
+| `DIRECT_URL` | **direct** URL | Required by `config.ts` (Zod `.min(1)`); used by migrations. |
+| `APP_SECRET` | session secret (HMAC) | Single-user auth (SPEC §14 #7). **Pass to Stefany out-of-band** (direct message), never in the repo. |
+| `WORKER_URL` | **public** URL of the worker (see §3) | Vercel does a `POST` here when creating the job (scale-to-zero wake-up). |
+| `EXTRACTOR_MODEL` | optional | Default `gemini-2.5-flash`. |
 
-**Limite de body (concern de deploy):** o plano **Hobby** da Vercel corta o
-request body em **~4.5 MB no edge**, ANTES do código (413 opaco). O guard
-upstream do `/api/job` é **`MAX_UPLOAD_BYTES = 8 MiB`**
-(`app/api/job/handler.ts`) — maior que o corte do Hobby. Consequência:
-editais entre ~4.5 e 8 MiB recebem **413 do edge** (não o 413 claro do
-guard) no Hobby. **Mitigação:** usar plano **Pro** (body maior) OU aceitar
-o 413 do edge para esse intervalo. Os editais do **corpus real são < ~5
-MB**, então o caso real é coberto; uploads de 4.5–8 MiB só passam fora do
-Hobby. Resolver com Pro/body maior é resíduo de deploy (sem mudança de
-código).
+**Body size limit (deploy concern):** Vercel's **Hobby** plan cuts the
+request body at **~4.5 MB at the edge**, BEFORE the code (an opaque 413).
+The `/api/job` upstream guard is **`MAX_UPLOAD_BYTES = 8 MiB`**
+(`app/api/job/handler.ts`) — larger than the Hobby cut. Consequence:
+editais between ~4.5 and 8 MiB receive a **413 from the edge** (not the
+guard's clear 413) on Hobby. **Mitigation:** use the **Pro** plan (larger
+body) OR accept the edge 413 for that range. The **real corpus editais are
+< ~5 MB**, so the real case is covered; uploads of 4.5–8 MiB only pass
+outside Hobby. Resolving with Pro/larger body is a deploy residual (no code
+change).
 
 ---
 
-## 3. Worker container — Railway ou Cloud Run (scale-to-zero)
+## 3. Worker container — Railway or Cloud Run (scale-to-zero)
 
-O worker roda o pipeline de 7 componentes fora do modelo serverless (sem
-limite de timeout, com binários de sistema). `Dockerfile` já pronto.
+The worker runs the 7-component pipeline outside the serverless model (no
+timeout limit, with system binaries). The `Dockerfile` is ready.
 
-1. **Build da imagem:** o `Dockerfile` (raiz) já faz
-   `apt-get install -y poppler-utils chromium` sobre `node:20-slim`,
+1. **Image build:** the `Dockerfile` (root) already does
+   `apt-get install -y poppler-utils chromium` over `node:20-slim`,
    `pnpm install --frozen-lockfile`, `CMD ["pnpm","worker"]`.
-2. **Dependências opcionais:** `playwright-core` está em
-   `optionalDependencies` (export PDF via chromium). `pnpm install`
-   instala `optionalDependencies` por **default** (não passar
-   `--no-optional`). O `--frozen-lockfile` do Dockerfile mantém isso.
-3. **chromium path:** `adapters/pdf/render.ts` usa `/usr/bin/chromium`
-   (pacote Debian no `node:20-slim`), **sobrescrevível por
-   `CHROMIUM_PATH`**. Em Railway/Cloud Run com a imagem do Dockerfile o
-   default já resolve.
-4. **Env vars do worker:**
-   | Var | Valor |
+2. **Optional dependencies:** `playwright-core` is in
+   `optionalDependencies` (PDF export via chromium). `pnpm install`
+   installs `optionalDependencies` by **default** (do not pass
+   `--no-optional`). The Dockerfile's `--frozen-lockfile` keeps this.
+3. **chromium path:** `adapters/pdf/render.ts` uses `/usr/bin/chromium`
+   (Debian package on `node:20-slim`), **overridable via
+   `CHROMIUM_PATH`**. On Railway/Cloud Run with the Dockerfile image the
+   default already resolves.
+4. **Worker env vars:**
+   | Var | Value |
    |---|---|
-   | `DATABASE_URL` | conexão **DIRETA** (NÃO pooled — o worker abre pool próprio; pgBouncer atrapalha `FOR UPDATE SKIP LOCKED` e pool aninhado). Use a `DIRECT_URL`. |
-   | `GOOGLE_GENERATIVE_AI_API_KEY` | mesma chave de produção. |
-   | `EXTRACTOR_MODEL` | opcional (default `gemini-2.5-flash`). |
-   | `PORT` | porta exposta do container (worker lê `process.env.PORT ?? 8080`, `worker/index.ts`). |
-   | `CHROMIUM_PATH` | opcional (default `/usr/bin/chromium`). |
-5. **Publicar a URL pública** do serviço (Railway/Cloud Run dão um
-   domínio público) e **setar `WORKER_URL` na Vercel** com essa URL. A
-   Vercel NÃO alcança rede privada do container — a URL precisa ser
-   pública.
-6. **Conectividade Vercel → worker:** `POST /api/job` (Vercel) cria o Job
-   `pending` e faz **`POST` em `WORKER_URL`** — essa requisição HTTP é o
-   que **acorda** o container scale-to-zero (ele não desperta por linha no
-   DB; polling cego dormindo não funciona). Ao receber o POST o worker
-   drena a fila inteira via `drenarFila` (claim atômico `UPDATE … FOR
-   UPDATE SKIP LOCKED … RETURNING *` — dois workers nunca pegam o mesmo
-   job). `/healthz` disponível para probes.
+   | `DATABASE_URL` | the **DIRECT** connection (NOT pooled — the worker opens its own pool; pgBouncer interferes with `FOR UPDATE SKIP LOCKED` and a nested pool). Use the `DIRECT_URL`. |
+   | `GOOGLE_GENERATIVE_AI_API_KEY` | same production key. |
+   | `EXTRACTOR_MODEL` | optional (default `gemini-2.5-flash`). |
+   | `PORT` | the container's exposed port (the worker reads `process.env.PORT ?? 8080`, `worker/index.ts`). |
+   | `CHROMIUM_PATH` | optional (default `/usr/bin/chromium`). |
+5. **Publish the service's public URL** (Railway/Cloud Run give a public
+   domain) and **set `WORKER_URL` on Vercel** with that URL. Vercel does
+   NOT reach the container's private network — the URL must be public.
+6. **Vercel → worker connectivity:** `POST /api/job` (Vercel) creates the
+   `pending` Job and does a **`POST` to `WORKER_URL`** — that HTTP request
+   is what **wakes** the scale-to-zero container (it does not wake on a DB
+   row; blind polling while asleep does not work). On receiving the POST
+   the worker drains the entire queue via `drenarFila` (atomic claim
+   `UPDATE … FOR UPDATE SKIP LOCKED … RETURNING *` — two workers never pick
+   up the same job). `/healthz` is available for probes.
 
 ---
 
-## 4. Caveat de liveness (sem sweeper) — aceitável V0
+## 4. Liveness caveat (no sweeper) — acceptable V0
 
-NÃO há sweeper/cron de jobs `pending`. Fluxo: `/api/job` acorda o worker
-por HTTP; se esse trigger falhar, o Job sobrevive `pending` e é
-**repescado no próximo wake** do worker (`claimNext` drena tudo). Mas se o
-worker ficar **permanentemente fora**, jobs ficam `pending`
-indefinidamente — **não há re-trigger automático**. **Aceitável
-single-user V0** (a operadora reenvia). **Revisitar V1** com
-cron/healthcheck que re-dispara pendentes.
+There is NO sweeper/cron for `pending` jobs. Flow: `/api/job` wakes the
+worker over HTTP; if that trigger fails, the Job survives `pending` and is
+**picked up at the worker's next wake** (`claimNext` drains everything).
+But if the worker is **permanently down**, jobs stay `pending`
+indefinitely — **there is no automatic re-trigger**. **Acceptable
+single-user V0** (the operator resubmits). **Revisit in V1** with a
+cron/healthcheck that re-dispatches pending ones.
 
 ---
 
-## 5. Checklist Done V0 (SPEC §12) — honesto
+## 5. Done V0 checklist (SPEC §12) — honest
 
-### Verde OFFLINE (validado neste ambiente, sem infra)
+### Green OFFLINE (validated in this environment, no infra)
 
-- [x] **Schema 100% válido** — `domain/schema.test.ts` + E2E
-  `tests/e2e/corpus.test.ts` (cada gold reconstrói e parseia
+- [x] **Schema 100% valid** — `domain/schema.test.ts` + E2E
+  `tests/e2e/corpus.test.ts` (each gold reconstructs and parses
   `EditalExtractionSchema`).
-- [x] **`pnpm eval:tier0` = 0 violações** (gate duro estrutural) — runner
-  `eval/run-tier0.ts` sobre `fixtures/gold/*` + auto-teste sintético
-  `synthetic-verificado.json` (checagem 3 efetivamente exercitada).
-- [x] **Capa-mentirosa / lei-revogada / anexo-ausente detectados** — como
-  invariante determinística sobre o corpus-ouro do POC: Jaborandi
-  registra `incoerencia` objeto-divergente (sev. alta) + `lei-revogada`
-  e suas 8666/1993 + 10520/2002 casam baseline `revogada-notoria`;
-  Niterói regime `lei-13303` + anexo `presenteNoArquivo=false`; Dom
-  Basílio `valor-divergente` sev. alta. (`tests/e2e/corpus.test.ts`).
-- [x] **Contenção estrutural** — `eval/tier0.test.ts` (property-based) +
-  Tier 0 fatal no `application/analyze-edital.ts` + `checarContencao`
-  sobre cada gold com `oficio:null` → 0 violações.
-- [x] Pipeline/worker/gates/persistência/auth **unit + integração com
-  mocks** verdes (273 testes; `worker/processar.test.ts`,
+- [x] **`pnpm eval:tier0` = 0 violations** (hard structural gate) — the
+  `eval/run-tier0.ts` runner over `fixtures/gold/*` + the synthetic
+  self-test `synthetic-verificado.json` (check 3 effectively exercised).
+- [x] **Lying-cover / revogada-law / missing-annex detected** — as a
+  deterministic invariant over the POC gold corpus: Jaborandi
+  records an object-divergent `incoerencia` (high sev.) + `lei-revogada`
+  and its 8666/1993 + 10520/2002 match the `revogada-notoria` baseline;
+  Niterói regime `lei-13303` + annex `presenteNoArquivo=false`; Dom
+  Basílio `valor-divergente` high sev. (`tests/e2e/corpus.test.ts`).
+- [x] **Structural containment** — `eval/tier0.test.ts` (property-based) +
+  fatal Tier 0 in `application/analyze-edital.ts` + `checarContencao`
+  over each gold with `oficio:null` → 0 violations.
+- [x] Pipeline/worker/gates/persistence/auth **unit + integration with
+  mocks** green (273 tests; `worker/processar.test.ts`,
   `adapters/repo/repo.test.ts`, `app/api/**`, `lib/middleware-auth`,
   etc.).
 
-### Só fecha PÓS-DEPLOY (requer infra real — não é bug de código)
+### Only closes POST-DEPLOY (requires real infra — not a code bug)
 
-- [ ] **3 editais ref + Mata Grande sem erro** via worker REAL (Gemini
-  2.5 Flash + Postgres) — qualidade de extração valida-se em produção
-  via telemetria (SPEC §11c), não como teste que falha offline.
-- [ ] **Pipeline completo no worker sem timeout** (Done V0: < 90 s) —
-  medível só com Gemini + container reais.
-- [ ] **Job trigger + claim atômico** ponta-a-ponta em Postgres real
-  (lógica testada com mock; `FOR UPDATE SKIP LOCKED` exige PG real).
-- [ ] **Dashboard + ofício editável + PDF on-demand** e2e (chromium real
-  no container; sem chromium no DEV).
-- [ ] **Telemetria gravando** em Postgres real.
-- [ ] **Deploy acessível à Stefany** (URL Vercel pública + `APP_SECRET`
-  entregue fora-de-banda).
+- [ ] **3 ref editais + Mata Grande with no error** via the REAL worker
+  (Gemini 2.5 Flash + Postgres) — extraction quality is validated in
+  production via telemetry (SPEC §11c), not as a test that fails offline.
+- [ ] **Full pipeline in the worker with no timeout** (Done V0: < 90 s) —
+  measurable only with real Gemini + container.
+- [ ] **Job trigger + atomic claim** end-to-end on real Postgres
+  (logic tested with a mock; `FOR UPDATE SKIP LOCKED` requires real PG).
+- [ ] **Dashboard + editable ofício + on-demand PDF** e2e (real chromium
+  in the container; no chromium in DEV).
+- [ ] **Telemetry recording** on real Postgres.
+- [ ] **Deploy accessible to Stefany** (public Vercel URL + `APP_SECRET`
+  delivered out-of-band).
 
-> Critério de aceite pós-deploy: subir os 3 editais de referência +
-> Mata Grande pela UI; cada job conclui `done` < 90 s; `pnpm eval:tier0`
-> continua 0; dashboard renderiza todos os painéis; export PDF retorna
-> buffer `%PDF`; telemetria registra `submissao`/`analise_concluida`.
-
----
-
-## 6. Resíduos de PRODUTO (não de deploy — registrar p/ discussão)
-
-Não bloqueiam o deploy; são decisões/hardening de produto a discutir:
-
-1. **Ofício 100% templated** (SPEC §5 #2): contenção estrutural total
-   torna o ofício rígido (zero prosa livre do LLM). Trade-off
-   utilidade × segurança — mitigado pelo **human-in-the-loop** (a
-   Stefany edita o textarea antes de exportar). Avaliar se a rigidez
-   reduz utilidade percebida.
-2. **Identificadores de cabeçalho do ofício** (`razaoSocial`, `numero`
-   do edital) são `z.string()` **livres do extractor** interpolados no
-   cabeçalho do ofício. Risco baixo (não são status legal; não há fonte
-   não-LLM para esses campos), mas são a única string de origem-LLM no
-   documento. Registrar como exceção consciente ao invariante exaustivo.
-3. **Colisão de nome em `promovido-*.json`** (Phase 15): o
-   `promoverParaCorpus` grava `promovido-<municipio>-<uf>.json`; duas
-   promoções do mesmo município/UF **sobrescrevem silenciosamente** a
-   anterior. Hardening V1 (sufixo único / detecção de colisão).
-4. **Polling do dashboard — erros HTTP não-404:** o cliente de polling
-   trata 404 mas respostas de erro não-404 caem em `r.json()` e podem
-   quebrar o parse silenciosamente. Hardening V1 (tratamento explícito
-   de 5xx/timeout no polling).
+> Post-deploy acceptance criterion: submit the 3 reference editais +
+> Mata Grande through the UI; each job completes `done` < 90 s; `pnpm eval:tier0`
+> stays 0; the dashboard renders all panels; PDF export returns a
+> `%PDF` buffer; telemetry records `submissao`/`analise_concluida`.
 
 ---
 
-## 7. Sequência mínima de deploy (resumo acionável)
+## 6. PRODUCT residuals (not deploy — record for discussion)
 
-1. Supabase: criar projeto → obter `DATABASE_URL` (pooled) + `DIRECT_URL`.
+They do not block deploy; they are product decisions/hardening to discuss:
+
+1. **100% templated ofício** (SPEC §5 #2): total structural containment
+   makes the ofício rigid (zero free LLM prose). Utility × safety
+   trade-off — mitigated by the **human-in-the-loop** (Stefany
+   edits the textarea before exporting). Evaluate whether the rigidity
+   reduces perceived utility.
+2. **Ofício header identifiers** (`razaoSocial`, the edital's `numero`)
+   are **free `z.string()` from the extractor** interpolated into the
+   ofício header. Low risk (they are not legal status; there is no
+   non-LLM source for these fields), but they are the only LLM-origin
+   string in the document. Record as a conscious exception to the
+   exhaustive invariant.
+3. **Name collision in `promovido-*.json`** (Phase 15): the
+   `promoverParaCorpus` writes `promovido-<municipio>-<uf>.json`; two
+   promotions of the same municipality/UF **silently overwrite** the
+   previous one. V1 hardening (unique suffix / collision detection).
+4. **Dashboard polling — non-404 HTTP errors:** the polling client
+   handles 404 but non-404 error responses fall into `r.json()` and may
+   silently break the parse. V1 hardening (explicit handling of
+   5xx/timeout in polling).
+
+---
+
+## 7. Minimal deploy sequence (actionable summary)
+
+1. Supabase: create the project → obtain `DATABASE_URL` (pooled) + `DIRECT_URL`.
 2. `pnpm add @prisma/adapter-pg pg && pnpm add -D @types/pg`.
-3. Editar `adapters/repo/client.ts` (snippet comentado no header).
-4. Ajustar `prisma.config.ts`: **remover `shadowDatabaseUrl`** (ou apontar
-   p/ DB throwaway). NUNCA `migrate dev` contra produção.
-5. `prisma db push` via `DIRECT_URL` (cria os 4 models inteiros).
-6. Vercel: deploy + env vars da §2 (`APP_SECRET` fora-de-banda).
-7. Worker: build do Dockerfile → Railway/Cloud Run scale-to-zero; env da
-   §3 (`DATABASE_URL` = DIRETA, `PORT`).
-8. Publicar URL pública do worker → setar `WORKER_URL` na Vercel.
-9. Aceite: subir 3 refs + Mata Grande pela UI; verificar `done` < 90 s,
-   `pnpm eval:tier0` = 0, painéis + export PDF + telemetria.
-10. Entregar URL + `APP_SECRET` à Stefany.
+3. Edit `adapters/repo/client.ts` (snippet commented in the header).
+4. Adjust `prisma.config.ts`: **remove `shadowDatabaseUrl`** (or point it
+   at a throwaway DB). NEVER `migrate dev` against production.
+5. `prisma db push` via `DIRECT_URL` (creates all 4 models in full).
+6. Vercel: deploy + the §2 env vars (`APP_SECRET` out-of-band).
+7. Worker: build the Dockerfile → Railway/Cloud Run scale-to-zero; §3
+   env (`DATABASE_URL` = DIRECT, `PORT`).
+8. Publish the worker's public URL → set `WORKER_URL` on Vercel.
+9. Acceptance: submit 3 refs + Mata Grande through the UI; verify `done` < 90 s,
+   `pnpm eval:tier0` = 0, panels + PDF export + telemetry.
+10. Deliver the URL + `APP_SECRET` to Stefany.
