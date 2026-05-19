@@ -1,0 +1,301 @@
+import { describe, it, expect } from 'vitest';
+import { checarContencao } from './tier0.ts';
+import { EditalExtractionSchema } from '../domain/schema.ts';
+import type { EditalExtraction } from '../domain/schema.ts';
+import type { OficioGerado } from '../domain/ports.ts';
+
+/**
+ * Testes DETERMINÍSTICOS do Gate Tier 0 (SPEC §11a, contenção §5 #2).
+ *
+ * Property-based / estrutural — SEM LLM, SEM corpus-match. As invariantes
+ * provadas são propriedades do confronto `afirmacaoVigencia` (campo
+ * estruturado do Drafter) × `statusVerificado` (campo do Norma Verifier) ×
+ * `matchNorma` (baseline curado), não "o LLM retornou X"
+ * (@superpowers:testing-anti-patterns).
+ *
+ * A contenção PRIMÁRIA é a montagem determinística no Drafter (Phase 8);
+ * este Tier 0 é backstop estrutural redundante, mas é GATE DURO = 0
+ * violações.
+ *
+ *  (a) análise limpa (ofício coerente / ofício null) → violacoes:[];
+ *  (b) leisCitadas afirmacaoVigencia='revogada' mas statusVerificado da
+ *      leisReferenciadas correspondente é 'contestada' → afirmacao-indevida;
+ *  (c) markdown "a norma perdeu vigência" sem respaldo estruturado →
+ *      lexico-inconsistente;
+ *  (d) 5 paráfrases de revogação sem respaldo → todas pegas pelo backstop;
+ *  (e) baseline-divergente: extração com lei zona-cinzenta mas
+ *      statusVerificado='revogada' → baseline-divergente;
+ *  (f) afirmacaoVigencia='vigente' no ofício → violação.
+ */
+
+/** Extração mínima válida (schema v3) — sem leis, sem nada a questionar. */
+function extracaoBase(
+  over: Partial<EditalExtraction> = {}
+): EditalExtraction {
+  const base = {
+    municipio: 'Cidade Teste',
+    uf: 'SP',
+    ente: { tipo: 'prefeitura', razaoSocial: 'Prefeitura Teste', cnpj: null },
+    modalidade: 'pregao-eletronico',
+    numero: '001/2026',
+    processoAdministrativo: null,
+    dataPublicacao: null,
+    dataSessao: null,
+    uasg: null,
+    regimeJuridico: 'lei-14133',
+    objetoCorpo: 'Objeto de teste',
+    objetoCapa: null,
+    objetoSummary: 'Objeto de teste',
+    tipoObjeto: ['outro'],
+    secretariaDemandante: null,
+    valor: { estimado: 1000, sigiloso: false, procedencia: 'capa' },
+    moeda: 'BRL',
+    criterioJulgamento: 'menor-preco',
+    agrupamento: 'item',
+    modoDisputa: 'aberto',
+    regimeExecucao: null,
+    vigenciaContrato: { meses: 12, prorrogavelAteMeses: null },
+    vigenciaAtaRP: null,
+    validadeProposta: null,
+    habilitacao: {
+      juridica: [],
+      fiscalTrabalhista: [],
+      economicoFinanceira: [],
+      tecnica: [],
+    },
+    exigenciasRegulatorias: {
+      licencaSanitaria: false,
+      alvaraFuncionamento: false,
+      vistoria: false,
+      amostra: false,
+      outros: [],
+    },
+    itensLicitados: [],
+    leisReferenciadas: [],
+    anexos: [],
+    incoerencias: [],
+    trechosAmbiguos: [],
+    plataforma: null,
+    subcontratacaoPermitida: null,
+    intervaloMinimoLances: null,
+    prazoRecursosDiasUteis: null,
+    informacoesViabilidade: null,
+    pontosDeAtencao: [],
+    fonte: { pdfNativo: true, ocr: false, paginas: 1, url: null },
+    ...over,
+  };
+  return EditalExtractionSchema.parse(base);
+}
+
+/** Lei referenciada com status verificado custom. */
+function leiRef(
+  numero: string | null,
+  ano: number | null,
+  statusVerificado: EditalExtraction['leisReferenciadas'][number]['statusVerificado'],
+  over: Partial<EditalExtraction['leisReferenciadas'][number]> = {}
+) {
+  return {
+    descricao: `Norma ${numero ?? '?'}/${ano ?? '?'}`,
+    escopo: 'federal' as const,
+    tipoNorma: 'lei' as const,
+    numero,
+    ano,
+    contextoNoEdital: 'citada no edital',
+    revogada: false,
+    statusVerificado,
+    fonteVerificacao: null,
+    ...over,
+  };
+}
+
+describe('checarContencao — Tier 0 estrutural', () => {
+  it('(a) análise limpa: ofício coerente → violacoes:[]', () => {
+    const extracao = extracaoBase({
+      leisReferenciadas: [leiRef('8666', 1993, 'revogada')],
+    });
+    const oficio: OficioGerado = {
+      tipo: 'esclarecimento',
+      markdown:
+        'A norma nº 8666/1993 encontra-se revogada, conforme verificação.',
+      leisCitadas: [
+        { numero: '8666', ano: 1993, afirmacaoVigencia: 'revogada' },
+      ],
+    };
+    expect(checarContencao({ extracao, oficio }).violacoes).toEqual([]);
+  });
+
+  it('(a2) análise limpa: ofício null → violacoes:[]', () => {
+    const extracao = extracaoBase();
+    expect(
+      checarContencao({ extracao, oficio: null }).violacoes
+    ).toEqual([]);
+  });
+
+  it('(a3) ofício com lei afirmacaoVigencia=nenhuma e markdown neutro → []', () => {
+    const extracao = extracaoBase({
+      leisReferenciadas: [leiRef('14133', 2021, 'vigente')],
+    });
+    const oficio: OficioGerado = {
+      tipo: 'esclarecimento',
+      markdown: 'Solicita-se confirmação sobre a norma aplicável.',
+      leisCitadas: [
+        { numero: '14133', ano: 2021, afirmacaoVigencia: 'nenhuma' },
+      ],
+    };
+    expect(checarContencao({ extracao, oficio }).violacoes).toEqual([]);
+  });
+
+  it('(b) afirmacaoVigencia=revogada mas statusVerificado=contestada → afirmacao-indevida', () => {
+    // Lei municipal fictícia (NÃO está no baseline curado) — isola o
+    // confronto afirmacaoVigencia×statusVerificado sem ruído de baseline.
+    const extracao = extracaoBase({
+      leisReferenciadas: [
+        leiRef('4321', 2015, 'contestada', { escopo: 'municipal' }),
+      ],
+    });
+    // Markdown neutro (sem léxico) p/ isolar a checagem 1 do backstop léxico.
+    const oficio: OficioGerado = {
+      tipo: 'esclarecimento',
+      markdown: 'Solicita-se esclarecimento sobre a norma nº 4321/2015.',
+      leisCitadas: [
+        { numero: '4321', ano: 2015, afirmacaoVigencia: 'revogada' },
+      ],
+    };
+    const { violacoes } = checarContencao({ extracao, oficio });
+    expect(violacoes).toHaveLength(1);
+    expect(violacoes[0].tipo).toBe('afirmacao-indevida');
+  });
+
+  it('(b2) afirmacaoVigencia=revogada sobre lei NÃO identificável (numero null) → afirmacao-indevida', () => {
+    const extracao = extracaoBase({
+      leisReferenciadas: [leiRef(null, 1988, 'nao-verificado')],
+    });
+    const oficio: OficioGerado = {
+      tipo: 'esclarecimento',
+      markdown: 'Norma revogada.',
+      leisCitadas: [{ numero: null, ano: 1988, afirmacaoVigencia: 'revogada' }],
+    };
+    const { violacoes } = checarContencao({ extracao, oficio });
+    expect(violacoes.some((v) => v.tipo === 'afirmacao-indevida')).toBe(true);
+  });
+
+  it('(c) markdown "a norma perdeu vigência" sem respaldo → lexico-inconsistente', () => {
+    const extracao = extracaoBase({
+      leisReferenciadas: [leiRef('1234', 2010, 'vigente')],
+    });
+    const oficio: OficioGerado = {
+      tipo: 'esclarecimento',
+      markdown:
+        'Quanto à norma nº 1234/2010, a norma perdeu vigência segundo entendimento.',
+      leisCitadas: [
+        { numero: '1234', ano: 2010, afirmacaoVigencia: 'nenhuma' },
+      ],
+    };
+    const { violacoes } = checarContencao({ extracao, oficio });
+    expect(violacoes.some((v) => v.tipo === 'lexico-inconsistente')).toBe(
+      true
+    );
+  });
+
+  it('(d) 5 paráfrases de revogação sem respaldo → todas pegas pelo backstop', () => {
+    const parafrases = [
+      'a norma foi revogada pela legislação superveniente',
+      'a norma perdeu vigência em 2023',
+      'a norma não está mais em vigor',
+      'a norma deixou de viger há anos',
+      'a norma está sem vigência e caducou',
+    ];
+    for (const p of parafrases) {
+      const extracao = extracaoBase({
+        leisReferenciadas: [leiRef('999', 2000, 'vigente')],
+      });
+      const oficio: OficioGerado = {
+        tipo: 'esclarecimento',
+        markdown: `Sobre a norma nº 999/2000: ${p}.`,
+        leisCitadas: [
+          { numero: '999', ano: 2000, afirmacaoVigencia: 'nenhuma' },
+        ],
+      };
+      const { violacoes } = checarContencao({ extracao, oficio });
+      expect(
+        violacoes.some((v) => v.tipo === 'lexico-inconsistente'),
+        `paráfrase não pega: "${p}"`
+      ).toBe(true);
+    }
+  });
+
+  it('(e) baseline-divergente: lei zona-cinzenta mas statusVerificado=revogada', () => {
+    // Única entrada zona-cinzenta do baseline curado: IN SEGES nº 05/2017
+    // (numero "5", ano 2017, federal, instrucao-normativa). Esperado pela
+    // categoria: 'contestada'. Marcar 'revogada' = binarização indevida.
+    const extracao = extracaoBase({
+      leisReferenciadas: [
+        leiRef('5', 2017, 'revogada', {
+          escopo: 'federal',
+          tipoNorma: 'instrucao-normativa',
+        }),
+      ],
+    });
+    const { violacoes } = checarContencao({ extracao, oficio: null });
+    expect(
+      violacoes.some((v) => v.tipo === 'baseline-divergente'),
+      JSON.stringify(violacoes)
+    ).toBe(true);
+  });
+
+  it('(e2) zona-cinzenta nunca vira binário no ofício: afirmacaoVigencia=revogada → violação', () => {
+    const extracao = extracaoBase({
+      leisReferenciadas: [
+        leiRef('5', 2017, 'contestada', {
+          escopo: 'federal',
+          tipoNorma: 'instrucao-normativa',
+        }),
+      ],
+    });
+    const oficio: OficioGerado = {
+      tipo: 'esclarecimento',
+      markdown: 'A norma nº 5/2017 encontra-se revogada.',
+      leisCitadas: [
+        { numero: '5', ano: 2017, afirmacaoVigencia: 'revogada' },
+      ],
+    };
+    const { violacoes } = checarContencao({ extracao, oficio });
+    expect(violacoes.length).toBeGreaterThan(0);
+    expect(violacoes.some((v) => v.tipo === 'zona-cinzenta-binarizada')).toBe(
+      true
+    );
+  });
+
+  it('(f) afirmacaoVigencia=vigente no ofício → violação', () => {
+    const extracao = extracaoBase({
+      leisReferenciadas: [leiRef('14133', 2021, 'vigente')],
+    });
+    const oficio: OficioGerado = {
+      tipo: 'esclarecimento',
+      markdown: 'A norma nº 14133/2021 está vigente.',
+      leisCitadas: [
+        { numero: '14133', ano: 2021, afirmacaoVigencia: 'vigente' },
+      ],
+    };
+    const { violacoes } = checarContencao({ extracao, oficio });
+    expect(violacoes.some((v) => v.tipo === 'afirmacao-vigencia-proativa')).toBe(
+      true
+    );
+  });
+
+  it('gold-like: extração sem statusVerificado (nao-verificado) + oficio null → []', () => {
+    // Gold fixtures são extrações cruas (statusVerificado default
+    // nao-verificado). Não deve haver baseline-divergente: nao-verificado
+    // não é divergência, é "ainda não verificado".
+    const extracao = extracaoBase({
+      leisReferenciadas: [
+        leiRef('8666', 1993, 'nao-verificado'),
+        leiRef('14133', 2021, 'nao-verificado'),
+        leiRef('8987', 1995, 'nao-verificado'),
+      ],
+    });
+    expect(
+      checarContencao({ extracao, oficio: null }).violacoes
+    ).toEqual([]);
+  });
+});

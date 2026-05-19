@@ -8,9 +8,11 @@
     "build": "next build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
     "worker": "tsx worker/index.ts",
     "extract": "tsx src/extract.ts",
-    "baserate": "tsx src/baserate.ts"
+    "baserate": "tsx src/baserate.ts",
+    "eval:tier0": "tsx eval/run-tier0.ts"
   },
   "keywords": [],
   "author": "",
