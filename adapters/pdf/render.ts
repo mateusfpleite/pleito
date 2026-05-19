@@ -145,7 +145,7 @@ function fmtMoedaBRL(v: number | null): string {
 }
 
 /**
- * Report HTML in the "Main points" format (SPEC §8): an organized summary
+ * relatório HTML in the "Main points" format (SPEC §8): an organized summary
  * + cited laws with status + pontos de atenção/inconsistencies/ambiguous
  * excerpts highlighted by severity. PURE PROJECTION of the JSON
  * (regenerable). All dynamic data is escaped (anti-XSS: fields come from
