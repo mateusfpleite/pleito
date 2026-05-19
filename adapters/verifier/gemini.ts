@@ -1,32 +1,36 @@
 /**
- * Norma Verifier adapter — 3 camadas (SPEC §5, defense in depth).
+ * Norma Verifier adapter — 3 layers (SPEC §5, defense in depth).
  *
- * Reescrita do I/O do POC (`src/spike-verifier.ts` era `main()`+`process.exit`
- * com `generateText`+regex de extração de JSON). Aqui:
- *  - contrato hexagonal `verificar(e: EditalExtraction)` (NormaVerifierPort);
- *  - precedência `matchNorma` (baseline curado) ANTES de qualquer grounding —
- *    hit = determinístico, custo zero, sem LLM;
- *  - miss → web grounding (Gemini + Google Search) com SAÍDA ESTRUTURADA
- *    (`Output.object` + schema de verdict) em vez do `generateText`+regex do
- *    spike. `generateObject` não aceita `tools` no AI SDK; a forma suportada
- *    de "structured output COM grounding" é `generateText({ tools, output })`
- *    — a intenção do plano (sem regex em prosa, schema validado) é atendida;
- *  - `NormaCache` consultado antes do grounding e gravado depois (chave
- *    estável `numero|ano|escopo`), evitando custo repetido na cauda.
+ * Rewrite of the POC I/O (`src/spike-verifier.ts` was
+ * `main()`+`process.exit` with `generateText`+JSON-extraction regex).
+ * Here:
+ *  - hexagonal contract `verificar(e: EditalExtraction)`
+ *    (NormaVerifierPort);
+ *  - `matchNorma` precedence (curated baseline) BEFORE any grounding —
+ *    hit = deterministic, zero cost, no LLM;
+ *  - miss → web grounding (Gemini + Google Search) with STRUCTURED OUTPUT
+ *    (`Output.object` + verdict schema) instead of the spike's
+ *    `generateText`+regex. `generateObject` does not accept `tools` in
+ *    the AI SDK; the supported form of "structured output WITH grounding"
+ *    is `generateText({ tools, output })` — the plan's intent (no regex
+ *    on prose, validated schema) is met;
+ *  - `NormaCache` queried before grounding and written after (stable key
+ *    `numero|ano|escopo`), avoiding repeated cost on the tail.
  *
- * DECISÃO documentada (plano §5, ponto ambíguo): o Verifier é chamado
- * CONDICIONALMENTE pelo workflow (Gate A, Phase 10). O próprio adapter,
- * porém, processa TODAS as `leisReferenciadas` que chegam: aplica o matcher
- * em todas e só faz grounding nas que deram MISS na baseline (não filtra por
- * `revogada` do extractor — o Gate A já decidiu disparar; refiltrar aqui
- * reintroduziria o falso-negativo que o SPEC §5 fecha). Leis com
- * `numero:null` (ex.: Constituição) não casam baseline nem têm chave de
- * cache/grounding estável → ficam `nao-verificado` (cauda → revisão humana).
+ * Documented DECISION (plan §5, ambiguous point): the Verifier is called
+ * CONDITIONALLY by the workflow (Gate A, Phase 10). The adapter itself,
+ * however, processes ALL incoming `leisReferenciadas`: it applies the
+ * matcher to all and only grounds those that MISSED the baseline (it does
+ * not filter by the extractor's `revogada` — Gate A already decided to
+ * fire; refiltering here would reintroduce the false-negative that SPEC
+ * §5 closes). Laws with `numero:null` (e.g. Constituição) match neither
+ * the baseline nor have a stable cache/grounding key → they stay
+ * `nao-verificado` (tail → human review).
  *
- * Mapeamento categoria do baseline → `statusVerificado` (SPEC §5) vive no
- * mapa CANÔNICO ÚNICO `domain/categoria-status.ts` (importado aqui e pelo
- * Tier 0 — é mapeamento de segurança, não pode ter cópia divergível).
- * `fonteVerificacao` = `entry.fonte` do baseline no hit.
+ * Mapping baseline categoria → `statusVerificado` (SPEC §5) lives in the
+ * SINGLE CANONICAL map `domain/categoria-status.ts` (imported here and by
+ * Tier 0 — it is a safety mapping, it cannot have a divergeable copy).
+ * `fonteVerificacao` = baseline `entry.fonte` on a hit.
  */
 
 import { generateText, Output } from 'ai';
@@ -37,11 +41,11 @@ import type { EditalExtraction } from '../../domain/schema.ts';
 import type { NormaCache, NormaVerifierPort, NormaStatus } from '../../domain/ports.ts';
 
 /**
- * Sink de custo de grounding (SPEC §11b — POR chamada, NÃO só agregado:
- * bomba de custo silenciosa se só agregado). Injetado pelo caller (worker)
- * que conhece o id de correlação; opcional (testes/baseline não passam).
- * O Verifier chama UMA vez por chamada de grounding REAL (após o LLM,
- * antes do cache) — não em hit de baseline nem cache.
+ * Grounding cost sink (SPEC §11b — PER call, NOT only aggregated: a
+ * silent cost bomb if only aggregated). Injected by the caller (worker)
+ * that knows the correlation id; optional (tests/baseline do not pass
+ * it). The Verifier calls it ONCE per REAL grounding call (after the LLM,
+ * before the cache) — not on a baseline hit nor a cache hit.
  */
 export type GroundingCustoSink = (uso: {
   lei: string;
@@ -56,23 +60,23 @@ import { getConfig } from '../../infrastructure/config.ts';
 
 type Lei = EditalExtraction['leisReferenciadas'][number];
 
-/** Verdict do grounding (saída estruturada — substitui o regex do spike). */
+/** Grounding verdict (structured output — replaces the spike's regex). */
 const VerdictSchema = z.object({
   status: z.enum(['vigente', 'revogada', 'contestada', 'inexistente']),
   fonte: z.string(),
 });
 
 /**
- * Categoria curada do baseline → status verificado determinístico. Delega ao
- * mapa CANÔNICO ÚNICO em `domain/categoria-status.ts` (mapeamento de
- * segurança — eliminado o duplicado divergível). Categoria desconhecida →
- * `nao-verificado` (não inventar veredito; fallback do Verifier).
+ * Curated baseline categoria → deterministic verified status. Delegates
+ * to the SINGLE CANONICAL map in `domain/categoria-status.ts` (safety
+ * mapping — the divergeable duplicate was eliminated). Unknown categoria
+ * → `nao-verificado` (do not invent a verdict; Verifier fallback).
  */
 function categoriaParaStatus(categoria: string): NormaStatus {
   return categoriaParaStatusCanonico(categoria) ?? 'nao-verificado';
 }
 
-/** Chave de cache estável (independe de espaçamento/escopo do extractor). */
+/** Stable cache key (independent of the extractor's spacing/scope). */
 function chaveCache(lei: Lei): string {
   return `${lei.numero}|${lei.ano}|${lei.escopo}`;
 }
@@ -81,16 +85,17 @@ export class GeminiNormaVerifier implements NormaVerifierPort {
   private readonly model: LanguageModel;
 
   /**
-   * @param cache NormaCache injetável (fake in-memory nos testes; adapter
-   * Supabase real na Phase 11).
-   * @param model LanguageModel injetável (testes passam fake; produção usa
-   * `google(config.EXTRACTOR_MODEL)` resolvido preguiçosamente — não exige
-   * env/API key nos testes que injetam, e nos casos baseline nem é tocado).
+   * @param cache injectable NormaCache (in-memory fake in tests; real
+   * Supabase adapter in Phase 11).
+   * @param model injectable LanguageModel (tests pass a fake; production
+   * uses `google(config.EXTRACTOR_MODEL)` resolved lazily — does not
+   * require an env/API key in tests that inject, and on baseline cases it
+   * is not even touched).
    */
   /**
-   * @param onGroundingCusto sink OPCIONAL de custo por chamada de
-   * grounding (§11b). O worker injeta um que grava telemetria
-   * (não-bloqueante); testes injetam um spy; ausente = no-op.
+   * @param onGroundingCusto OPTIONAL per-grounding-call cost sink (§11b).
+   * The worker injects one that writes telemetry (non-blocking); tests
+   * inject a spy; absent = no-op.
    */
   constructor(
     private readonly cache: NormaCache,
@@ -109,7 +114,7 @@ export class GeminiNormaVerifier implements NormaVerifierPort {
   }
 
   private async verificarLei(lei: Lei): Promise<Lei> {
-    // Camada 1 — baseline (precedência, custo zero, SEM grounding).
+    // Layer 1 — baseline (precedence, zero cost, NO grounding).
     const hit = matchNorma({
       numero: lei.numero,
       ano: lei.ano,
@@ -125,13 +130,13 @@ export class GeminiNormaVerifier implements NormaVerifierPort {
       };
     }
 
-    // Leis sem número (ex.: Constituição) não têm chave estável p/ cache
-    // nem alvo de grounding — ficam não-verificadas (cauda → revisão).
+    // Laws without a number (e.g. Constituição) have no stable cache key
+    // nor grounding target — they stay unverified (tail → review).
     if (lei.numero == null || lei.ano == null) {
       return { ...lei, statusVerificado: 'nao-verificado', fonteVerificacao: null };
     }
 
-    // Camada 2 — cache antes do grounding (custo zero em reuso).
+    // Layer 2 — cache before grounding (zero cost on reuse).
     const chave = chaveCache(lei);
     const cached = await this.cache.obter(chave);
     if (cached) {
@@ -142,7 +147,7 @@ export class GeminiNormaVerifier implements NormaVerifierPort {
       };
     }
 
-    // Camada 2 (cont.) — web grounding só na cauda fora da baseline.
+    // Layer 2 (cont.) — web grounding only on the tail outside the baseline.
     const verdict = await this.grounding(lei);
     await this.cache.gravar({
       chave,
@@ -179,16 +184,18 @@ Use "fonte" = URL autoritativa que sustenta o veredito.`;
     const { experimental_output, usage } = await generateText({
       model: this.model,
       tools: { google_search: google.tools.googleSearch({}) },
-      // Saída ESTRUTURADA (substitui generateText+regex do spike). No AI SDK
-      // structured output coexiste com grounding via `output` + `tools`.
+      // STRUCTURED output (replaces the spike's generateText+regex). In
+      // the AI SDK structured output coexists with grounding via `output`
+      // + `tools`.
       experimental_output: Output.object({ schema: VerdictSchema }),
       prompt,
     });
 
-    // SPEC §11b: custo de grounding logado POR CHAMADA (não só agregado —
-    // a cauda municipal real aciona grounding pago; bomba silenciosa se
-    // só agregado). Emitido AQUI, dentro do ramo que realmente chamou o
-    // LLM (nunca em hit de baseline/cache). Sink é não-bloqueante.
+    // SPEC §11b: grounding cost logged PER CALL (not only aggregated —
+    // the real municipal tail triggers paid grounding; silent bomb if
+    // only aggregated). Emitted HERE, inside the branch that actually
+    // called the LLM (never on a baseline/cache hit). The sink is
+    // non-blocking.
     this.onGroundingCusto?.({
       lei: `${lei.numero}/${lei.ano}`,
       inputTokens: usage?.inputTokens,

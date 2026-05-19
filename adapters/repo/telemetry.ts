@@ -1,10 +1,10 @@
 /**
- * PrismaTelemetry — `TelemetryPort` (domain/ports.ts) sobre Prisma.
+ * PrismaTelemetry — `TelemetryPort` (domain/ports.ts) over Prisma.
  *
- * Eventos implícitos + custo por chamada de grounding logado
- * individualmente (SPEC §11b). `analysisId` é opcional no schema (eventos
- * pré-análise existem); a porta sempre recebe um id, mas mantemos a
- * coluna nullable para flexibilidade futura. `payload` vai como `Json`.
+ * Implicit events + per-grounding-call cost logged individually (SPEC
+ * §11b). `analysisId` is optional in the schema (pre-analysis events
+ * exist); the port always receives an id, but we keep the column nullable
+ * for future flexibility. `payload` goes as `Json`.
  */
 import type {
   TelemetryPort,
@@ -31,9 +31,9 @@ export class PrismaTelemetry implements TelemetryPort {
   }
 
   /**
-   * Eventos das análises dadas (superfície de revisão /admin, §11b).
-   * Read-only, fora do caminho do pipeline. Devolve só os com
-   * `analysisId` ∈ `ids` (não-nulo), mais novo primeiro.
+   * Events of the given analyses (/admin review surface, §11b).
+   * Read-only, off the pipeline path. Returns only those with
+   * `analysisId` ∈ `ids` (non-null), newest first.
    */
   async listarPorAnalises(
     ids: string[]

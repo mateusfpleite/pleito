@@ -1,11 +1,11 @@
 /**
- * PrismaNormaCache — `NormaCache` (domain/ports.ts) sobre Prisma.
+ * PrismaNormaCache — `NormaCache` (domain/ports.ts) over Prisma.
  *
- * `chave` é `@unique`/`@id` — `gravar` faz upsert (reuso entre análises;
- * SPEC §9 `norma_cache` reusável). `verificadoEm` é carimbado pelo banco
- * (`@default(now())`) no insert e renovado a cada upsert. `fonte` no
- * domínio é `string` (não nullable); a coluna é nullable para tolerar
- * legados — mapeia `null` → `''`.
+ * `chave` is `@unique`/`@id` — `gravar` does an upsert (reuse across
+ * analyses; SPEC §9 reusable `norma_cache`). `verificadoEm` is stamped by
+ * the database (`@default(now())`) on insert and renewed on each upsert.
+ * `fonte` in the domain is `string` (not nullable); the column is
+ * nullable to tolerate legacy rows — maps `null` → `''`.
  */
 import type {
   NormaCache,

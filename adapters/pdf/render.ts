@@ -1,41 +1,43 @@
 /**
- * Geração de PDF on-demand (SPEC §8/§9) — relatório da análise e ofício.
+ * On-demand PDF generation (SPEC §8/§9) — analysis relatório and ofício.
  *
- * PRINCÍPIO §9 (crítico): o PDF é uma PROJEÇÃO DERIVADA — nunca
- * persistido. O relatório é projeção do JSON da extração (pode regenerar
- * sempre). O ofício exportado usa o TEXTO EDITADO pela Stefany,
- * persistido em `Analysis.oficioExportado` no ato do export — este módulo
- * recebe esse texto já persistido e o renderiza; NÃO regenera do JSON.
+ * §9 PRINCIPLE (critical): the PDF is a DERIVED PROJECTION — never
+ * persisted. The relatório is a projection of the extraction JSON (can
+ * always regenerate). The exported ofício uses the TEXT EDITED by Stefany,
+ * persisted in `Analysis.oficioExportado` at export time — this module
+ * receives that already-persisted text and renders it; it does NOT
+ * regenerate from the JSON.
  *
- * ENGINE INJETÁVEL: a render real roda via chromium headless do worker
- * container (Dockerfile instala `chromium` — path padrão do pacote Debian
- * em `node:20-slim`: `/usr/bin/chromium`). chromium NÃO está disponível
- * no ambiente de DEV (só no container) — é RESÍDUO de runtime. Por isso a
- * lógica (montagem do HTML, escape anti-XSS, contrato do Buffer) é testada
- * com um `PdfEngine` FAKE; a render real (chromium) valida em deploy/E2E,
- * nunca em unit (@superpowers:testing-anti-patterns).
+ * INJECTABLE ENGINE: the real render runs via headless chromium in the
+ * worker container (the Dockerfile installs `chromium` — default path of
+ * the Debian package on `node:20-slim`: `/usr/bin/chromium`). chromium is
+ * NOT available in the DEV environment (only in the container) — it is a
+ * runtime RESIDUE. Hence the logic (HTML assembly, anti-XSS escaping,
+ * Buffer contract) is tested with a FAKE `PdfEngine`; the real render
+ * (chromium) is validated in deploy/E2E, never in unit
+ * (@superpowers:testing-anti-patterns).
  */
 import type { EditalExtraction } from '../../domain/schema.ts';
 
 /**
- * Port do motor de PDF: HTML → bytes de PDF. Em produção,
- * `chromiumPdfEngine` (playwright-core apontando pro chromium do
- * container). Em teste, um fake determinístico que devolve `%PDF...`.
+ * PDF engine port: HTML → PDF bytes. In production,
+ * `chromiumPdfEngine` (playwright-core pointing at the container's
+ * chromium). In tests, a deterministic fake that returns `%PDF...`.
  */
 export interface PdfEngine {
-  /** Renderiza um documento HTML completo em bytes de PDF. */
+  /** Renders a complete HTML document into PDF bytes. */
   htmlParaPdf(html: string): Promise<Buffer>;
 }
 
 /* ------------------------------------------------------------------ */
-/* Escape anti-XSS (markdown→HTML / dados→HTML)                         */
+/* Anti-XSS escaping (markdown→HTML / data→HTML)                       */
 /* ------------------------------------------------------------------ */
 
 /**
- * Escapa TODO conteúdo dinâmico antes de interpolar no HTML. O ofício
- * vem de texto livre editado pela Stefany e o relatório de campos
- * extraídos de PDFs de terceiros: nada disso pode injetar markup.
- * `&` primeiro (senão re-escaparia as próprias entidades).
+ * Escapes ALL dynamic content before interpolating into HTML. The ofício
+ * comes from free text edited by Stefany and the relatório from fields
+ * extracted from third-party PDFs: none of it may inject markup. `&`
+ * first (otherwise it would re-escape its own entities).
  */
 export function escaparHtml(s: string): string {
   return s
@@ -47,13 +49,12 @@ export function escaparHtml(s: string): string {
 }
 
 /**
- * Conversão MÍNIMA e SEGURA de markdown→HTML para o ofício. Não usa lib
- * pesada: o ofício do Drafter é prosa simples (títulos `#`, parágrafos,
- * listas `-`). REGRA DE SEGURANÇA: o texto é integralmente ESCAPADO
- * ANTES de qualquer reconhecimento de estrutura — markup do usuário
- * (`<script>`, `<img onerror>`, etc.) nunca atravessa para o HTML final.
- * Só geramos as tags nós mesmos, a partir de prefixos de linha já
- * neutralizados.
+ * MINIMAL and SAFE markdown→HTML conversion for the ofício. Does not use
+ * a heavy lib: the Drafter's ofício is simple prose (`#` headings,
+ * paragraphs, `-` lists). SECURITY RULE: the text is fully ESCAPED
+ * BEFORE any structure recognition — user markup (`<script>`,
+ * `<img onerror>`, etc.) never reaches the final HTML. We only generate
+ * the tags ourselves, from already-neutralized line prefixes.
  */
 export function markdownParaHtmlSeguro(md: string): string {
   const linhas = md.replace(/\r\n/g, '\n').split('\n');
@@ -69,8 +70,8 @@ export function markdownParaHtmlSeguro(md: string): string {
 
   for (const linhaCrua of linhas) {
     const linha = linhaCrua.trimEnd();
-    // ESCAPA SEMPRE, antes de olhar estrutura: nenhum markup do usuário
-    // sobrevive. O reconhecimento abaixo opera sobre texto já seguro.
+    // ALWAYS escape, before looking at structure: no user markup
+    // survives. The recognition below operates on already-safe text.
     const tituloMatch = /^(#{1,6})\s+(.*)$/.exec(linha);
     if (tituloMatch) {
       fecharLista();
@@ -99,7 +100,7 @@ export function markdownParaHtmlSeguro(md: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* Templates HTML                                                      */
+/* HTML templates                                                      */
 /* ------------------------------------------------------------------ */
 
 const ESTILO_BASE = `
@@ -145,9 +146,9 @@ function fmtMoedaBRL(v: number | null): string {
 }
 
 /**
- * relatório HTML in the "Main points" format (SPEC §8): an organized summary
- * + cited laws with status + pontos de atenção/inconsistencies/ambiguous
- * excerpts highlighted by severity. PURE PROJECTION of the JSON
+ * relatório HTML in the "Main points" format (SPEC §8): an organized
+ * summary + cited laws with status + attention points/inconsistencies/
+ * ambiguous excerpts highlighted by severity. PURE PROJECTION of the JSON
  * (regenerable). All dynamic data is escaped (anti-XSS: fields come from
  * third-party PDFs).
  */
@@ -274,9 +275,9 @@ export function montarHtmlRelatorio(e: EditalExtraction): string {
 }
 
 /**
- * HTML do ofício. Recebe o TEXTO (markdown) já EXPORTADO/PERSISTIDO —
- * jamais o JSON. Converte o markdown→HTML de forma mínima e SEGURA
- * (escape anti-XSS antes de qualquer estrutura).
+ * Ofício HTML. Receives the TEXT (markdown) already EXPORTED/PERSISTED —
+ * never the JSON. Converts the markdown→HTML in a MINIMAL and SAFE way
+ * (anti-XSS escaping before any structure).
  */
 export function montarHtmlOficio(textoOficioMarkdown: string): string {
   return `<!doctype html><html lang="pt-BR"><head>
@@ -286,10 +287,10 @@ export function montarHtmlOficio(textoOficioMarkdown: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* Funções de render (puras quanto à lógica; engine injetado)          */
+/* Render functions (pure as to logic; engine injected)                */
 /* ------------------------------------------------------------------ */
 
-/** Relatório: projeção do JSON da extração → PDF. Regenerável sempre. */
+/** Relatório: projection of the extraction JSON → PDF. Always regenerable. */
 export function renderRelatorioPdf(
   extracao: EditalExtraction,
   engine: PdfEngine
@@ -298,9 +299,9 @@ export function renderRelatorioPdf(
 }
 
 /**
- * Ofício: renderiza o PDF A PARTIR do texto editado JÁ PERSISTIDO (§9).
- * Quem persiste é o handler de export (via AnalysisRepo) ANTES de chamar
- * aqui — esta função NÃO conhece o JSON do ofício original.
+ * Ofício: renders the PDF FROM the edited text ALREADY PERSISTED (§9).
+ * The export handler is what persists it (via AnalysisRepo) BEFORE
+ * calling here — this function does NOT know the original ofício JSON.
  */
 export function renderOficioPdf(
   textoOficioMarkdown: string,
@@ -310,19 +311,19 @@ export function renderOficioPdf(
 }
 
 /**
- * Engine de produção: chromium headless do worker container via
- * `playwright-core`. RESÍDUO de runtime — chromium só existe no
- * container (Dockerfile: `apt-get install -y chromium`; path padrão do
- * pacote Debian em `node:20-slim`: `/usr/bin/chromium`, sobrescrevível
- * por `CHROMIUM_PATH`). `playwright-core` é dependência OPCIONAL resolvida
- * preguiçosamente: nunca é importado fora do container (e os testes usam
- * engine fake), então sua ausência no DEV não quebra nada.
+ * Production engine: headless chromium from the worker container via
+ * `playwright-core`. Runtime RESIDUE — chromium only exists in the
+ * container (Dockerfile: `apt-get install -y chromium`; default path of
+ * the Debian package on `node:20-slim`: `/usr/bin/chromium`, overridable
+ * via `CHROMIUM_PATH`). `playwright-core` is an OPTIONAL dependency
+ * resolved lazily: it is never imported outside the container (and tests
+ * use the fake engine), so its absence in DEV breaks nothing.
  */
 /**
- * Superfície MÍNIMA do playwright-core que usamos. Tipada localmente de
- * propósito: `playwright-core` é `optionalDependencies` (só instalada no
- * container) — não amarrar o typecheck do DEV a um pacote ausente. O
- * import é dinâmico e nunca executa fora do worker (RESÍDUO de runtime).
+ * MINIMAL surface of playwright-core that we use. Typed locally on
+ * purpose: `playwright-core` is `optionalDependencies` (only installed in
+ * the container) — do not tie the DEV typecheck to an absent package. The
+ * import is dynamic and never runs outside the worker (runtime RESIDUE).
  */
 type PlaywrightChromiumLike = {
   chromium: {
@@ -355,9 +356,9 @@ export function chromiumPdfEngine(): PdfEngine {
   const executablePath = process.env.CHROMIUM_PATH ?? '/usr/bin/chromium';
   return {
     async htmlParaPdf(html: string): Promise<Buffer> {
-      // Import dinâmico: só resolvido no container (RESÍDUO documentado).
-      // `import(variável)` evita a resolução estática do TS p/ um pacote
-      // que não está no DEV (optionalDependencies).
+      // Dynamic import: only resolved in the container (documented
+      // RESIDUE). `import(variable)` avoids TS static resolution for a
+      // package not present in DEV (optionalDependencies).
       const mod = 'playwright-core';
       const { chromium } = (await import(
         /* @vite-ignore */ mod

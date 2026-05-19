@@ -1,17 +1,18 @@
 /**
  * Extractor adapter — Gemini Flash via Vercel AI SDK (`generateObject`).
  *
- * Reescrita do I/O do POC (`src/extract.ts` era `main()` + `process.exit`,
- * não um módulo). A LÓGICA validada (prompt/instruções) é reaproveitada via
- * `./prompt.ts`; aqui só o boundary hexagonal.
+ * Rewrite of the POC I/O (`src/extract.ts` was `main()` + `process.exit`,
+ * not a module). The validated LOGIC (prompt/instructions) is reused via
+ * `./prompt.ts`; here only the hexagonal boundary.
  *
- * CARRY-FORWARD CRÍTICO (Phase 1): o schema passado ao `generateObject` é
- * `ExtractorOutputSchema` — `EditalExtractionSchema.omit({ pontosDeAtencao
- * })`. `pontosDeAtencao` é do Risk Analyst (pipeline step 5, SPEC §4); usar
- * o schema cheio forçaria o Gemini a fabricá-lo. O `application/` recompõe
- * o `EditalExtraction` completo com `pontosDeAtencao: []` (placeholder
- * explícito) antes do Risk Analyst preenchê-lo. O `ExtractorPort` retorna
- * `ExtractorOutput` (sem pontosDeAtencao), não o `EditalExtraction` ainda.
+ * CRITICAL CARRY-FORWARD (Phase 1): the schema passed to `generateObject`
+ * is `ExtractorOutputSchema` — `EditalExtractionSchema.omit({
+ * pontosDeAtencao })`. `pontosDeAtencao` belongs to the Risk Analyst
+ * (pipeline step 5, SPEC §4); using the full schema would force Gemini to
+ * fabricate it. `application/` recomposes the complete `EditalExtraction`
+ * with `pontosDeAtencao: []` (explicit placeholder) before the Risk Analyst
+ * fills it. The `ExtractorPort` returns `ExtractorOutput` (without
+ * pontosDeAtencao), not the `EditalExtraction` yet.
  */
 
 import { generateObject } from 'ai';
@@ -27,9 +28,9 @@ export class GeminiExtractor implements ExtractorPort {
   private readonly model: LanguageModel;
 
   /**
-   * @param model LanguageModel injetável (testabilidade — testes passam um
-   * fake; produção usa `google(config.EXTRACTOR_MODEL)`). Default resolvido
-   * preguiçosamente para não exigir env/API key nos testes que injetam.
+   * @param model injectable LanguageModel (testability — tests pass a
+   * fake; production uses `google(config.EXTRACTOR_MODEL)`). Default
+   * resolved lazily so tests that inject do not require an env/API key.
    */
   constructor(model?: LanguageModel) {
     this.model = model ?? google(getConfig().EXTRACTOR_MODEL);
@@ -45,9 +46,10 @@ export class GeminiExtractor implements ExtractorPort {
       system: SYSTEM_PROMPT,
       prompt: montarPrompt(texto),
     });
-    // `generateObject` já valida contra ExtractorOutputSchema e lança se o
-    // modelo devolver objeto fora do schema (teste (c) cobre isso). O parse
-    // explícito reafirma o contrato e aplica defaults (statusVerificado).
+    // `generateObject` already validates against ExtractorOutputSchema and
+    // throws if the model returns an object outside the schema (test (c)
+    // covers this). The explicit parse reasserts the contract and applies
+    // defaults (statusVerificado).
     return ExtractorOutputSchema.parse(object);
   }
 }

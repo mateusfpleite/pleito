@@ -1,30 +1,32 @@
 /**
  * Risk Analyst adapter — Gemini Flash via Vercel AI SDK (`generateObject`).
  *
- * Pipeline step 5 (SPEC §4): recebe um `EditalExtraction` que JÁ passou pelo
- * Norma Verifier (`leisReferenciadas[].statusVerificado` preenchido) e cujo
- * `pontosDeAtencao` chega `[]` (placeholder da recomposição da Phase 10).
- * Produz e RETORNA o mesmo `EditalExtraction` com `pontosDeAtencao`
- * preenchido — todos os demais campos intactos (não mutados).
+ * Pipeline step 5 (SPEC §4): receives an `EditalExtraction` that has
+ * ALREADY passed through the Norma Verifier
+ * (`leisReferenciadas[].statusVerificado` filled) and whose
+ * `pontosDeAtencao` arrives `[]` (placeholder from the Phase 10
+ * recomposition). Produces and RETURNS the same `EditalExtraction` with
+ * `pontosDeAtencao` filled — all other fields intact (not mutated).
  *
- * Consumo de status VERIFICADO: o adapter envia a extração inteira ao modelo
- * (inclui `statusVerificado`); a regra 5 do SYSTEM prompt instrui o modelo a
- * raciocinar sobre risco jurídico a partir desse campo, NUNCA da flag crua
- * `revogada` do extractor (que é palpite — SPEC §5).
+ * Consuming VERIFIED status: the adapter sends the whole extraction to the
+ * model (includes `statusVerificado`); rule 5 of the SYSTEM prompt
+ * instructs the model to reason about legal risk from that field, NEVER
+ * from the extractor's raw `revogada` flag (which is a guess — SPEC §5).
  *
- * Schema do `generateObject`: SÓ o que o Risk Analyst produz — o array
- * `pontosDeAtencao` (recortado de `EditalExtractionSchema.shape` para herdar
- * exatamente o contrato do domínio: categoria/severidade enums,
- * recomendaManifestacao boolean). Forçar o schema cheio faria o modelo
- * reescrever campos que não são seu papel. A recomposição no retorno reanexa
- * o array à extração de entrada e revalida o todo contra
- * `EditalExtractionSchema` (defense in depth — teste (a)/(b)).
+ * `generateObject` schema: ONLY what the Risk Analyst produces — the
+ * `pontosDeAtencao` array (sliced from `EditalExtractionSchema.shape` to
+ * inherit exactly the domain contract: categoria/severidade enums,
+ * recomendaManifestacao boolean). Forcing the full schema would make the
+ * model rewrite fields outside its role. The recomposition on return
+ * reattaches the array to the input extraction and revalidates the whole
+ * against `EditalExtractionSchema` (defense in depth — test (a)/(b)).
  *
- * Coerência `recomendaManifestacao` × severidade: o plano deixa explícito
- * (regra 4 do prompt) e o adapter NÃO pós-processa silenciosamente — confia
- * no modelo guiado pelos few-shot reais da Stefany e apenas REVALIDA o
- * formato. Os testes (c)/(d) provam que severidade/categoria do modelo são
- * preservadas e que campos não-pontosDeAtencao não são mutados.
+ * `recomendaManifestacao` × severidade coherence: the plan makes it
+ * explicit (prompt rule 4) and the adapter does NOT silently post-process
+ * — it trusts the model guided by Stefany's real few-shots and only
+ * REVALIDATES the format. Tests (c)/(d) prove the model's
+ * severidade/categoria are preserved and that non-pontosDeAtencao fields
+ * are not mutated.
  */
 
 import { generateObject } from 'ai';
@@ -38,10 +40,10 @@ import { getConfig } from '../../infrastructure/config.ts';
 import { montarPrompt, SYSTEM_PROMPT } from './prompt.ts';
 
 /**
- * Schema SÓ do que o Risk Analyst produz, derivado do `shape` do domínio
- * (single source of truth — `categoria`/`severidade` enums e
- * `recomendaManifestacao` boolean vêm de `EditalExtractionSchema`). Embrulhado
- * num objeto porque `generateObject` exige objeto no topo.
+ * Schema for ONLY what the Risk Analyst produces, derived from the domain
+ * `shape` (single source of truth — `categoria`/`severidade` enums and
+ * `recomendaManifestacao` boolean come from `EditalExtractionSchema`).
+ * Wrapped in an object because `generateObject` requires a top-level object.
  */
 const PontosDeAtencaoSchema = z.object({
   pontosDeAtencao: EditalExtractionSchema.shape.pontosDeAtencao,
@@ -51,9 +53,9 @@ export class GeminiRiskAnalyst implements RiskAnalystPort {
   private readonly model: LanguageModel;
 
   /**
-   * @param model LanguageModel injetável (testabilidade — testes passam um
-   * fake; produção usa `google(config.EXTRACTOR_MODEL)`). Default resolvido
-   * preguiçosamente para não exigir env/API key nos testes que injetam.
+   * @param model injectable LanguageModel (testability — tests pass a
+   * fake; production uses `google(config.EXTRACTOR_MODEL)`). Default
+   * resolved lazily so tests that inject do not require an env/API key.
    */
   constructor(model?: LanguageModel) {
     this.model = model ?? google(getConfig().EXTRACTOR_MODEL);
@@ -67,10 +69,11 @@ export class GeminiRiskAnalyst implements RiskAnalystPort {
       prompt: montarPrompt(e),
     });
 
-    // `generateObject` já valida o array contra PontosDeAtencaoSchema (teste
-    // (b): categoria fora do enum → throw). Recompõe a extração de entrada
-    // com o array preenchido — TODOS os demais campos preservados, sem mutar
-    // o objeto de entrada — e revalida o todo (defense in depth).
+    // `generateObject` already validates the array against
+    // PontosDeAtencaoSchema (test (b): categoria outside the enum →
+    // throw). Recompose the input extraction with the filled array — ALL
+    // other fields preserved, without mutating the input object — and
+    // revalidate the whole (defense in depth).
     return EditalExtractionSchema.parse({
       ...e,
       pontosDeAtencao: object.pontosDeAtencao,

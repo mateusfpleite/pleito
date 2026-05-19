@@ -1,11 +1,11 @@
 /**
- * PrismaAnalysisRepo — `AnalysisRepo` (domain/ports.ts) sobre Prisma.
+ * PrismaAnalysisRepo — `AnalysisRepo` (domain/ports.ts) over Prisma.
  *
- * BOUNDARY: importa o client só via `./client.ts` (módulo irmão). O JSON
- * da extração e o ofício gerado são persistidos como `Json` (SPEC §9 —
- * persistir conteúdo, nunca derivado). `oficioGerado` é nullable; o
- * texto exportado e seu carimbo de tempo são gravados na exportação
- * (Phase 14) — aqui ficam `null` na criação.
+ * BOUNDARY: imports the client only via `./client.ts` (sibling module).
+ * The extraction JSON and the generated ofício are persisted as `Json`
+ * (SPEC §9 — persist content, never derived). `oficioGerado` is nullable;
+ * the exported text and its timestamp are written at export time (Phase
+ * 14) — here they stay `null` on creation.
  */
 import type {
   AnalysisRepo,
@@ -16,7 +16,7 @@ import type { EditalExtraction } from '../../domain/schema.ts';
 import type { Prisma } from '../../prisma/generated/client.ts';
 import type { PrismaClientLike } from './client.ts';
 
-/** Linha de `analyses` relevante ao mapeamento (subconjunto tipado). */
+/** `analyses` row relevant to the mapping (typed subset). */
 type AnalysisRow = {
   id: string;
   jobId: string;
@@ -73,10 +73,10 @@ export class PrismaAnalysisRepo implements AnalysisRepo {
   async buscarPorJobId(
     jobId: string
   ): Promise<AnaliseRegistro | null> {
-    // M-2: a invariante de produto é 1:1 (1 análise por job), mas
-    // findFirst SEM ordenação é não-determinístico se a invariante for
-    // violada (reprocesso/bug → 2+ linhas). orderBy createdAt desc
-    // torna o resultado robusto: sempre a análise mais recente.
+    // M-2: the product invariant is 1:1 (1 analysis per job), but
+    // findFirst WITHOUT ordering is non-deterministic if the invariant is
+    // violated (reprocessing/bug → 2+ rows). orderBy createdAt desc makes
+    // the result robust: always the most recent analysis.
     const row = (await this.prisma.analysis.findFirst({
       where: { jobId },
       orderBy: { createdAt: 'desc' },
@@ -85,15 +85,15 @@ export class PrismaAnalysisRepo implements AnalysisRepo {
   }
 
   /**
-   * Phase 14 / §9: o EXPORT do ofício persiste o texto editado pela
-   * Stefany ANTES de renderizar o PDF. Grava `oficioExportado` +
-   * `oficioExportadoEm=now()` e devolve o registro atualizado. O caller
-   * (handler de export) renderiza o PDF a partir deste texto persistido —
-   * nunca regenera do JSON/markdown original.
+   * Phase 14 / §9: the ofício EXPORT persists the text edited by Stefany
+   * BEFORE rendering the PDF. Writes `oficioExportado` +
+   * `oficioExportadoEm=now()` and returns the updated record. The caller
+   * (export handler) renders the PDF from this persisted text — never
+   * regenerates from the original JSON/markdown.
    */
   /**
-   * Superfície de revisão interna (`/admin`, SPEC §11b). Lista as
-   * análises mais recentes (desc por `createdAt`). Read-only.
+   * Internal review surface (`/admin`, SPEC §11b). Lists the most recent
+   * analyses (desc by `createdAt`). Read-only.
    */
   async listarRecentes(limite = 50): Promise<AnaliseRegistro[]> {
     const rows = (await this.prisma.analysis.findMany({

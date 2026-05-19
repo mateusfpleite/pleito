@@ -13,20 +13,20 @@ import type {
 
 const execFileAsync = promisify(execFile);
 
-/** Mínimo de caracteres alfanuméricos p/ considerar a extração utilizável. */
+/** Minimum alphanumeric characters to consider the extraction usable. */
 const MIN_ALFANUM = 500;
 
 /**
- * CARRY-FORWARD Phase 3+4 — cap de tamanho DESCOMPRIMIDO (anti zip-bomb).
- * Editais reais ficam muito abaixo de 50 MB (o maior do corpus < 5 MB).
- * Conteúdo descomprimido acima disso é rejeitado ANTES de ser
- * materializado — o worker transforma a rejeição em Job `erro` (mensagem
- * clara), nunca OOM. Aplica-se a: texto/pdf cru, gzip inflado, e cada
- * entry de zip (pelo `uncompressedSize` declarado no header).
+ * CARRY-FORWARD Phase 3+4 — DECOMPRESSED size cap (anti zip-bomb). Real
+ * editais are far below 50 MB (the largest in the corpus < 5 MB).
+ * Decompressed content above this is rejected BEFORE being materialized —
+ * the worker turns the rejection into a Job `erro` (clear message), never
+ * OOM. Applies to: raw text/pdf, inflated gzip, and each zip entry (by the
+ * `uncompressedSize` declared in the header).
  */
 export const MAX_DESCOMPRIMIDO_BYTES = 50 * 1024 * 1024;
 
-/** Erro de boundary: entrada excede o cap de descompressão (zip-bomb). */
+/** Boundary error: input exceeds the decompression cap (zip-bomb). */
 export class EntradaGrandeDemaisError extends Error {
   constructor(detalhe: string) {
     super(
@@ -39,7 +39,7 @@ export class EntradaGrandeDemaisError extends Error {
 
 type Formato = 'zip' | 'pdf' | 'gzip' | 'texto';
 
-/** Detecção por magic bytes (sem confiar na extensão do nome). */
+/** Detection by magic bytes (without trusting the filename extension). */
 function detectarFormato(bytes: Uint8Array): Formato {
   if (bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4b) {
     return 'zip'; // "PK"
@@ -65,9 +65,9 @@ function contarAlfanum(s: string): number {
 }
 
 /**
- * Header/rodapé que se repete em toda página polui o texto e desperdiça
- * tokens. `pdftotext -layout` separa páginas com \f (form feed): linhas
- * idênticas presentes na maioria das páginas são removidas.
+ * A header/footer repeated on every page pollutes the text and wastes
+ * tokens. `pdftotext -layout` separates pages with \f (form feed):
+ * identical lines present on most pages are removed.
  */
 function normalizarHeaderRodape(texto: string): string {
   const paginas = texto.split('\f');
@@ -101,7 +101,7 @@ function normalizarHeaderRodape(texto: string): string {
 }
 
 function contarPaginas(texto: string): number {
-  // \f delimita páginas no -layout do pdftotext.
+  // \f delimits pages in pdftotext's -layout output.
   const ff = texto.split('\f').length;
   return Math.max(1, ff);
 }
@@ -112,7 +112,7 @@ async function extrairPdf(bytes: Uint8Array): Promise<string> {
   const txtPath = join(dir, 'out.txt');
   try {
     await writeFile(pdfPath, Buffer.from(bytes));
-    // -layout preserva colunas e mantém \f entre páginas.
+    // -layout preserves columns and keeps \f between pages.
     await execFileAsync('pdftotext', ['-layout', pdfPath, txtPath]);
     return await readFile(txtPath, 'utf-8');
   } catch {
@@ -122,7 +122,7 @@ async function extrairPdf(bytes: Uint8Array): Promise<string> {
   }
 }
 
-/** gunzip com teto de saída — aborta a inflação antes de OOM (zip-bomb). */
+/** gunzip with an output ceiling — aborts inflation before OOM (zip-bomb). */
 function gunzipComTeto(buf: Buffer): Buffer {
   try {
     return gunzipSync(buf, {
@@ -134,8 +134,8 @@ function gunzipComTeto(buf: Buffer): Buffer {
       e && typeof e === 'object' && 'code' in e
         ? String((e as { code?: unknown }).code)
         : '';
-    // Node lança RangeError ERR_BUFFER_TOO_LARGE ao passar de
-    // maxOutputLength — sinal inequívoco de zip-bomb.
+    // Node throws RangeError ERR_BUFFER_TOO_LARGE when exceeding
+    // maxOutputLength — an unambiguous zip-bomb signal.
     if (
       code === 'ERR_BUFFER_TOO_LARGE' ||
       /maxOutputLength|buffer larger than|too large/i.test(msg)
@@ -148,7 +148,7 @@ function gunzipComTeto(buf: Buffer): Buffer {
   }
 }
 
-/** Extrai o maior arquivo de texto/pdf de um .zip e o processa. */
+/** Extracts the largest text/pdf file from a .zip and processes it. */
 async function extrairZip(
   bytes: Uint8Array
 ): Promise<{ texto: string; pdfNativo: boolean }> {
@@ -157,8 +157,9 @@ async function extrairZip(
     .filter((f) => f.type === 'File')
     .sort((a, b) => b.uncompressedSize - a.uncompressedSize);
 
-  // Rejeita ANTES de inflar qualquer entry: o maior `uncompressedSize`
-  // declarado no header já passa do cap → zip-bomb (não materializa nada).
+  // Reject BEFORE inflating any entry: the largest `uncompressedSize`
+  // declared in the header already exceeds the cap → zip-bomb (nothing
+  // materialized).
   const maiorDeclarado = candidatos[0]?.uncompressedSize ?? 0;
   if (maiorDeclarado > MAX_DESCOMPRIMIDO_BYTES) {
     throw new EntradaGrandeDemaisError(
@@ -190,19 +191,19 @@ async function extrairZip(
 }
 
 /**
- * Preprocessor — zip/gz/pdf/texto → texto plano + metadados observados.
- * Roda no worker container (poppler/pdftotext instalado); o ambiente local
- * também tem `pdftotext` em /usr/bin. `fonte.ocr=true` quando o texto sai
- * vazio/curto demais (sinaliza necessidade de OCR a jusante).
+ * Preprocessor — zip/gz/pdf/texto → plain text + observed metadata. Runs
+ * in the worker container (poppler/pdftotext installed); the local
+ * environment also has `pdftotext` in /usr/bin. `fonte.ocr=true` when the
+ * text comes out empty/too short (signals the need for OCR downstream).
  */
 export class Preprocessor implements PreprocessorPort {
   async preprocessar(arquivo: ArquivoEntrada): Promise<TextoExtraido> {
     const { bytes, nomeArquivo, url } = arquivo;
     const formato = detectarFormato(bytes);
 
-    // Cap de tamanho descomprimido (anti zip-bomb). Para texto/pdf crus o
-    // próprio buffer já É o conteúdo descomprimido — rejeita antes de
-    // tocar. zip/gzip são checados na inflação (header / maxOutputLength).
+    // Decompressed size cap (anti zip-bomb). For raw text/pdf the buffer
+    // itself IS the decompressed content — reject before touching it.
+    // zip/gzip are checked at inflation (header / maxOutputLength).
     if (
       (formato === 'texto' || formato === 'pdf') &&
       bytes.length > MAX_DESCOMPRIMIDO_BYTES
@@ -223,9 +224,10 @@ export class Preprocessor implements PreprocessorPort {
       texto = await extrairPdf(bytes);
       pdfNativo = true;
     } else if (formato === 'gzip') {
-      // gunzipComTeto lança EntradaGrandeDemaisError se inflaria além do
-      // cap — propaga (NÃO mascarar como ''); outros erros viram '' (gzip
-      // corrompido → cai p/ ocr a jusante, comportamento legado).
+      // gunzipComTeto throws EntradaGrandeDemaisError if it would inflate
+      // beyond the cap — propagate (do NOT mask as ''); other errors
+      // become '' (corrupt gzip → falls to ocr downstream, legacy
+      // behavior).
       try {
         texto = gunzipComTeto(Buffer.from(bytes)).toString('utf-8');
       } catch (e) {

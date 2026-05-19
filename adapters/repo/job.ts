@@ -1,12 +1,13 @@
 /**
- * PrismaJobRepo — `JobRepo` (domain/ports.ts) sobre Prisma.
+ * PrismaJobRepo — `JobRepo` (domain/ports.ts) over Prisma.
  *
- * Phase 12: `claimNext` ATÔMICO via SQL cru — Prisma NÃO expõe
- * `FOR UPDATE SKIP LOCKED` na API tipada, então usamos `$queryRaw`. A
- * cláusula garante (no Postgres real) que dois workers concorrentes nunca
- * pegam o mesmo job: o `SELECT ... FOR UPDATE SKIP LOCKED LIMIT 1` trava a
- * linha escolhida e PULA as já travadas por outra transação; o `UPDATE
- * ... RETURNING *` flipa pending→running atomicamente. SPEC §14, #3 lock.
+ * Phase 12: `claimNext` is ATOMIC via raw SQL — Prisma does NOT expose
+ * `FOR UPDATE SKIP LOCKED` in the typed API, so we use `$queryRaw`. The
+ * clause guarantees (on real Postgres) that two concurrent workers never
+ * pick the same job: the `SELECT ... FOR UPDATE SKIP LOCKED LIMIT 1`
+ * locks the chosen row and SKIPS those already locked by another
+ * transaction; the `UPDATE ... RETURNING *` flips pending→running
+ * atomically. SPEC §14, #3 lock.
  */
 import type { Job, JobRepo, JobStatus } from '../../domain/ports.ts';
 import type { PrismaClientLike } from './client.ts';
@@ -23,8 +24,8 @@ function paraJob(row: JobRow): Job {
   return {
     id: row.id,
     status: row.status as JobStatus,
-    // Postgres devolve null p/ coluna nullable não setada; normaliza p/
-    // honrar o contrato do domínio (`erro: string | null`, nunca undefined).
+    // Postgres returns null for an unset nullable column; normalize to
+    // honor the domain contract (`erro: string | null`, never undefined).
     erro: row.erro ?? null,
     inputRef: row.inputRef,
     createdAt: row.createdAt,
@@ -42,14 +43,15 @@ export class PrismaJobRepo implements JobRepo {
   }
 
   /**
-   * Claim atômico (SPEC §14, #3 lock). O subselect `FOR UPDATE SKIP
-   * LOCKED LIMIT 1` escolhe o pending mais antigo travando-o e ignorando
-   * linhas já travadas por outra transação concorrente; o `UPDATE ...
-   * RETURNING *` o flipa para `running` no mesmo passo. Resultado: dois
-   * workers NUNCA pegam o mesmo job (um pega o próximo livre ou `null`).
+   * Atomic claim (SPEC §14, #3 lock). The `FOR UPDATE SKIP LOCKED LIMIT
+   * 1` subselect picks the oldest pending, locking it and ignoring rows
+   * already locked by another concurrent transaction; the `UPDATE ...
+   * RETURNING *` flips it to `running` in the same step. Result: two
+   * workers NEVER pick the same job (each takes the next free one or
+   * `null`).
    *
-   * SQL cru via `$queryRaw` porque Prisma não expõe SKIP LOCKED. Sem
-   * interpolação (query 100% estática) — nenhuma superfície de injeção.
+   * Raw SQL via `$queryRaw` because Prisma does not expose SKIP LOCKED.
+   * No interpolation (100% static query) — no injection surface.
    */
   async claimNext(): Promise<Job | null> {
     const rows = (await this.prisma.$queryRaw`
