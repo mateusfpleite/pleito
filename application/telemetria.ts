@@ -1,46 +1,46 @@
 /**
- * Telemetria de aplicação (SPEC §11b) — eventos IMPLÍCITOS de fricção zero
- * + o sinal-ouro (diff ofício) + custo de grounding POR chamada.
+ * Application telemetry (SPEC §11b) — IMPLICIT zero-friction events
+ * + the gold-signal (ofício diff) + grounding cost PER call.
  *
- * INVARIANTE CRÍTICA: telemetria NUNCA derruba o pipeline. `registrarSeguro`
- * embrulha todo `TelemetryPort.registrar` em try/catch — falha de
- * telemetria SÓ loga (console.error) e segue. Nenhum caller deve chamar
- * `telemetry.registrar` direto no caminho de produção; sempre via
- * `registrarSeguro` (defesa em profundidade contra um adapter de
- * persistência indisponível tomar o job inteiro).
+ * CRITICAL INVARIANT: telemetry NEVER takes down the pipeline.
+ * `registrarSeguro` wraps every `TelemetryPort.registrar` in try/catch —
+ * a telemetry failure ONLY logs (console.error) and moves on. No caller
+ * should call `telemetry.registrar` directly on the production path;
+ * always go through `registrarSeguro` (defense in depth against an
+ * unavailable persistence adapter taking down the whole job).
  *
- * Os builders abaixo são puros (sem I/O) — o payload de cada evento é
- * testável isoladamente; o `registrarSeguro` é testado contra um
- * `TelemetryPort` fake que LANÇA (prova a não-propagação).
+ * The builders below are pure (no I/O) — each event's payload is testable
+ * in isolation; `registrarSeguro` is tested against a fake `TelemetryPort`
+ * that THROWS (proving non-propagation).
  */
 import type { TelemetryPort } from '../domain/ports.ts';
 import { calcularDiffOficio, type OficioDiff } from '../domain/oficio-diff.ts';
 
-/** Nomes canônicos dos eventos (1 lugar — evita string mágica divergível). */
+/** Canonical event names (1 place — avoids divergeable magic strings). */
 export const EVENTO = {
-  /** Pipeline terminou OK — latência total + custo agregado. */
+  /** Pipeline finished OK — total latency + aggregated cost. */
   analiseConcluida: 'analise_concluida',
-  /** Edital submetido — `inputHash` p/ detectar re-upload a jusante. */
+  /** Edital submitted — `inputHash` to detect re-upload downstream. */
   submissao: 'submissao',
-  /** Mesmo edital re-submetido (hash repetido) — sinal de iteração dela. */
+  /** Same edital re-submitted (repeated hash) — signal of her iteration. */
   reupload: 'reupload',
-  /** Export disparado (tipo relatorio|oficio). */
+  /** Export triggered (type relatorio|oficio). */
   export: 'export',
-  /** SINAL-OURO: diff ofício gerado×exportado (métrica do delta). */
+  /** GOLD-SIGNAL: ofício diff generated×exported (delta metric). */
   oficioDiff: 'oficio_diff',
-  /** Ofício exportado difere do gerado (atalho booleano do sinal-ouro). */
+  /** Exported ofício differs from generated (boolean shortcut of the gold-signal). */
   oficioEditado: 'oficio_editado',
-  /** Custo/uso de UMA chamada de web grounding (não agregado — §11b). */
+  /** Cost/usage of ONE web grounding call (not aggregated — §11b). */
   groundingCusto: 'grounding_custo',
-  /** Feedback explícito mínimo (👍/👎 + texto). */
+  /** Minimal explicit feedback (👍/👎 + text). */
   feedback: 'feedback',
 } as const;
 
 /**
- * Registra um evento de telemetria de forma NÃO-BLOQUEANTE: qualquer
- * exceção do adapter é capturada e só logada. Devolve `true` se gravou,
- * `false` se a telemetria falhou (o caller IGNORA o retorno no caminho
- * feliz — existe só p/ teste e logs).
+ * Records a telemetry event in a NON-BLOCKING way: any exception from the
+ * adapter is caught and only logged. Returns `true` if it persisted,
+ * `false` if telemetry failed (the caller IGNORES the return on the happy
+ * path — it exists only for tests and logs).
  */
 export async function registrarSeguro(
   telemetry: TelemetryPort,
@@ -54,17 +54,17 @@ export async function registrarSeguro(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(
-      `[telemetria] evento '${evento}' falhou (não-bloqueante, ` +
-        `pipeline segue): ${msg}`
+      `[telemetria] event '${evento}' failed (non-blocking, ` +
+        `pipeline continues): ${msg}`
     );
     return false;
   }
 }
 
-/** Hash estável e curto do input do edital (p/ detectar re-upload). */
+/** Stable, short hash of the edital input (to detect re-upload). */
 export function hashInput(bytes: Uint8Array): string {
-  // FNV-1a 32-bit — determinístico, sem dependência, suficiente p/
-  // agrupar re-submissões do MESMO edital (não é hash criptográfico).
+  // FNV-1a 32-bit — deterministic, no dependency, enough to group
+  // re-submissions of the SAME edital (not a cryptographic hash).
   let h = 0x811c9dc5;
   for (let i = 0; i < bytes.length; i += 1) {
     h ^= bytes[i];
@@ -73,7 +73,7 @@ export function hashInput(bytes: Uint8Array): string {
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
-/** Payload de `analise_concluida` (latência + custo agregado). */
+/** Payload of `analise_concluida` (latency + aggregated cost). */
 export function payloadAnaliseConcluida(args: {
   latenciaMs: number;
   groundingChamadas: number;
@@ -89,10 +89,11 @@ export function payloadAnaliseConcluida(args: {
 }
 
 /**
- * Payload do SINAL-OURO + decisão de fallback. Quando o diff é vazio
- * (`foiEditado=false`: aceitou sem editar OU não exportou), `sinalOuro`
- * é `false` e o caller usa o RESERVA (export-sim/não + 👍/👎) — este
- * payload já carrega `exportou` p/ o reserva ser auto-suficiente.
+ * Payload of the GOLD-SIGNAL + fallback decision. When the diff is empty
+ * (`foiEditado=false`: accepted without editing OR did not export),
+ * `sinalOuro` is `false` and the caller uses the FALLBACK (export-yes/no
+ * + 👍/👎) — this payload already carries `exportou` so the fallback is
+ * self-sufficient.
  */
 export function payloadOficioDiff(
   diff: OficioDiff,
@@ -106,19 +107,20 @@ export function payloadOficioDiff(
     distanciaCaracteres: diff.distanciaCaracteres,
     tamanhoGerado: diff.tamanhoGerado,
     tamanhoExportado: diff.tamanhoExportado,
-    // RESERVA: se sinalOuro=false, este é o sinal disponível (§11b).
+    // FALLBACK: if sinalOuro=false, this is the available signal (§11b).
     exportou,
   };
 }
 
-/** Re-exporta o cálculo do diff (1 import só p/ os callers). */
+/** Re-exports the diff computation (a single import for callers). */
 export { calcularDiffOficio };
 export type { OficioDiff };
 
 /**
- * Payload do custo de UMA chamada de grounding (SPEC §11b — não só
- * agregado: bomba de custo silenciosa se só agregado). `usdEstimado` é
- * marcado como estimativa quando o SDK não devolve custo exato (só uso).
+ * Payload of the cost of ONE grounding call (SPEC §11b — not just
+ * aggregated: a silent cost bomb if only aggregated). `usdEstimado` is
+ * marked as an estimate when the SDK does not return exact cost (usage
+ * only).
  */
 export function payloadGroundingCusto(args: {
   lei: string;
@@ -134,8 +136,8 @@ export function payloadGroundingCusto(args: {
     inputTokens: args.inputTokens ?? null,
     outputTokens: args.outputTokens ?? null,
     totalTokens: total,
-    // Sem tabela de preço por modelo no V0: registramos o USO e marcamos
-    // como estimativa (§11b — o que importa é ser POR chamada, visível).
+    // No per-model price table in V0: we record USAGE and mark it as an
+    // estimate (§11b — what matters is being PER call, visible).
     estimativa: true,
   };
 }

@@ -1,21 +1,23 @@
 /**
- * Workflow de aplicação (hexagonal) — orquestra o pipeline SPEC §4 com os
- * 2 gates (§4, §5). Zero dependência de tecnologia: recebe os ports
- * injetados (`AnalyzeDeps`) e os compõe. Adapters concretos (Gemini, Prisma)
- * são responsabilidade da infraestrutura; este módulo é unit-testável só
- * com mocks (`analyze-edital.test.ts`).
+ * Application workflow (hexagonal) — orchestrates the SPEC §4 pipeline
+ * with the 2 gates (§4, §5). Zero technology dependency: receives the
+ * injected ports (`AnalyzeDeps`) and composes them. Concrete adapters
+ * (Gemini, Prisma) are the infrastructure's responsibility; this module
+ * is unit-testable with mocks only (`analyze-edital.test.ts`).
  *
- * CONTRATO (importante):
- *  - Falha de QUALQUER adapter PROPAGA: `analyzeEdital` rejeita com o erro
- *    original; o pipeline a jusante NÃO roda (sem catch-and-continue, sem
- *    doc parcial). O caller (worker, Phase 12) marca o Job como `erro`.
- *  - Tier 0 (contenção estrutural) é ERRO FATAL: se `checarContencao`
- *    devolve qualquer violação, `analyzeEdital` LANÇA — NUNCA retorna
- *    ofício/análise com violação de contenção. O caller não pode
- *    catch-and-continue com doc parcial (carry-forward 3ª review).
+ * CONTRACT (important):
+ *  - Failure of ANY adapter PROPAGATES: `analyzeEdital` rejects with the
+ *    original error; the downstream pipeline does NOT run (no
+ *    catch-and-continue, no partial doc). The caller (worker, Phase 12)
+ *    marks the Job as `erro`.
+ *  - Tier 0 (structural containment) is a FATAL ERROR: if
+ *    `checarContencao` returns any violation, `analyzeEdital` THROWS —
+ *    NEVER returns an ofício/analysis with a containment violation. The
+ *    caller cannot catch-and-continue with a partial doc (carry-forward
+ *    3rd review).
  *
  * Pipeline:
- *   preprocess → extract → [recomposição] → Gate A → verifier?
+ *   preprocess → extract → [recomposition] → Gate A → verifier?
  *     → risk → Gate B → drafter? → Tier 0 (fatal) → { extracao, oficio }
  */
 
@@ -37,7 +39,7 @@ import { matchNorma } from '../domain/norma-baseline.ts';
 import { categoriaParaStatus } from '../domain/categoria-status.ts';
 import { checarContencao } from '../eval/tier0.ts';
 
-/** Ports injetados no workflow (hexagonal — mocados nos testes). */
+/** Ports injected into the workflow (hexagonal — mocked in tests). */
 export type AnalyzeDeps = {
   preprocessor: PreprocessorPort;
   extractor: ExtractorPort;
@@ -46,7 +48,7 @@ export type AnalyzeDeps = {
   drafter: DrafterPort;
 };
 
-/** Resultado do workflow: extração final + ofício (null se Gate B não disparou). */
+/** Workflow result: final extraction + ofício (null if Gate B did not fire). */
 export type AnalyzeResult = {
   extracao: EditalExtraction;
   oficio: OficioGerado | null;
@@ -55,14 +57,14 @@ export type AnalyzeResult = {
 type Lei = EditalExtraction['leisReferenciadas'][number];
 
 /**
- * RECOMPOSIÇÃO (carry-forward Phase 5). O Extractor produz `ExtractorOutput`
- * (schema SEM `pontosDeAtencao` — campo do Risk Analyst). Montamos o
- * `EditalExtraction` completo:
- *  - `pontosDeAtencao: []` (placeholder explícito; o Risk Analyst preenche);
- *  - `fonte` SOBRESCRITO pela `FonteMeta` confiável do Preprocessor (Phase 5
- *    Minor #2): nunca confiar no `fonte` que o modelo possa ter posto.
- * O objeto é VALIDADO contra `EditalExtractionSchema` (defesa em profundidade
- * + regressão garantida pelo teste).
+ * RECOMPOSITION (carry-forward Phase 5). The Extractor produces
+ * `ExtractorOutput` (schema WITHOUT `pontosDeAtencao` — the Risk
+ * Analyst's field). We assemble the complete `EditalExtraction`:
+ *  - `pontosDeAtencao: []` (explicit placeholder; the Risk Analyst fills it);
+ *  - `fonte` OVERWRITTEN by the Preprocessor's trusted `FonteMeta` (Phase
+ *    5 Minor #2): never trust the `fonte` the model may have set.
+ * The object is VALIDATED against `EditalExtractionSchema` (defense in
+ * depth + regression guaranteed by the test).
  */
 function recompor(
   saida: ExtractorOutput,
@@ -76,15 +78,15 @@ function recompor(
 }
 
 /**
- * GATE A (SPEC §5, fecha o falso-negativo do extractor). Dispara o Verifier
- * se QUALQUER lei referenciada:
- *  - casa `matchNorma` numa categoria de RISCO — `categoriaParaStatus` ≠ null
- *    e ≠ 'vigente' (i.e. revogada-* → 'revogada', zona-cinzenta →
- *    'contestada', citacao-suspeita → 'inexistente'); `vigente-ancora` NÃO é
- *    risco (âncora anti-falso-positivo); OU
- *  - o extractor marcou `revogada=true` (palpite provisório do modelo —
- *    mesmo sem hit na baseline, merece verificação).
- * Nenhuma → pula o Verifier; `statusVerificado` fica no default
+ * GATE A (SPEC §5, closes the extractor's false-negative). Fires the
+ * Verifier if ANY referenced law:
+ *  - matches `matchNorma` in a RISK category — `categoriaParaStatus` ≠
+ *    null and ≠ 'vigente' (i.e. revogada-* → 'revogada', zona-cinzenta →
+ *    'contestada', citacao-suspeita → 'inexistente'); `vigente-ancora` is
+ *    NOT a risk (anti-false-positive anchor); OR
+ *  - the extractor marked `revogada=true` (the model's provisional guess
+ *    — even without a baseline hit, it deserves verification).
+ * None → skips the Verifier; `statusVerificado` stays at the default
  * `nao-verificado`.
  */
 function gateADispara(leis: Lei[]): boolean {
@@ -98,19 +100,19 @@ function gateADispara(leis: Lei[]): boolean {
     });
     if (!hit) return false;
     const esperado = categoriaParaStatus(hit.categoria);
-    // null = categoria desconhecida (sem risco determinístico);
-    // 'vigente' = vigente-ancora (âncora, não risco).
+    // null = unknown category (no deterministic risk);
+    // 'vigente' = vigente-ancora (anchor, not risk).
     return esperado !== null && esperado !== 'vigente';
   });
 }
 
 /**
- * GATE B (canônico — carry-forward Phase 7). Dispara o Drafter por OR de:
- *  - alguma `incoerencia` com severidade ∈ {alta, media}; OU
- *  - algum `trechoAmbiguo`; OU
- *  - algum `pontoDeAtencao.recomendaManifestacao === true`.
- * OR torna inconsistência de coerência do modelo segura por padrão (a
- * manifestação só deixa de ser gerada quando NADA a justifica).
+ * GATE B (canonical — carry-forward Phase 7). Fires the Drafter on OR of:
+ *  - some `incoerencia` with severity ∈ {alta, media}; OR
+ *  - some `trechoAmbiguo`; OR
+ *  - some `pontoDeAtencao.recomendaManifestacao === true`.
+ * OR makes a model coherence inconsistency safe by default (the
+ * manifestation only stops being generated when NOTHING justifies it).
  */
 function gateBDispara(e: EditalExtraction): boolean {
   const incoerenciaGrave = e.incoerencias.some(
@@ -124,22 +126,22 @@ function gateBDispara(e: EditalExtraction): boolean {
 }
 
 /**
- * Orquestra o pipeline com os 2 gates. Falha de adapter propaga (sem
- * silenciar); violação de Tier 0 é erro fatal (lança — nunca retorna doc
- * parcial).
+ * Orchestrates the pipeline with the 2 gates. An adapter failure
+ * propagates (without silencing); a Tier 0 violation is a fatal error
+ * (throws — never returns a partial doc).
  */
 export async function analyzeEdital(
   input: ArquivoEntrada,
   deps: AnalyzeDeps
 ): Promise<AnalyzeResult> {
-  // 1. Preprocess — texto plano + FonteMeta confiável (observada, não do LLM).
+  // 1. Preprocess — plain text + trusted FonteMeta (observed, not from the LLM).
   const { texto, fonte } = await deps.preprocessor.preprocessar(input);
 
-  // 2. Extractor — ExtractorOutput (schema v3 SEM pontosDeAtencao).
+  // 2. Extractor — ExtractorOutput (schema v3 WITHOUT pontosDeAtencao).
   const saida = await deps.extractor.extrair(texto, fonte);
 
-  // 3. RECOMPOSIÇÃO — pontosDeAtencao:[] + fonte = a do Preprocessor;
-  //    validado contra o EditalExtractionSchema.
+  // 3. RECOMPOSITION — pontosDeAtencao:[] + fonte = the Preprocessor's;
+  //    validated against the EditalExtractionSchema.
   let extracao = recompor(saida, {
     pdfNativo: fonte.pdfNativo,
     ocr: fonte.ocr,
@@ -147,24 +149,24 @@ export async function analyzeEdital(
     url: fonte.url,
   });
 
-  // 4. GATE A — matchNorma em TODAS as leis (ou revogada=true do extractor).
+  // 4. GATE A — matchNorma over ALL laws (or revogada=true from the extractor).
   if (gateADispara(extracao.leisReferenciadas)) {
-    // 5. Verifier (condicional) — preenche statusVerificado/fonteVerificacao.
+    // 5. Verifier (conditional) — fills statusVerificado/fonteVerificacao.
     extracao = await deps.normaVerifier.verificar(extracao);
   }
 
-  // 6. Risk Analyst — preenche pontosDeAtencao consumindo statusVerificado.
+  // 6. Risk Analyst — fills pontosDeAtencao consuming statusVerificado.
   extracao = await deps.riskAnalyst.analisar(extracao);
 
-  // 7. GATE B — incoerência≥média OU trecho ambíguo OU recomendaManifestacao.
+  // 7. GATE B — incoerencia>=media OR ambiguous excerpt OR recomendaManifestacao.
   let oficioGerado: OficioGerado | null = null;
   if (gateBDispara(extracao)) {
-    // 8. Drafter (condicional) — OficioGerado | null (defensivo).
+    // 8. Drafter (conditional) — OficioGerado | null (defensive).
     oficioGerado = await deps.drafter.redigir(extracao);
   }
 
-  // 9. TIER 0 — contenção estrutural como ERRO FATAL. Qualquer violação =>
-  //    job falha; NUNCA retornar ofício/análise com violação de contenção.
+  // 9. TIER 0 — structural containment as a FATAL ERROR. Any violation =>
+  //    job fails; NEVER return an ofício/analysis with a containment violation.
   const { violacoes } = checarContencao({
     extracao,
     oficio: oficioGerado ?? null,
@@ -174,11 +176,11 @@ export async function analyzeEdital(
       .map((v) => `[${v.tipo}] ${v.detalhe}`)
       .join(' | ');
     throw new Error(
-      `Tier 0: violação de contenção estrutural — job abortado ` +
+      `Tier 0: structural containment violation — job aborted ` +
         `(${violacoes.length}): ${detalhe}`
     );
   }
 
-  // 10. Retorna a extração final + ofício (null se Gate B não disparou).
+  // 10. Returns the final extraction + ofício (null if Gate B did not fire).
   return { extracao, oficio: oficioGerado ?? null };
 }

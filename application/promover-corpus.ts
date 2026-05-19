@@ -1,39 +1,40 @@
 /**
- * Promote-to-corpus em 1 PASSO (SPEC §11b) — pega uma análise persistida
- * e a grava como FIXTURE versionada em `fixtures/gold/` (NÃO em
- * `output/`, que é gitignored). Vira caso de regressão do Tier 0 / E2E:
- * o `eval/run-tier0.ts` lê `fixtures/gold/*.json`, então o arquivo já
- * entra no gate na próxima rodada.
+ * Promote-to-corpus in 1 STEP (SPEC §11b) — takes a persisted analysis
+ * and writes it as a versioned FIXTURE under `fixtures/gold/` (NOT under
+ * `output/`, which is gitignored). It becomes a Tier 0 / E2E regression
+ * case: `eval/run-tier0.ts` reads `fixtures/gold/*.json`, so the file
+ * enters the gate on the next run.
  *
- * SHAPE: idêntico aos gold de extração (o JSON do `EditalExtraction`
- * direto na raiz — é o que `EditalExtractionSchema.safeParse` do runner
- * espera), MAIS um bloco `_proveniencia` (chave com `_` → ignorada pelo
- * schema/strip do Zod, não quebra o parse) documentando a origem curada.
+ * SHAPE: identical to the extraction gold (the `EditalExtraction` JSON
+ * directly at the root — that is what the runner's
+ * `EditalExtractionSchema.safeParse` expects), PLUS a `_proveniencia`
+ * block (a `_`-prefixed key → ignored by Zod schema/strip, does not break
+ * the parse) documenting the curated origin.
  *
- * Telemetria desenhada p/ isto ser 1 passo: o /admin chama
- * `promoverParaCorpus(analysisId)` (botão) — esta função resolve a
- * análise, serializa e escreve. Determinística e testável (o caller
- * injeta `repo`, `escrever` e `agora`; testes usam fakes/dir temp e
- * asseguram caminho + conteúdo).
+ * Telemetry designed so this is 1 step: /admin calls
+ * `promoverParaCorpus(analysisId)` (button) — this function resolves the
+ * analysis, serializes and writes it. Deterministic and testable (the
+ * caller injects `repo`, `escrever` and `agora`; tests use fakes/temp dir
+ * and assert path + content).
  */
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { AnalysisRepo } from '../domain/ports.ts';
 
 /**
- * Diretório versionado do corpus de regressão (NÃO `output/`, que é
- * gitignored). Resolvido a partir de `process.cwd()` (raiz do projeto no
- * runtime Node — worker/Vercel function) em vez de `import.meta.url`:
- * este último faz o webpack do Next tentar resolver `../fixtures/gold`
- * como módulo no build. O caller pode sobrescrever via `deps.dir`.
+ * Versioned regression-corpus directory (NOT `output/`, which is
+ * gitignored). Resolved from `process.cwd()` (project root at the Node
+ * runtime — worker/Vercel function) instead of `import.meta.url`: the
+ * latter makes Next's webpack try to resolve `../fixtures/gold` as a
+ * module at build time. The caller can override via `deps.dir`.
  */
 export const GOLD_DIR = join(process.cwd(), 'fixtures', 'gold');
 
-/** Slug seguro p/ nome de arquivo a partir de município/uf. */
+/** Filename-safe slug from municipality/uf. */
 export function slugFixture(municipio: string, uf: string): string {
   const base = `${municipio}-${uf}`
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // remove acentos
+    .replace(/[̀-ͯ]/g, '') // strip accents
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
@@ -42,11 +43,11 @@ export function slugFixture(municipio: string, uf: string): string {
 
 export type PromoverDeps = {
   analysisRepo: AnalysisRepo;
-  /** Escritor injetável (default: fs). Testes passam um fake/dir temp. */
+  /** Injectable writer (default: fs). Tests pass a fake/temp dir. */
   escrever?: (caminho: string, conteudo: string) => Promise<void>;
-  /** Relógio injetável (proveniência determinística nos testes). */
+  /** Injectable clock (deterministic provenance in tests). */
   agora?: () => Date;
-  /** Diretório-alvo (default: `fixtures/gold/`). */
+  /** Target directory (default: `fixtures/gold/`). */
   dir?: string;
 };
 
@@ -56,9 +57,9 @@ export type ResultadoPromocao = {
 };
 
 /**
- * Promove a análise `analysisId` para `fixtures/gold/`. Lança se a
- * análise não existir (1 passo só faz sentido sobre algo persistido).
- * Devolve o caminho/nome do arquivo escrito.
+ * Promotes the analysis `analysisId` to `fixtures/gold/`. Throws if the
+ * analysis does not exist (1 step only makes sense over something
+ * persisted). Returns the path/name of the written file.
  */
 export async function promoverParaCorpus(
   analysisId: string,
@@ -84,10 +85,11 @@ export async function promoverParaCorpus(
   const nomeArquivo = `promovido-${slug}.json`;
   const caminho = `${dir}/${nomeArquivo}`;
 
-  // Shape do gold: o EditalExtraction na RAIZ (igual aos demais) +
-  // `_proveniencia` (chave `_*` é stripada pelo schema → não quebra o
-  // parse do runner Tier 0). Inclui o ofício gerado/exportado p/ o caso
-  // exercitar o Tier 0 também sobre o ofício (regressão real).
+  // Gold shape: the EditalExtraction at the ROOT (same as the others) +
+  // `_proveniencia` (a `_*` key is stripped by the schema → does not
+  // break the Tier 0 runner parse). Includes the generated/exported
+  // ofício so the case exercises Tier 0 over the ofício too (real
+  // regression).
   const fixture = {
     ...analise.extracao,
     _proveniencia: {
