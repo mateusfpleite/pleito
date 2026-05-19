@@ -83,7 +83,7 @@ const validV3 = () => ({
 });
 
 describe('EditalExtractionSchema v3', () => {
-  it('aceita objeto v3 válido com pontosDeAtencao e statusVerificado default', () => {
+  it('accepts a valid v3 object with pontosDeAtencao and default statusVerificado', () => {
     const parsed = EditalExtractionSchema.parse(validV3());
     expect(parsed.pontosDeAtencao).toHaveLength(1);
     expect(parsed.pontosDeAtencao[0].categoria).toBe('financeiro');
@@ -93,7 +93,7 @@ describe('EditalExtractionSchema v3', () => {
     expect(parsed.subcontratacaoPermitida).toBe(false);
   });
 
-  it('aceita statusVerificado explícito e fonteVerificacao preenchida', () => {
+  it('accepts explicit statusVerificado and filled fonteVerificacao', () => {
     const obj = validV3();
     const lei = obj.leisReferenciadas[0] as Record<string, unknown>;
     lei.statusVerificado = 'revogada';
@@ -105,19 +105,19 @@ describe('EditalExtractionSchema v3', () => {
     );
   });
 
-  it('rejeita objeto sem pontosDeAtencao', () => {
+  it('rejects an object without pontosDeAtencao', () => {
     const obj = validV3() as Record<string, unknown>;
     delete obj.pontosDeAtencao;
     expect(() => EditalExtractionSchema.parse(obj)).toThrow();
   });
 
-  it('rejeita categoria de pontoDeAtencao fora do enum', () => {
+  it('rejects pontoDeAtencao categoria outside the enum', () => {
     const obj = validV3();
     obj.pontosDeAtencao[0].categoria = 'inexistente' as never;
     expect(() => EditalExtractionSchema.parse(obj)).toThrow();
   });
 
-  it('rejeita statusVerificado fora do enum', () => {
+  it('rejects statusVerificado outside the enum', () => {
     const obj = validV3();
     const lei = obj.leisReferenciadas[0] as Record<string, unknown>;
     lei.statusVerificado = 'incerto';

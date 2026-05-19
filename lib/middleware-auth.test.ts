@@ -13,7 +13,7 @@ const SECRET = 'secret-mid';
 const T0 = 1_700_000_000_000;
 
 describe('ehRotaPublica', () => {
-  it('só /login, /api/login, /api/health são públicas', () => {
+  it('only /login, /api/login, /api/health are public', () => {
     expect(ehRotaPublica('/login')).toBe(true);
     expect(ehRotaPublica('/api/login')).toBe(true);
     expect(ehRotaPublica('/api/health')).toBe(true);
@@ -26,20 +26,20 @@ describe('ehRotaPublica', () => {
 });
 
 describe('deveBloquear', () => {
-  it('rota pública sem cookie → liberar', async () => {
+  it('public route without cookie → liberar', async () => {
     for (const p of ['/login', '/api/login', '/api/health']) {
       expect(await deveBloquear(p, undefined, SECRET)).toBe('liberar');
     }
   });
 
-  it('navegação protegida sem cookie → redirect (/login)', async () => {
+  it('protected navigation without cookie → redirect (/login)', async () => {
     expect(await deveBloquear('/', undefined, SECRET)).toBe('redirect');
     expect(await deveBloquear('/admin', undefined, SECRET)).toBe(
       'redirect'
     );
   });
 
-  it('/api/* protegida sem cookie → unauthorized (401)', async () => {
+  it('protected /api/* without cookie → unauthorized (401)', async () => {
     expect(await deveBloquear('/api/job', undefined, SECRET)).toBe(
       'unauthorized'
     );
@@ -48,7 +48,7 @@ describe('deveBloquear', () => {
     ).toBe('unauthorized');
   });
 
-  it('cookie inválido em rota protegida → bloqueia', async () => {
+  it('invalid cookie on protected route → blocks', async () => {
     expect(await deveBloquear('/', 'lixo.invalido', SECRET)).toBe(
       'redirect'
     );
@@ -57,7 +57,7 @@ describe('deveBloquear', () => {
     ).toBe('unauthorized');
   });
 
-  it('cookie válido em rota protegida → liberar', async () => {
+  it('valid cookie on protected route → liberar', async () => {
     const cookie = await assinarSessao(SECRET, { agora: T0 });
     expect(
       await deveBloquear('/', cookie, SECRET, { agora: T0 + 1000 })
@@ -70,7 +70,7 @@ describe('deveBloquear', () => {
     ).toBe('liberar');
   });
 
-  it('cookie expirado em rota protegida → bloqueia', async () => {
+  it('expired cookie on protected route → blocks', async () => {
     const cookie = await assinarSessao(SECRET, {
       agora: T0,
       duracaoMs: 1000,
@@ -80,7 +80,7 @@ describe('deveBloquear', () => {
     ).toBe('redirect');
   });
 
-  it('secret errado em rota protegida → bloqueia', async () => {
+  it('wrong secret on protected route → blocks', async () => {
     const cookie = await assinarSessao('outro', { agora: T0 });
     expect(
       await deveBloquear('/api/job', cookie, SECRET, { agora: T0 })

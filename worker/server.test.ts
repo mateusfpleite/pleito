@@ -36,7 +36,7 @@ describe('criarServidor', () => {
     }
   });
 
-  it('POST trigger → 202 imediato (não bloqueia na drenagem)', async () => {
+  it('POST trigger → 202 immediately (does not block on draining)', async () => {
     const server = criarServidor(depsNoop());
     const base = await ouvir(server);
     try {
@@ -53,7 +53,7 @@ describe('criarServidor', () => {
 });
 
 describe('criarDrenadorSerial', () => {
-  it('não roda drenagens concorrentes; re-executa se chega trigger no meio', async () => {
+  it('does not run concurrent drains; re-executes if a trigger arrives mid-run', async () => {
     let emExecucao = 0;
     let maxConcorrente = 0;
     let chamadas = 0;

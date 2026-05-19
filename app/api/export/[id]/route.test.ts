@@ -172,7 +172,7 @@ function req(body: unknown): Request {
 const ctx = (id = 'job-1') => ({ params: Promise.resolve({ id }) });
 
 describe('POST /api/export/:jobId', () => {
-  it('oficio: PERSISTE o texto editado e renderiza A PARTIR do persistido (NÃO do JSON) — §9', async () => {
+  it('oficio: PERSISTS the edited text and renders FROM the persisted one (NOT from the JSON) — §9', async () => {
     const repo = fakeRepo(registroBase());
     const eng = fakeEngine();
     const tele = fakeTelemetry();
@@ -219,7 +219,7 @@ describe('POST /api/export/:jobId', () => {
     expect(diffEv.payload.exportou).toBe(true); // reserva também presente
   });
 
-  it('oficio SEM edição → FALLBACK: oficio_diff sinalOuro=false, sem oficio_editado, reserva exportou=true (§11b)', async () => {
+  it('oficio WITHOUT edit → FALLBACK: oficio_diff sinalOuro=false, no oficio_editado, fallback exportou=true (§11b)', async () => {
     const repo = fakeRepo(registroBase());
     const tele = fakeTelemetry();
     const POST = criarExportPOST({
@@ -252,7 +252,7 @@ describe('POST /api/export/:jobId', () => {
     expect(exportEv.payload.foiEditado).toBe(false);
   });
 
-  it('relatorio → evento export tipo=relatorio (uso implícito §11b)', async () => {
+  it('relatorio → export event tipo=relatorio (implicit usage §11b)', async () => {
     const repo = fakeRepo(registroBase());
     const tele = fakeTelemetry();
     const POST = criarExportPOST({
@@ -266,7 +266,7 @@ describe('POST /api/export/:jobId', () => {
     ]);
   });
 
-  it('telemetria que LANÇA não derruba o export (não-bloqueante §11b)', async () => {
+  it('telemetry that THROWS does not break the export (non-blocking §11b)', async () => {
     const repo = fakeRepo(registroBase());
     const POST = criarExportPOST({
       analysisRepo: repo,
@@ -285,7 +285,7 @@ describe('POST /api/export/:jobId', () => {
     expect(res.status).toBe(200);
   });
 
-  it('oficio: persiste ANTES de renderizar (ordem §9 — sem perda de sinal)', async () => {
+  it('oficio: persists BEFORE rendering (order §9 — no signal loss)', async () => {
     // Engine que falha: mesmo assim o texto editado deve ter sido
     // persistido (a persistência é o sinal-ouro §11b, não pode depender
     // do sucesso da render do PDF derivado).
@@ -305,7 +305,7 @@ describe('POST /api/export/:jobId', () => {
     expect(repo.persistidoOficio).toBe('texto final');
   });
 
-  it('relatorio: projeta do JSON da extração (sem escrever no repo)', async () => {
+  it('relatorio: projects from the extraction JSON (without writing to the repo)', async () => {
     const repo = fakeRepo(registroBase());
     const eng = fakeEngine();
     const tele = fakeTelemetry();
@@ -340,7 +340,7 @@ describe('POST /api/export/:jobId', () => {
     expect(bytes.subarray(0, 4).toString()).toBe('%PDF');
   });
 
-  it('job inexistente / sem análise → 404', async () => {
+  it('nonexistent job / no analysis → 404', async () => {
     const repo = fakeRepo(null);
     const POST = criarExportPOST({
       analysisRepo: repo,
@@ -351,7 +351,7 @@ describe('POST /api/export/:jobId', () => {
     expect(res.status).toBe(404);
   });
 
-  it('tipo inválido → 400', async () => {
+  it('invalid tipo → 400', async () => {
     const repo = fakeRepo(registroBase());
     const POST = criarExportPOST({
       analysisRepo: repo,
@@ -362,7 +362,7 @@ describe('POST /api/export/:jobId', () => {
     expect(res.status).toBe(400);
   });
 
-  it('oficio sem textoOficio → 400 (nada a persistir)', async () => {
+  it('oficio without textoOficio → 400 (nothing to persist)', async () => {
     const repo = fakeRepo(registroBase());
     const POST = criarExportPOST({
       analysisRepo: repo,

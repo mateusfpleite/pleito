@@ -151,8 +151,8 @@ function fakeAnalysisRepo(): AnalysisRepo & { saved: AnaliseRegistro[] } {
 
 const okResult: AnalyzeResult = { extracao, oficio: null };
 
-describe('drenarFila (laço do worker)', () => {
-  it('processa 1 job: analyze → grava Analysis → Job done', async () => {
+describe('drenarFila (worker loop)', () => {
+  it('processes 1 job: analyze → writes Analysis → Job done', async () => {
     const jobRepo = fakeJobRepo();
     const analysisRepo = fakeAnalysisRepo();
     jobRepo.add(empacotarInput('e.txt', new TextEncoder().encode('EDITAL')));
@@ -168,7 +168,7 @@ describe('drenarFila (laço do worker)', () => {
     expect(analysisRepo.saved[0].uf).toBe('BA');
   });
 
-  it('drena a fila inteira (vários pending) e para quando vazia', async () => {
+  it('drains the entire queue (several pending) and stops when empty', async () => {
     const jobRepo = fakeJobRepo();
     const analysisRepo = fakeAnalysisRepo();
     jobRepo.add(empacotarInput('a.txt', new TextEncoder().encode('A')));
@@ -183,7 +183,7 @@ describe('drenarFila (laço do worker)', () => {
     expect(analysisRepo.saved).toHaveLength(3);
   });
 
-  it('erro no pipeline → Job erro com a mensagem, NÃO grava Analysis', async () => {
+  it('pipeline error → Job erro with the message, does NOT write Analysis', async () => {
     const jobRepo = fakeJobRepo();
     const analysisRepo = fakeAnalysisRepo();
     jobRepo.add(empacotarInput('e.txt', new TextEncoder().encode('X')));
@@ -198,7 +198,7 @@ describe('drenarFila (laço do worker)', () => {
     expect(analysisRepo.saved).toHaveLength(0); // sem doc parcial
   });
 
-  it('erro num job NÃO derruba o laço: o próximo é processado', async () => {
+  it('an error in one job does NOT break the loop: the next one is processed', async () => {
     const jobRepo = fakeJobRepo();
     const analysisRepo = fakeAnalysisRepo();
     jobRepo.add(empacotarInput('ruim.txt', new TextEncoder().encode('1')));
@@ -216,7 +216,7 @@ describe('drenarFila (laço do worker)', () => {
     expect(analysisRepo.saved).toHaveLength(1);
   });
 
-  it('fila vazia: não faz nada (claimNext → null)', async () => {
+  it('empty queue: does nothing (claimNext → null)', async () => {
     const jobRepo = fakeJobRepo();
     const analysisRepo = fakeAnalysisRepo();
     const analyze = vi.fn(async () => okResult);
@@ -258,8 +258,8 @@ function fakeTelemetry(): TelemetryPort & {
   };
 }
 
-describe('drenarFila — telemetria de observabilidade (§11b)', () => {
-  it('grounding: 1 evento de custo POR chamada + analise_concluida com latência', async () => {
+describe('drenarFila — observability telemetry (§11b)', () => {
+  it('grounding: 1 cost event PER call + analise_concluida with latency', async () => {
     const jobRepo = fakeJobRepo();
     const analysisRepo = fakeAnalysisRepo();
     const tele = fakeTelemetry();
@@ -329,7 +329,7 @@ describe('drenarFila — telemetria de observabilidade (§11b)', () => {
     expect(concl.payload.groundingTokensTotais).toBe(210); // 120 + 90
   });
 
-  it('sem grounding: só analise_concluida (0 eventos de custo)', async () => {
+  it('without grounding: only analise_concluida (0 cost events)', async () => {
     const jobRepo = fakeJobRepo();
     const analysisRepo = fakeAnalysisRepo();
     const tele = fakeTelemetry();
@@ -350,7 +350,7 @@ describe('drenarFila — telemetria de observabilidade (§11b)', () => {
     expect(concl.payload.groundingChamadas).toBe(0);
   });
 
-  it('telemetria que LANÇA não derruba o job (não-bloqueante §11b)', async () => {
+  it('telemetry that THROWS does not break the job (non-blocking §11b)', async () => {
     const jobRepo = fakeJobRepo();
     const analysisRepo = fakeAnalysisRepo();
     jobRepo.add(empacotarInput('e.txt', new TextEncoder().encode('E')));

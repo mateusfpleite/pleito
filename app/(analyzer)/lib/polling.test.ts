@@ -15,19 +15,19 @@ import {
  *  - erro de rede no submit e no poll viram estado `erro` com mensagem
  */
 
-describe('reducirPolling — máquina de estado', () => {
-  it('começa idle, sem jobId', () => {
+describe('reducirPolling — state machine', () => {
+  it('starts idle, without jobId', () => {
     expect(estadoInicial.fase).toBe('idle');
     expect(estadoInicial.jobId).toBeNull();
   });
 
-  it('idle → submetendo ao enviar', () => {
+  it('idle → submetendo on submit', () => {
     const s = reducirPolling(estadoInicial, { tipo: 'submeter' });
     expect(s.fase).toBe('submetendo');
     expect(s.erro).toBeNull();
   });
 
-  it('submetendo → aguardando ao receber jobId', () => {
+  it('submetendo → aguardando on receiving jobId', () => {
     let s = reducirPolling(estadoInicial, { tipo: 'submeter' });
     s = reducirPolling(s, { tipo: 'job-criado', jobId: 'j1' });
     expect(s.fase).toBe('aguardando');
@@ -35,7 +35,7 @@ describe('reducirPolling — máquina de estado', () => {
     expect(s.statusJob).toBe('pending');
   });
 
-  it('submeter falhou → erro com mensagem', () => {
+  it('submit failed → erro with message', () => {
     let s = reducirPolling(estadoInicial, { tipo: 'submeter' });
     s = reducirPolling(s, {
       tipo: 'falha',
@@ -45,7 +45,7 @@ describe('reducirPolling — máquina de estado', () => {
     expect(s.erro).toBe('upload vazio');
   });
 
-  it('aguardando: pending → running (continua aguardando)', () => {
+  it('aguardando: pending → running (keeps waiting)', () => {
     let s: PollingState = {
       fase: 'aguardando',
       jobId: 'j1',
@@ -61,7 +61,7 @@ describe('reducirPolling — máquina de estado', () => {
     expect(s.statusJob).toBe('running');
   });
 
-  it('aguardando → concluido ao receber done com resultado', () => {
+  it('aguardando → concluido on receiving done with result', () => {
     let s: PollingState = {
       fase: 'aguardando',
       jobId: 'j1',
@@ -84,7 +84,7 @@ describe('reducirPolling — máquina de estado', () => {
     expect(s.resultado).toEqual(resultado);
   });
 
-  it('aguardando → erro ao receber status erro (propaga mensagem)', () => {
+  it('aguardando → erro on receiving erro status (propagates message)', () => {
     let s: PollingState = {
       fase: 'aguardando',
       jobId: 'j1',
@@ -104,7 +104,7 @@ describe('reducirPolling — máquina de estado', () => {
     expect(s.erro).toMatch(/zip-bomb/);
   });
 
-  it('falha de rede no poll → erro', () => {
+  it('network failure on poll → erro', () => {
     let s: PollingState = {
       fase: 'aguardando',
       jobId: 'j1',
@@ -117,7 +117,7 @@ describe('reducirPolling — máquina de estado', () => {
     expect(s.erro).toBe('rede caiu');
   });
 
-  it('reiniciar volta ao estado inicial', () => {
+  it('reiniciar returns to the initial state', () => {
     const s: PollingState = {
       fase: 'concluido',
       jobId: 'j1',
@@ -130,8 +130,8 @@ describe('reducirPolling — máquina de estado', () => {
   });
 });
 
-describe('ehTerminal — para de pollar em done/erro', () => {
-  it('idle/submetendo/aguardando NÃO são terminais', () => {
+describe('ehTerminal — stops polling on done/erro', () => {
+  it('idle/submetendo/aguardando are NOT terminal', () => {
     expect(ehTerminal({ ...estadoInicial })).toBe(false);
     expect(
       ehTerminal({ ...estadoInicial, fase: 'submetendo' })
@@ -141,12 +141,12 @@ describe('ehTerminal — para de pollar em done/erro', () => {
     ).toBe(false);
   });
 
-  it('concluido e erro SÃO terminais', () => {
+  it('concluido and erro ARE terminal', () => {
     expect(ehTerminal({ ...estadoInicial, fase: 'concluido' })).toBe(true);
     expect(ehTerminal({ ...estadoInicial, fase: 'erro' })).toBe(true);
   });
 
-  it('estado terminal ignora novos eventos de status (idempotente)', () => {
+  it('terminal state ignores new status events (idempotent)', () => {
     const terminal: PollingState = {
       fase: 'concluido',
       jobId: 'j1',

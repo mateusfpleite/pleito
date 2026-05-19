@@ -101,7 +101,7 @@ const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 const req = () => new Request('http://localhost/api/admin/promover/a-7');
 
 describe('POST /api/admin/promover/:id', () => {
-  it('promove → 201 + nomeArquivo + escreveu em fixtures/gold/', async () => {
+  it('promotes → 201 + nomeArquivo + wrote to fixtures/gold/', async () => {
     const escritos: string[] = [];
     const POST = criarPromoverPOST({
       analysisRepo: repo(reg()),
@@ -120,7 +120,7 @@ describe('POST /api/admin/promover/:id', () => {
     expect(escritos[0]).not.toContain('/output/');
   });
 
-  it('análise inexistente → 404', async () => {
+  it('nonexistent analysis → 404', async () => {
     const POST = criarPromoverPOST({
       analysisRepo: repo(null),
       promoverOpts: { escrever: async () => {} },

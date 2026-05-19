@@ -124,8 +124,8 @@ function ev(
   return { analysisId, evento, payload, createdAt: new Date(0) };
 }
 
-describe('listarAdmin — revisão interna (§11b)', () => {
-  it('sinal-ouro: ofício exportado ≠ gerado → foiEditado + distância', async () => {
+describe('listarAdmin — internal review (§11b)', () => {
+  it('gold-signal: exported ofício ≠ generated → foiEditado + distance', async () => {
     const r = reg({
       id: 'a-1',
       oficioExportado: '# Ofício EDITADO\n\nQual a vigência da Lei?',
@@ -146,7 +146,7 @@ describe('listarAdmin — revisão interna (§11b)', () => {
     expect(linhas[0].feedback).toEqual({ util: true, texto: 'ótimo' });
   });
 
-  it('FALLBACK: sem edição → sinal-ouro nulo; reserva (exportou) presente', async () => {
+  it('FALLBACK: no edit → gold-signal null; fallback (exported) present', async () => {
     const r = reg({
       id: 'a-2',
       jobId: 'job-2',
@@ -163,7 +163,7 @@ describe('listarAdmin — revisão interna (§11b)', () => {
     expect(linhas[0].feedback).toBeNull();
   });
 
-  it('RE-UPLOAD: mesmo inputHash em 2 análises → reupload=true em ambas', async () => {
+  it('RE-UPLOAD: same inputHash in 2 analyses → reupload=true in both', async () => {
     const a = reg({ id: 'a-1', jobId: 'job-1' });
     const b = reg({ id: 'a-2', jobId: 'job-2' });
     const linhas = await listarAdmin({
@@ -176,7 +176,7 @@ describe('listarAdmin — revisão interna (§11b)', () => {
     expect(linhas.every((l) => l.reupload)).toBe(true);
   });
 
-  it('hash único → reupload=false', async () => {
+  it('unique hash → reupload=false', async () => {
     const a = reg({ id: 'a-1' });
     const linhas = await listarAdmin({
       analysisRepo: repo([a]),

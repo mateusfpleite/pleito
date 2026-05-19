@@ -150,8 +150,8 @@ function fakeModel(payload: unknown) {
   };
 }
 
-describe('montarPrompt — ordem extração antes da tarefa (SPEC §7)', () => {
-  it('põe a extração ANTES da string de tarefa (recência)', () => {
+describe('montarPrompt — extraction before task order (SPEC §7)', () => {
+  it('places the extraction BEFORE the task string (recency)', () => {
     const prompt = montarPrompt(baseExtraction({ incoerencias: [] }));
     const idxDoc = prompt.indexOf('"municipio"');
     const idxTarefa = prompt.indexOf(TAREFA);
@@ -160,14 +160,14 @@ describe('montarPrompt — ordem extração antes da tarefa (SPEC §7)', () => {
     expect(idxDoc).toBeLessThan(idxTarefa);
   });
 
-  it('few-shot Pariconha fica no SYSTEM estático, não no prompt do user', () => {
+  it('few-shot Pariconha stays in the static SYSTEM, not in the user prompt', () => {
     const prompt = montarPrompt(baseExtraction());
     expect(SYSTEM_PROMPT).toMatch(/pariconha/i);
     expect(SYSTEM_PROMPT).toContain('OFÍCIO DE ESCLARECIMENTO');
     expect(prompt).not.toContain('OFÍCIO DE ESCLARECIMENTO');
   });
 
-  it('o SYSTEM ensina que o modelo NÃO redige (só seleciona achados)', () => {
+  it('the SYSTEM teaches that the model does NOT write (only selects findings)', () => {
     expect(SYSTEM_PROMPT).toMatch(/afirmacaoVigencia/);
     expect(SYSTEM_PROMPT).toMatch(/selecoes/);
     // O contrato proíbe explicitamente texto livre.
@@ -182,8 +182,8 @@ describe('montarPrompt — ordem extração antes da tarefa (SPEC §7)', () => {
 const LEXICO_VIGENCIA =
   /revogad|ab-?rogad|derrogad|revogou-se|perdeu vig[êe]ncia|n[ãa]o subsiste|superad|exaurid|deixou de produzir efeitos|n[ãa]o vige|sem efic[áa]cia|n[ãa]o est[áa] (mais )?em vigor|deixou de viger|sem vig[êe]ncia|caducou/i;
 
-describe('GeminiDrafter — contenção estrutural REAL (model injetado, sem rede)', () => {
-  it('(a) lei contestada + fake tenta revogada → adapter FORÇA nenhuma; markdown não afirma revogação', async () => {
+describe('GeminiDrafter — REAL structural containment (injected model, no network)', () => {
+  it('(a) contested law + fake tries revoked → adapter FORCES none; markdown does not assert revocation', async () => {
     const e = baseExtraction({
       leisReferenciadas: [leiContestada],
       pontosDeAtencao: [pontoManifesta],
@@ -212,7 +212,7 @@ describe('GeminiDrafter — contenção estrutural REAL (model injetado, sem red
     expect(o.markdown).toMatch(/solicita-se (confirmação|esclarecimento)/i);
   });
 
-  it('(b) lei revogada verificada match único → frase-template de revogação presente', async () => {
+  it('(b) verified revoked law with single match → revocation template phrase present', async () => {
     const e = baseExtraction({
       leisReferenciadas: [leiRevogada],
       incoerencias: [
@@ -248,7 +248,7 @@ describe('GeminiDrafter — contenção estrutural REAL (model injetado, sem red
     );
   });
 
-  it('(b-host) lei revogada-baseline com fonteVerificacao = URL oficial → cita só o HOST (escalar não-LLM), nunca prosa', async () => {
+  it('(b-host) baseline-revoked law with fonteVerificacao = official URL → cites only the HOST (non-LLM scalar), never prose', async () => {
     // Caminho baseline-hit: 8666/1993 casa `matchNorma` (revogada-notoria) e
     // a fonteVerificacao é a URL curada real → cita só o domínio.
     const leiComUrl = {
@@ -285,7 +285,7 @@ describe('GeminiDrafter — contenção estrutural REAL (model injetado, sem red
     expect(md).not.toContain('l8666cons.htm');
   });
 
-  it('(c) sem incoerências/ambíguos/manifestação → retorna null (gate B não dispara)', async () => {
+  it('(c) no inconsistencies/ambiguities/manifestation → returns null (gate B does not fire)', async () => {
     const e = baseExtraction();
     const drafter = new GeminiDrafter(
       fakeModel({
@@ -298,7 +298,7 @@ describe('GeminiDrafter — contenção estrutural REAL (model injetado, sem red
     expect(oficio).toBeNull();
   });
 
-  it('(d) leisCitadas é subconjunto de leisReferenciadas (descarta lei inventada)', async () => {
+  it('(d) leisCitadas is a subset of leisReferenciadas (discards invented law)', async () => {
     const e = baseExtraction({
       leisReferenciadas: [leiRevogada],
       incoerencias: [
@@ -334,7 +334,7 @@ describe('GeminiDrafter — contenção estrutural REAL (model injetado, sem red
     }
   });
 
-  it('(e) tipo ∈ enum e markdown não-vazio quando não-null', async () => {
+  it('(e) tipo ∈ enum and markdown non-empty when non-null', async () => {
     const e = baseExtraction({
       pontosDeAtencao: [pontoManifesta],
       leisReferenciadas: [leiContestada],
@@ -354,7 +354,7 @@ describe('GeminiDrafter — contenção estrutural REAL (model injetado, sem red
     expect(oficio!.markdown.trim().length).toBeGreaterThan(0);
   });
 
-  it('(b2) modelo tenta forçar "vigente" em lei vigente → adapter normaliza para "nenhuma"', async () => {
+  it('(b2) model tries to force "vigente" on an in-force law → adapter normalizes to "nenhuma"', async () => {
     const leiVigente = {
       ...leiRevogada,
       descricao: 'Lei nº 14.133/2021',
@@ -383,7 +383,7 @@ describe('GeminiDrafter — contenção estrutural REAL (model injetado, sem red
   });
 });
 
-describe('GeminiDrafter — ADVERSARIAL: prosa livre estruturalmente impossível', () => {
+describe('GeminiDrafter — ADVERSARIAL: free prose structurally impossible', () => {
   /**
    * O modelo TENTA injetar afirmação de revogação sobre lei `contestada`
    * (afirmacaoVigencia corretamente `nenhuma`) por TODO campo que ele
@@ -402,7 +402,7 @@ describe('GeminiDrafter — ADVERSARIAL: prosa livre estruturalmente impossível
   ];
 
   for (const ataque of PARAFRASES_ATAQUE) {
-    it(`não vaza ataque via NENHUM campo do modelo: "${ataque.slice(0, 38)}…"`, async () => {
+    it(`does not leak attack via ANY model field: "${ataque.slice(0, 38)}…"`, async () => {
       const e = baseExtraction({
         leisReferenciadas: [leiContestada],
         // Achado estruturado existe; o modelo o seleciona legitimamente,
@@ -452,7 +452,7 @@ describe('GeminiDrafter — ADVERSARIAL: prosa livre estruturalmente impossível
     });
   }
 
-  it('(C1-reincidente) modelo seleciona incoerência lei-revogada de lei contestada + tenta prosa → corpo templated não afirma revogação', async () => {
+  it('(C1-recurring) model selects lei-revogada inconsistency from a contested law + tries prose → templated body does not assert revocation', async () => {
     // IN 05/2017 contestada; incoerência tipo lei-revogada cuja DESCRIÇÃO
     // (texto LLM a montante) diz "foi ab-rogada e não subsiste". O template
     // por TIPO da incoerência NUNCA interpola a descricao livre.
@@ -488,7 +488,7 @@ describe('GeminiDrafter — ADVERSARIAL: prosa livre estruturalmente impossível
     expect(md).toMatch(/solicita-se (confirmação|esclarecimento)/i);
   });
 
-  it('(C1-misto) 8666 revogada verificada + IN contestada na mesma extração → só a 8666 recebe frase-template de revogação', async () => {
+  it('(C1-mixed) 8666 verified revoked + contested IN in the same extraction → only 8666 receives the revocation template phrase', async () => {
     const e = baseExtraction({
       leisReferenciadas: [leiRevogada, leiContestada],
       incoerencias: [
@@ -528,7 +528,7 @@ describe('GeminiDrafter — ADVERSARIAL: prosa livre estruturalmente impossível
     expect(md).not.toMatch(/(revogad|perdeu vig|sem vig)[^.]*?05\/?2017/i);
   });
 
-  it('(C2) duas leis mesmo numero/ano (uma revogada, uma contestada) → lookup ambíguo NUNCA afirma revogação', async () => {
+  it('(C2) two laws with same numero/ano (one revoked, one contested) → ambiguous lookup NEVER asserts revocation', async () => {
     const leiDup1 = {
       ...leiRevogada,
       descricao: 'Lei X (a)',
@@ -564,7 +564,7 @@ describe('GeminiDrafter — ADVERSARIAL: prosa livre estruturalmente impossível
     expect(oficio!.markdown).not.toMatch(LEXICO_VIGENCIA);
   });
 
-  it('(C2) numero:null nunca é match confiável → nunca afirma revogação', async () => {
+  it('(C2) numero:null is never a reliable match → never asserts revocation', async () => {
     const leiSemNumero = {
       ...leiRevogada,
       descricao: 'Norma sem número identificável',
@@ -593,7 +593,7 @@ describe('GeminiDrafter — ADVERSARIAL: prosa livre estruturalmente impossível
     expect(oficio!.markdown).not.toMatch(LEXICO_VIGENCIA);
   });
 
-  it('(seleção inválida) índice fora de range / fonte vazia → ignorado, sem crash, sem prosa', async () => {
+  it('(invalid selection) out-of-range index / empty source → ignored, no crash, no prose', async () => {
     const e = baseExtraction({
       leisReferenciadas: [leiContestada],
       pontosDeAtencao: [pontoManifesta],
@@ -616,7 +616,7 @@ describe('GeminiDrafter — ADVERSARIAL: prosa livre estruturalmente impossível
     expect(oficio!.markdown.trim().length).toBeGreaterThan(0);
   });
 
-  it('(I1) incoerência tipo lei-revogada (descrição com "revogada") + lei contestada → corpo templated sem /revogad/i', async () => {
+  it('(I1) lei-revogada type inconsistency (description with "revogada") + contested law → templated body without /revogad/i', async () => {
     const e = baseExtraction({
       leisReferenciadas: [leiContestada],
       incoerencias: [
@@ -654,7 +654,7 @@ describe('GeminiDrafter — ADVERSARIAL: prosa livre estruturalmente impossível
     expect(oficio!.markdown).toMatch(/solicita-se esclarecimento/i);
   });
 
-  it('(I2) incoerência só severidade:baixa, nada mais → redigir retorna null', async () => {
+  it('(I2) inconsistency only severidade:baixa, nothing else → redigir returns null', async () => {
     const e = baseExtraction({
       incoerencias: [
         {
@@ -675,7 +675,7 @@ describe('GeminiDrafter — ADVERSARIAL: prosa livre estruturalmente impossível
     expect(oficio).toBeNull();
   });
 
-  it('(I2) incoerência severidade:media → gate B dispara (não-null)', async () => {
+  it('(I2) inconsistency severidade:media → gate B fires (non-null)', async () => {
     const e = baseExtraction({
       incoerencias: [
         {
@@ -724,8 +724,8 @@ const PROSA_STATUS_SEM_LEXICO = [
   'foi tacitamente afastada e perdeu sua função normativa',
 ];
 
-describe('GeminiDrafter — AUSÊNCIA ESTRUTURAL: zero string livre de LLM a montante', () => {
-  it('as iscas de status NÃO casam o tripwire (senão o teste seria trivial)', () => {
+describe('GeminiDrafter — STRUCTURAL ABSENCE: zero upstream free LLM string', () => {
+  it('the status decoys do NOT match the tripwire (otherwise the test would be trivial)', () => {
     for (const p of PROSA_STATUS_SEM_LEXICO) {
       expect(LEXICO_VIGENCIA.test(p)).toBe(false);
     }
@@ -733,7 +733,7 @@ describe('GeminiDrafter — AUSÊNCIA ESTRUTURAL: zero string livre de LLM a mon
 
   // --- Canal 1: trechoAmbiguo.secaoOndeAparece (z.string() livre do extractor) ---
   for (const isca of PROSA_STATUS_SEM_LEXICO) {
-    it(`secaoOndeAparece não vaza prosa de status (sem léxico): "${isca.slice(0, 32)}…"`, async () => {
+    it(`secaoOndeAparece does not leak status prose (no lexicon): "${isca.slice(0, 32)}…"`, async () => {
       const e = baseExtraction({
         leisReferenciadas: [leiContestada],
         trechosAmbiguos: [
@@ -771,7 +771,7 @@ describe('GeminiDrafter — AUSÊNCIA ESTRUTURAL: zero string livre de LLM a mon
     });
   }
 
-  it('secaoOndeAparece benigno também não é interpolado (referência por índice, não prosa)', async () => {
+  it('benign secaoOndeAparece is also not interpolated (reference by index, not prose)', async () => {
     const e = baseExtraction({
       leisReferenciadas: [leiContestada],
       trechosAmbiguos: [
@@ -817,7 +817,7 @@ describe('GeminiDrafter — AUSÊNCIA ESTRUTURAL: zero string livre de LLM a mon
     fonteVerificacao: 'norma-baseline.json',
   };
 
-  it('fonteVerificacao de GROUNDING (string livre do LLM verifier) não é interpolada no template de revogação', async () => {
+  it('fonteVerificacao from GROUNDING (free LLM verifier string) is not interpolated into the revocation template', async () => {
     const grounding =
       'fonte: a norma foi tacitamente afastada conforme análise web não auditada';
     const e = baseExtraction({
@@ -858,7 +858,7 @@ describe('GeminiDrafter — AUSÊNCIA ESTRUTURAL: zero string livre de LLM a mon
     expect(md.trim().length).toBeGreaterThan(0);
   });
 
-  it('fonteVerificacao de grounding mesmo SEM léxico (prosa neutra) não entra no ofício', async () => {
+  it('grounding fonteVerificacao even WITHOUT lexicon (neutral prose) does not enter the ofício', async () => {
     const grounding = 'verificação: a norma já não produz qualquer efeito jurídico';
     const e = baseExtraction({
       leisReferenciadas: [
@@ -888,7 +888,7 @@ describe('GeminiDrafter — AUSÊNCIA ESTRUTURAL: zero string livre de LLM a mon
     expect(oficio!.markdown).toMatch(/encontra-se revogada/i);
   });
 
-  it('fonteVerificacao de grounding que PARECE URL mas host não-oficial → não cita (não-baseline + allowlist)', async () => {
+  it('grounding fonteVerificacao that LOOKS like a URL but with non-official host → does not cite (non-baseline + allowlist)', async () => {
     // Mesmo URL bem-formada: se a lei é cauda (não-baseline) NUNCA cita;
     // e o host teria de passar a allowlist oficial de qualquer forma.
     const e = baseExtraction({

@@ -131,19 +131,19 @@ function extracao(
 }
 
 describe('escaparHtml (anti-XSS)', () => {
-  it('neutraliza os 5 metacaracteres de HTML/atributo', () => {
+  it('neutralizes the 5 HTML/attribute metacharacters', () => {
     expect(escaparHtml(`<script>"x" & 'y'`)).toBe(
       '&lt;script&gt;&quot;x&quot; &amp; &#39;y&#39;'
     );
   });
 
-  it('escapa & antes das entidades (sem dupla-escapagem)', () => {
+  it('escapes & before entities (no double-escaping)', () => {
     expect(escaparHtml('a & <b>')).toBe('a &amp; &lt;b&gt;');
   });
 });
 
-describe('markdownParaHtmlSeguro (conversão mínima e segura)', () => {
-  it('NÃO deixa markup do usuário atravessar (XSS bloqueado)', () => {
+describe('markdownParaHtmlSeguro (minimal and safe conversion)', () => {
+  it('does NOT let user markup pass through (XSS blocked)', () => {
     const malicioso =
       '# Título <script>alert(1)</script>\n\n' +
       'Parágrafo com <img src=x onerror=alert(2)>\n\n' +
@@ -167,7 +167,7 @@ describe('markdownParaHtmlSeguro (conversão mínima e segura)', () => {
     expect(html).toContain('<p>');
   });
 
-  it('títulos, parágrafos e listas viram HTML estrutural', () => {
+  it('headings, paragraphs and lists become structural HTML', () => {
     const html = markdownParaHtmlSeguro(
       '## Pedido\n\nPrezados,\n\n- ponto A\n- ponto B'
     );
@@ -178,8 +178,8 @@ describe('markdownParaHtmlSeguro (conversão mínima e segura)', () => {
   });
 });
 
-describe('montarHtmlRelatorio (projeção do JSON — formato "Principais pontos")', () => {
-  it('contém os campos da extração (resumo, leis, pontos de atenção)', () => {
+describe('montarHtmlRelatorio (JSON projection — "Principais pontos" format)', () => {
+  it('contains the extraction fields (summary, laws, points of attention)', () => {
     const html = montarHtmlRelatorio(extracao());
     expect(html).toContain('Principais pontos');
     expect(html).toContain('Jaborandi');
@@ -193,7 +193,7 @@ describe('montarHtmlRelatorio (projeção do JSON — formato "Principais pontos
     );
   });
 
-  it('escapa dados do edital (campo de PDF de terceiro não injeta markup)', () => {
+  it('escapes edital data (third-party PDF field does not inject markup)', () => {
     const html = montarHtmlRelatorio(
       extracao({
         objetoSummary: 'Objeto <script>alert(1)</script> malicioso',
@@ -204,8 +204,8 @@ describe('montarHtmlRelatorio (projeção do JSON — formato "Principais pontos
   });
 });
 
-describe('montarHtmlOficio (a partir do TEXTO, não do JSON)', () => {
-  it('contém o texto do ofício convertido e escapado', () => {
+describe('montarHtmlOficio (from the TEXT, not the JSON)', () => {
+  it('contains the ofício text converted and escaped', () => {
     const texto =
       '# Ofício de esclarecimento\n\n' +
       'Solicita-se confirmação sobre <vigência>.';
@@ -219,7 +219,7 @@ describe('montarHtmlOficio (a partir do TEXTO, não do JSON)', () => {
 });
 
 describe('renderRelatorioPdf / renderOficioPdf (contrato Buffer via engine fake)', () => {
-  it('renderRelatorioPdf devolve Buffer começando com %PDF', async () => {
+  it('renderRelatorioPdf returns a Buffer starting with %PDF', async () => {
     const eng = fakeEngine();
     const buf = await renderRelatorioPdf(extracao(), eng);
     expect(Buffer.isBuffer(buf)).toBe(true);
@@ -229,7 +229,7 @@ describe('renderRelatorioPdf / renderOficioPdf (contrato Buffer via engine fake)
     expect(eng.htmlVisto[0]).toContain('Jaborandi');
   });
 
-  it('renderOficioPdf renderiza A PARTIR do texto recebido (não do JSON)', async () => {
+  it('renderOficioPdf renders FROM the received text (not the JSON)', async () => {
     const eng = fakeEngine();
     const buf = await renderOficioPdf(
       '# Ofício editado pela Stefany\n\nTexto final.',

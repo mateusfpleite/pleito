@@ -21,7 +21,7 @@ function req(body: unknown): Request {
 }
 
 describe('POST /api/login', () => {
-  it('senha correta → 200 + Set-Cookie de sessão assinado válido', async () => {
+  it('correct password → 200 + valid signed session Set-Cookie', async () => {
     const POST = criarLoginPOST({ appSecret: SECRET, producao: false });
     const res = await POST(req({ senha: SECRET }));
     expect(res.status).toBe(200);
@@ -43,27 +43,27 @@ describe('POST /api/login', () => {
     expect(r.valido).toBe(true);
   });
 
-  it('produção → cookie Secure', async () => {
+  it('production → Secure cookie', async () => {
     const POST = criarLoginPOST({ appSecret: SECRET, producao: true });
     const res = await POST(req({ senha: SECRET }));
     expect(res.headers.get('set-cookie')).toContain('Secure');
   });
 
-  it('senha errada → 401 SEM Set-Cookie', async () => {
+  it('wrong password → 401 WITHOUT Set-Cookie', async () => {
     const POST = criarLoginPOST({ appSecret: SECRET, producao: false });
     const res = await POST(req({ senha: 'errada' }));
     expect(res.status).toBe(401);
     expect(res.headers.get('set-cookie')).toBeNull();
   });
 
-  it('senha de mesmo tamanho mas diferente → 401', async () => {
+  it('password of the same length but different → 401', async () => {
     const POST = criarLoginPOST({ appSecret: 'abcde', producao: false });
     const res = await POST(req({ senha: 'abcdz' }));
     expect(res.status).toBe(401);
     expect(res.headers.get('set-cookie')).toBeNull();
   });
 
-  it('senha ausente / não-string → 401 sem cookie', async () => {
+  it('password absent / non-string → 401 without cookie', async () => {
     const POST = criarLoginPOST({ appSecret: SECRET, producao: false });
     for (const b of [{}, { senha: 123 }, { senha: null }]) {
       const res = await POST(req(b));
@@ -72,7 +72,7 @@ describe('POST /api/login', () => {
     }
   });
 
-  it('body não-JSON → 400', async () => {
+  it('non-JSON body → 400', async () => {
     const POST = criarLoginPOST({ appSecret: SECRET, producao: false });
     const res = await POST(req('isto não é json'));
     expect(res.status).toBe(400);

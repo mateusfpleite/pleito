@@ -146,8 +146,8 @@ function fakeModel(payload: unknown) {
   };
 }
 
-describe('montarPrompt — ordem extração antes da tarefa (SPEC §7)', () => {
-  it('põe a extração ANTES da string de tarefa (recência)', () => {
+describe('montarPrompt — extraction before task order (SPEC §7)', () => {
+  it('places the extraction BEFORE the task string (recency)', () => {
     const e = baseExtraction();
     const prompt = montarPrompt(e);
 
@@ -159,22 +159,22 @@ describe('montarPrompt — ordem extração antes da tarefa (SPEC §7)', () => {
     expect(idxDoc).toBeLessThan(idxTarefa);
   });
 
-  it('o prompt expõe statusVerificado das leis (consumo SPEC §4/§5)', () => {
+  it('the prompt exposes statusVerificado of the laws (consumption SPEC §4/§5)', () => {
     const e = baseExtraction();
     const prompt = montarPrompt(e);
     expect(prompt).toContain('statusVerificado');
     expect(prompt).toContain('"vigente"');
   });
 
-  it('few-shot fica no SYSTEM estático (cacheável), não no prompt do user', () => {
+  it('few-shot stays in the static SYSTEM (cacheable), not in the user prompt', () => {
     const prompt = montarPrompt(baseExtraction());
     expect(SYSTEM_PROMPT).toContain('EXEMPLO');
     expect(prompt).not.toContain('EXEMPLO');
   });
 });
 
-describe('GeminiRiskAnalyst — parse/validação (model injetado, sem rede)', () => {
-  it('(a) fake com pontos válidos → EditalExtraction com pontosDeAtencao preenchido e válido', async () => {
+describe('GeminiRiskAnalyst — parse/validation (injected model, no network)', () => {
+  it('(a) fake with valid points → EditalExtraction with pontosDeAtencao filled and valid', async () => {
     const analyst = new GeminiRiskAnalyst(
       fakeModel({ pontosDeAtencao: pontosValidos }) as never
     );
@@ -185,7 +185,7 @@ describe('GeminiRiskAnalyst — parse/validação (model injetado, sem rede)', (
     expect(() => EditalExtractionSchema.parse(r)).not.toThrow();
   });
 
-  it('(b) fake com categoria fora do enum → rejeita (throw)', async () => {
+  it('(b) fake with categoria outside the enum → rejects (throw)', async () => {
     const pontoInvalido = [
       {
         descricao: 'Categoria inexistente.',
@@ -201,7 +201,7 @@ describe('GeminiRiskAnalyst — parse/validação (model injetado, sem rede)', (
     await expect(analyst.analisar(baseExtraction())).rejects.toThrow();
   });
 
-  it('(c) severidade/categoria/recomendaManifestacao do fake são preservadas no output', async () => {
+  it('(c) severidade/categoria/recomendaManifestacao from the fake are preserved in the output', async () => {
     const analyst = new GeminiRiskAnalyst(
       fakeModel({ pontosDeAtencao: pontosValidos }) as never
     );
@@ -216,7 +216,7 @@ describe('GeminiRiskAnalyst — parse/validação (model injetado, sem rede)', (
     expect(consorcio?.recomendaManifestacao).toBe(true);
   });
 
-  it('(d) campos não-pontosDeAtencao da extração de entrada NÃO são mutados', async () => {
+  it('(d) non-pontosDeAtencao fields of the input extraction are NOT mutated', async () => {
     const entrada = baseExtraction();
     const snapshot = JSON.parse(JSON.stringify({ ...entrada, pontosDeAtencao: undefined }));
 

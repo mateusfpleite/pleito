@@ -10,17 +10,17 @@ const minimalEnv = {
 };
 
 describe("parseConfig", () => {
-  it("falha quando GOOGLE_GENERATIVE_AI_API_KEY está ausente", () => {
+  it("fails when GOOGLE_GENERATIVE_AI_API_KEY is absent", () => {
     const { GOOGLE_GENERATIVE_AI_API_KEY, ...withoutKey } = minimalEnv;
     expect(() => parseConfig(withoutKey)).toThrow();
   });
 
-  it("falha quando DATABASE_URL está ausente", () => {
+  it("fails when DATABASE_URL is absent", () => {
     const { DATABASE_URL, ...withoutDb } = minimalEnv;
     expect(() => parseConfig(withoutDb)).toThrow();
   });
 
-  it("aceita env mínimo e aplica default de EXTRACTOR_MODEL", () => {
+  it("accepts minimal env and applies the EXTRACTOR_MODEL default", () => {
     const config = parseConfig(minimalEnv);
     expect(config.GOOGLE_GENERATIVE_AI_API_KEY).toBe("test-key");
     expect(config.DATABASE_URL).toBe(minimalEnv.DATABASE_URL);
@@ -30,7 +30,7 @@ describe("parseConfig", () => {
     expect(config.EXTRACTOR_MODEL).toBe("gemini-2.5-flash");
   });
 
-  it("respeita EXTRACTOR_MODEL explícito", () => {
+  it("respects an explicit EXTRACTOR_MODEL", () => {
     const config = parseConfig({
       ...minimalEnv,
       EXTRACTOR_MODEL: "gemini-2.5-pro",

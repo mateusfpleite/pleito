@@ -189,8 +189,8 @@ function makeMocks(opts: {
   return { deps, preprocessar, extrair, verificar, analisar, redigir };
 }
 
-describe('analyzeEdital — recomposição (a)', () => {
-  it('monta EditalExtraction válido com pontosDeAtencao:[] e fonte do Preprocessor', async () => {
+describe('analyzeEdital — recomposition (a)', () => {
+  it('builds a valid EditalExtraction with pontosDeAtencao:[] and Preprocessor fonte', async () => {
     // Captura o objeto que chega ao Risk Analyst para inspecionar a
     // recomposição (revogada=true só p/ não importar se Gate A dispara).
     const out = makeMocks({
@@ -222,7 +222,7 @@ describe('analyzeEdital — recomposição (a)', () => {
 });
 
 describe('analyzeEdital — Gate A (b,c)', () => {
-  it('(b) NÃO dispara: nenhuma lei de risco e revogada=false → verifier NÃO chamado', async () => {
+  it('(b) does NOT fire: no risky law and revogada=false → verifier NOT called', async () => {
     const m = makeMocks({
       extractorOutput: baseExtractorOutput({
         leisReferenciadas: [
@@ -234,7 +234,7 @@ describe('analyzeEdital — Gate A (b,c)', () => {
     expect(m.verificar).not.toHaveBeenCalled();
   });
 
-  it('(c) dispara por matchNorma com extractor revogada=false (8.666/1993) → verifier chamado', async () => {
+  it('(c) fires via matchNorma with extractor revogada=false (8.666/1993) → verifier called', async () => {
     const m = makeMocks({
       extractorOutput: baseExtractorOutput({
         leisReferenciadas: [
@@ -262,7 +262,7 @@ describe('analyzeEdital — Gate A (b,c)', () => {
 });
 
 describe('analyzeEdital — Gate B (d,e)', () => {
-  it('(d) NÃO dispara: nada a questionar → drafter NÃO chamado, oficio:null', async () => {
+  it('(d) does NOT fire: nothing to question → drafter NOT called, oficio:null', async () => {
     const m = makeMocks({
       extractorOutput: baseExtractorOutput({
         incoerencias: [
@@ -283,7 +283,7 @@ describe('analyzeEdital — Gate B (d,e)', () => {
     expect(res.oficio).toBeNull();
   });
 
-  it('(e) dispara só por pontoDeAtencao.recomendaManifestacao → drafter chamado', async () => {
+  it('(e) fires only via pontoDeAtencao.recomendaManifestacao → drafter called', async () => {
     const m = makeMocks({
       pontosDeAtencao: [
         {
@@ -306,7 +306,7 @@ describe('analyzeEdital — Gate B (d,e)', () => {
 });
 
 describe('analyzeEdital — Tier 0 fatal (f)', () => {
-  it('ofício afirma revogada p/ lei com statusVerificado≠revogada → LANÇA', async () => {
+  it('ofício asserts revogada for a law with statusVerificado≠revogada → THROWS', async () => {
     const m = makeMocks({
       extractorOutput: baseExtractorOutput({
         leisReferenciadas: [
@@ -336,8 +336,8 @@ describe('analyzeEdital — Tier 0 fatal (f)', () => {
   });
 });
 
-describe('analyzeEdital — propagação de falha (g)', () => {
-  it('extractor lança → analyzeEdital rejeita (não silencia)', async () => {
+describe('analyzeEdital — failure propagation (g)', () => {
+  it('extractor throws → analyzeEdital rejects (does not silence)', async () => {
     const m = makeMocks({
       extrairImpl: async () => {
         throw new Error('Gemini extractor 503');

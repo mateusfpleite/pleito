@@ -40,7 +40,7 @@ function fakePrisma(): PrismaClientLike {
 }
 
 describe('montarAnalyzeDeps', () => {
-  it('monta AnalyzeDeps com os adapters reais (tipos do pipeline)', () => {
+  it('builds AnalyzeDeps with the real adapters (pipeline types)', () => {
     const cache = new PrismaNormaCache(fakePrisma());
     const deps = montarAnalyzeDeps({ model: fakeModel, normaCache: cache });
 
@@ -53,7 +53,7 @@ describe('montarAnalyzeDeps', () => {
 });
 
 describe('montarRepos', () => {
-  it('monta os repos Prisma sobre o client injetado', () => {
+  it('builds the Prisma repos over the injected client', () => {
     const prisma = fakePrisma();
     const repos = montarRepos(prisma);
 

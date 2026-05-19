@@ -21,8 +21,8 @@ const baseline = JSON.parse(
   readFileSync(resolve('data/norma-baseline.json'), 'utf-8')
 ) as { entries: Array<Record<string, unknown>> };
 
-describe('matchNorma — casos canônicos (input REAL do extractor)', () => {
-  it('(a) 8666/1993 federal lei → revogada-notoria (de jaborandi.json)', () => {
+describe('matchNorma — canonical cases (REAL extractor input)', () => {
+  it('(a) 8666/1993 federal lei → revogada-notoria (from jaborandi.json)', () => {
     // Extraído literalmente de output/jaborandi.json:
     // {"numero":"8666","ano":1993,"escopo":"federal","tipoNorma":"lei"}
     const r = matchNorma({
@@ -65,7 +65,7 @@ describe('matchNorma — casos canônicos (input REAL do extractor)', () => {
     expect(r!.status).toBe('inexistente');
   });
 
-  it('(d) norma fora da tabela → null', () => {
+  it('(d) norm outside the table → null', () => {
     // Lei 13.303/2016 NÃO está na baseline (é regime-jurídico válido,
     // não precisa de verificação) — input real de niteroi.json.
     const r = matchNorma({
@@ -78,8 +78,8 @@ describe('matchNorma — casos canônicos (input REAL do extractor)', () => {
   });
 });
 
-describe('matchNorma — fallback tolerante (extractor erra escopo/tipo ~54%)', () => {
-  it('(e) lei revogada conhecida com tipoNorma errado pelo LLM ainda casa via fallback', () => {
+describe('matchNorma — tolerant fallback (extractor gets escopo/tipo wrong ~54%)', () => {
+  it('(e) known revoked law with tipoNorma wrong by the LLM still matches via fallback', () => {
     // O LLM classificou a 8.666 como "decreto" (erro real de tipo).
     // Sem o fallback tolerante isto seria falso-negativo do Gate A.
     const r = matchNorma({
@@ -94,7 +94,7 @@ describe('matchNorma — fallback tolerante (extractor erra escopo/tipo ~54%)', 
     expect(r!.via).toBe('tolerante');
   });
 
-  it('fallback tolerante normaliza os 2 lados (extractor "8666" vs baseline "8.666")', () => {
+  it('tolerant fallback normalizes both sides (extractor "8666" vs baseline "8.666")', () => {
     // numero+ano batem só porque normalizarNumero roda nos DOIS lados.
     const r = matchNorma({
       numero: '10520',
@@ -108,8 +108,8 @@ describe('matchNorma — fallback tolerante (extractor erra escopo/tipo ~54%)', 
   });
 });
 
-describe('matchNorma — não-regressão FALSO-NEGATIVO (bug pego na plan-review)', () => {
-  it('(f) o approach bugado (sem normalizar os 2 lados) FALHARIA neste input real', () => {
+describe('matchNorma — FALSE-NEGATIVE non-regression (bug caught in plan-review)', () => {
+  it('(f) the buggy approach (without normalizing both sides) WOULD FAIL on this real input', () => {
     // Simula exatamente o approach que o plano mascarava: comparar o numero
     // cru do extractor ("8666") contra o numero cru da baseline ("8.666")
     // sem normalizar nenhum lado. O spike provou: 23/37 falsos-negativos.
@@ -129,8 +129,8 @@ describe('matchNorma — não-regressão FALSO-NEGATIVO (bug pego na plan-review
   });
 });
 
-describe('matchNorma — não-regressão FALSO-POSITIVO', () => {
-  it('(g1) alias não casa número curto divergente', () => {
+describe('matchNorma — FALSE-POSITIVE non-regression', () => {
+  it('(g1) alias does not match a divergent short number', () => {
     // "147" (LC 147/2014) tem alias "LC 147/2014". Um número curto
     // diferente ("14", ano divergente) NÃO pode casar via alias só porque
     // a substring "14" aparece no alias.
@@ -143,7 +143,7 @@ describe('matchNorma — não-regressão FALSO-POSITIVO', () => {
     expect(r).toBeNull();
   });
 
-  it('(g1b) alias path exige nIn.length >= 3 (não casa número de 2 dígitos)', () => {
+  it('(g1b) alias path requires nIn.length >= 3 (does not match a 2-digit number)', () => {
     // "98" não pode casar nenhuma entry via alias mesmo se a substring "98"
     // existir nos dígitos de algum alias — guarda do over-match do spike.
     const r = matchNorma({
@@ -155,7 +155,7 @@ describe('matchNorma — não-regressão FALSO-POSITIVO', () => {
     expect(r).toBeNull();
   });
 
-  it('(g2) tolerante NÃO atravessa escopo para entry que não é citacao-suspeita', () => {
+  it('(g2) tolerant does NOT cross escopo for an entry that is not citacao-suspeita', () => {
     // Quando há divergência de escopo e a entry casada não é
     // citacao-suspeita, o resultado NÃO deve afirmar via 'estrito'
     // (escopo não bateu) — só via 'tolerante', e a categoria continua
@@ -172,7 +172,7 @@ describe('matchNorma — não-regressão FALSO-POSITIVO', () => {
     expect(r!.categoria).toBe('vigente-ancora'); // não vira citacao-suspeita
   });
 
-  it('(g4-I1) numero "666" NÃO casa lei-8666-1993 via alias (substring de "8666")', () => {
+  it('(g4-I1) numero "666" does NOT match lei-8666-1993 via alias (substring of "8666")', () => {
     // BUG ESTRUTURAL DO MOAT: o path de alias usava
     // aliasDigits.includes(nIn). "666" é substring de "8666" (dígitos do
     // alias "Lei 8.666/93") → falso-positivo que FLIPA vigente→revogada
@@ -186,7 +186,7 @@ describe('matchNorma — não-regressão FALSO-POSITIVO', () => {
     expect(r).toBeNull();
   });
 
-  it('(g5-I1) numero "520" NÃO casa lei-10520-2002 via alias (substring de "10520")', () => {
+  it('(g5-I1) numero "520" does NOT match lei-10520-2002 via alias (substring of "10520")', () => {
     const r = matchNorma({
       numero: '520',
       ano: 2099,
@@ -196,7 +196,7 @@ describe('matchNorma — não-regressão FALSO-POSITIVO', () => {
     expect(r).toBeNull();
   });
 
-  it('(g6-I1) numero "462" NÃO casa dec-11462-2023 via alias (substring de "11462")', () => {
+  it('(g6-I1) numero "462" does NOT match dec-11462-2023 via alias (substring of "11462")', () => {
     const r = matchNorma({
       numero: '462',
       ano: 2099,
@@ -206,7 +206,7 @@ describe('matchNorma — não-regressão FALSO-POSITIVO', () => {
     expect(r).toBeNull();
   });
 
-  it('(g7-I1) regressão positiva: número que SÓ aparece num alias ainda casa via alias', () => {
+  it('(g7-I1) positive regression: a number that ONLY appears in an alias still matches via alias', () => {
     // Nenhuma entry do corpus tem numero divergente do alias (alias=0 no
     // spike), então construímos o cenário sintético: a entry lei-8666-1993
     // tem alias "Lei 8.666/93" cujo token "93" é o ANO em 2 dígitos. Um
@@ -226,7 +226,7 @@ describe('matchNorma — não-regressão FALSO-POSITIVO', () => {
     expect(r!.via).toBe('alias');
   });
 
-  it('(g3) match sempre tem numero/ano coerentes com a entry (paridade c/ spike: fpAlias=0)', () => {
+  it('(g3) match always has numero/ano consistent with the entry (parity w/ spike: fpAlias=0)', () => {
     // Invariante do spike: todo match resolvido tem numero+ano batendo a
     // entry casada (fpAlias=0). Varre a baseline com ANO divergente: ou
     // não casa, ou — se casar via alias — o numero/ano da entry casada

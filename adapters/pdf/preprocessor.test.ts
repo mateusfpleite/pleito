@@ -26,7 +26,7 @@ function arquivo(
 describe('Preprocessor', () => {
   const pre = new Preprocessor();
 
-  it('(a) .txt direto: preserva o conteúdo do edital', async () => {
+  it('(a) direct .txt: preserves the edital content', async () => {
     const bytes = readFileSync(resolve('fixtures/jaborandi.txt'));
     const r = await pre.preprocessar(
       arquivo('jaborandi.txt', new Uint8Array(bytes))
@@ -40,7 +40,7 @@ describe('Preprocessor', () => {
     expect(r.fonte.paginas).toBeGreaterThanOrEqual(1);
   });
 
-  it('(b) .zip: descompacta e extrai o txt embutido (>1000 chars)', async () => {
+  it('(b) .zip: decompresses and extracts the embedded txt (>1000 chars)', async () => {
     const bytes = readFileSync(
       resolve('fixtures/editais/jaborandi.zip')
     );
@@ -53,7 +53,7 @@ describe('Preprocessor', () => {
     expect(r.fonte.ocr).toBe(false);
   });
 
-  it('(c) entrada vazia: fonte.ocr = true', async () => {
+  it('(c) empty input: fonte.ocr = true', async () => {
     const r = await pre.preprocessar(
       arquivo('vazio.txt', new Uint8Array(0))
     );
@@ -62,7 +62,7 @@ describe('Preprocessor', () => {
     expect(r.texto.length).toBeLessThan(500);
   });
 
-  it('texto curto (<500 chars alfanum): fonte.ocr = true', async () => {
+  it('short text (<500 alphanumeric chars): fonte.ocr = true', async () => {
     const r = await pre.preprocessar(
       arquivo('curto.txt', new TextEncoder().encode('PDF escaneado.'))
     );
@@ -76,7 +76,7 @@ describe('Preprocessor', () => {
    * materializar o conteúdo; o job vira `erro` (o worker captura) com
    * mensagem clara — nunca derruba o processo.
    */
-  it('texto plano acima do cap descomprimido: rejeita (não OOM)', async () => {
+  it('plain text above the decompressed cap: rejects (no OOM)', async () => {
     const grande = new Uint8Array(MAX_DESCOMPRIMIDO_BYTES + 1024);
     grande.fill(65); // 'A'
     await expect(
@@ -84,7 +84,7 @@ describe('Preprocessor', () => {
     ).rejects.toThrow(/limite.*descomprimid|tamanho|zip-bomb/i);
   });
 
-  it('gzip que descomprime acima do cap: rejeita (zip-bomb)', async () => {
+  it('gzip that decompresses above the cap: rejects (zip-bomb)', async () => {
     // Payload comprimido minúsculo, descomprimido >> cap (bomba clássica).
     const enorme = Buffer.alloc(MAX_DESCOMPRIMIDO_BYTES + 4096, 0x41);
     const bomba = gzipSync(enorme);
@@ -96,7 +96,7 @@ describe('Preprocessor', () => {
     ).rejects.toThrow(/limite.*descomprimid|zip-bomb/i);
   });
 
-  it('zip com entry uncompressedSize acima do cap: rejeita', async () => {
+  it('zip with entry uncompressedSize above the cap: rejects', async () => {
     // ZIP mínimo: 1 entry deflate; uncompressedSize DECLARADO > cap mas
     // payload comprimido minúsculo. O Preprocessor rejeita pelo header,
     // sem inflar (rejeita antes de processar — não OOM).

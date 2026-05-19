@@ -135,7 +135,7 @@ const ctx = (jobId = 'job-1') => ({
 });
 
 describe('POST /api/feedback/:jobId', () => {
-  it('👍 com texto → telemetria feedback {util:true, texto}', async () => {
+  it('👍 with text → feedback telemetry {util:true, texto}', async () => {
     const tele = fakeTelemetry();
     const POST = criarFeedbackPOST({
       analysisRepo: fakeRepo(registro()),
@@ -155,7 +155,7 @@ describe('POST /api/feedback/:jobId', () => {
     ]);
   });
 
-  it('👎 sem texto → telemetria feedback {util:false, texto:null}', async () => {
+  it('👎 without text → feedback telemetry {util:false, texto:null}', async () => {
     const tele = fakeTelemetry();
     const POST = criarFeedbackPOST({
       analysisRepo: fakeRepo(registro()),
@@ -169,7 +169,7 @@ describe('POST /api/feedback/:jobId', () => {
     });
   });
 
-  it('util ausente / não-boolean → 400 (nada gravado)', async () => {
+  it('util absent / non-boolean → 400 (nothing stored)', async () => {
     const tele = fakeTelemetry();
     const POST = criarFeedbackPOST({
       analysisRepo: fakeRepo(registro()),
@@ -180,7 +180,7 @@ describe('POST /api/feedback/:jobId', () => {
     expect(tele.eventos).toHaveLength(0);
   });
 
-  it('análise inexistente → 404', async () => {
+  it('nonexistent analysis → 404', async () => {
     const POST = criarFeedbackPOST({
       analysisRepo: fakeRepo(null),
       telemetry: fakeTelemetry(),
@@ -189,7 +189,7 @@ describe('POST /api/feedback/:jobId', () => {
     expect(res.status).toBe(404);
   });
 
-  it('telemetria que LANÇA NÃO vira 5xx (feedback é reserva — §11b)', async () => {
+  it('telemetry that THROWS does NOT become a 5xx (feedback is fallback — §11b)', async () => {
     const POST = criarFeedbackPOST({
       analysisRepo: fakeRepo(registro()),
       telemetry: {

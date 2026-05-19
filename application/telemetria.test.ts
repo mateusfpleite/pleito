@@ -41,8 +41,8 @@ function fakeTelemetry() {
   return { port, eventos };
 }
 
-describe('registrarSeguro — telemetria NÃO-bloqueante (§11b)', () => {
-  it('(a) grava no adapter e devolve true', async () => {
+describe('registrarSeguro — NON-blocking telemetry (§11b)', () => {
+  it('(a) writes to the adapter and returns true', async () => {
     const { port, eventos } = fakeTelemetry();
     const ok = await registrarSeguro(port, 'a-1', EVENTO.export, {
       tipo: 'oficio',
@@ -53,7 +53,7 @@ describe('registrarSeguro — telemetria NÃO-bloqueante (§11b)', () => {
     ]);
   });
 
-  it('(b) adapter que LANÇA → NÃO propaga (false), pipeline seguiria', async () => {
+  it('(b) adapter that THROWS → does NOT propagate (false), pipeline would continue', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const port: TelemetryPort = {
       async registrar() {
@@ -71,8 +71,8 @@ describe('registrarSeguro — telemetria NÃO-bloqueante (§11b)', () => {
   });
 });
 
-describe('hashInput — detecção de re-upload', () => {
-  it('(c) mesmo conteúdo → mesmo hash; conteúdo diferente → hash diferente', () => {
+describe('hashInput — re-upload detection', () => {
+  it('(c) same content → same hash; different content → different hash', () => {
     const a = new TextEncoder().encode('edital alpha');
     const a2 = new TextEncoder().encode('edital alpha');
     const b = new TextEncoder().encode('edital beta');
@@ -82,8 +82,8 @@ describe('hashInput — detecção de re-upload', () => {
   });
 });
 
-describe('payloads — sinal-ouro + fallback + grounding', () => {
-  it('(d) diff vazio → sinalOuro=false e o RESERVA (exportou) presente', () => {
+describe('payloads — gold-signal + fallback + grounding', () => {
+  it('(d) empty diff → sinalOuro=false and the FALLBACK (exportou) present', () => {
     const diffVazio = calcularDiffOficio('texto', 'texto');
     const p = payloadOficioDiff(diffVazio, true);
     expect(p.sinalOuro).toBe(false);
@@ -97,7 +97,7 @@ describe('payloads — sinal-ouro + fallback + grounding', () => {
     expect(p2.distanciaCaracteres).toBeGreaterThan(0);
   });
 
-  it('(e) grounding: soma tokens e marca estimativa', () => {
+  it('(e) grounding: sums tokens and marks estimate', () => {
     const p = payloadGroundingCusto({
       lei: '8666/1993',
       inputTokens: 120,
@@ -109,7 +109,7 @@ describe('payloads — sinal-ouro + fallback + grounding', () => {
     expect(p.estimativa).toBe(true);
   });
 
-  it('analise_concluida carrega latência + custo agregado', () => {
+  it('analise_concluida carries latency + aggregated cost', () => {
     const p = payloadAnaliseConcluida({
       latenciaMs: 90_000,
       groundingChamadas: 3,

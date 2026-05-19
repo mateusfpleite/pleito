@@ -142,8 +142,8 @@ function spyModel(verdict: { status: string; fonte: string }) {
   return { model, state };
 }
 
-describe('GeminiNormaVerifier — precedência baseline (custo zero, sem grounding)', () => {
-  it('(a) lei que casa baseline (8666/1993) → revogada, model NÃO chamado', async () => {
+describe('GeminiNormaVerifier — baseline precedence (zero cost, no grounding)', () => {
+  it('(a) law that matches baseline (8666/1993) → revogada, model NOT called', async () => {
     const { model, state } = spyModel({ status: 'vigente', fonte: 'x' });
     const cache = fakeCache();
     const verifier = new GeminiNormaVerifier(cache, model as never);
@@ -159,7 +159,7 @@ describe('GeminiNormaVerifier — precedência baseline (custo zero, sem groundi
     expect(state.calls).toBe(0);
   });
 
-  it('(b) zona-cinzenta (IN 5/2017) → contestada, sem grounding', async () => {
+  it('(b) zona-cinzenta (IN 5/2017) → contestada, no grounding', async () => {
     const { model, state } = spyModel({ status: 'vigente', fonte: 'x' });
     const verifier = new GeminiNormaVerifier(fakeCache(), model as never);
 
@@ -177,7 +177,7 @@ describe('GeminiNormaVerifier — precedência baseline (custo zero, sem groundi
     expect(state.calls).toBe(0);
   });
 
-  it('(c) citacao-suspeita (9704/1995) → inexistente, sem grounding', async () => {
+  it('(c) citacao-suspeita (9704/1995) → inexistente, no grounding', async () => {
     const { model, state } = spyModel({ status: 'vigente', fonte: 'x' });
     const verifier = new GeminiNormaVerifier(fakeCache(), model as never);
 
@@ -191,8 +191,8 @@ describe('GeminiNormaVerifier — precedência baseline (custo zero, sem groundi
   });
 });
 
-describe('GeminiNormaVerifier — grounding na cauda (miss baseline) + cache', () => {
-  it('(d) lei fora da baseline → grounding chamado, cache consultado e populado', async () => {
+describe('GeminiNormaVerifier — grounding on the tail (baseline miss) + cache', () => {
+  it('(d) law outside baseline → grounding called, cache consulted and populated', async () => {
     const { model, state } = spyModel({
       status: 'revogada',
       fonte: 'https://planalto.gov.br/exemplo',
@@ -216,7 +216,7 @@ describe('GeminiNormaVerifier — grounding na cauda (miss baseline) + cache', (
     expect(cached?.status).toBe('revogada');
   });
 
-  it('(e) 2ª chamada da mesma lei fora-baseline → vem do cache (sem novo grounding)', async () => {
+  it('(e) 2nd call of the same outside-baseline law → comes from cache (no new grounding)', async () => {
     const { model, state } = spyModel({
       status: 'revogada',
       fonte: 'https://planalto.gov.br/exemplo',
@@ -241,7 +241,7 @@ describe('GeminiNormaVerifier — grounding na cauda (miss baseline) + cache', (
     );
   });
 
-  it('não muta os demais campos da extração', async () => {
+  it('does not mutate the other extraction fields', async () => {
     const { model } = spyModel({ status: 'vigente', fonte: 'web' });
     const verifier = new GeminiNormaVerifier(fakeCache(), model as never);
 
@@ -264,8 +264,8 @@ describe('GeminiNormaVerifier — grounding na cauda (miss baseline) + cache', (
  * ZERO. (testing-anti-patterns: model fake + telemetry fake — provamos a
  * instrumentação determinística, não o LLM.)
  */
-describe('GeminiNormaVerifier — custo de grounding POR chamada (§11b)', () => {
-  it('cada chamada de grounding → exatamente 1 evento de custo', async () => {
+describe('GeminiNormaVerifier — grounding cost PER call (§11b)', () => {
+  it('each grounding call → exactly 1 cost event', async () => {
     const { model, state } = spyModel({
       status: 'revogada',
       fonte: 'https://planalto.gov.br/x',
@@ -305,7 +305,7 @@ describe('GeminiNormaVerifier — custo de grounding POR chamada (§11b)', () =>
     expect(eventos[0].totalTokens).toBe(2);
   });
 
-  it('hit de baseline NÃO emite evento de custo (não houve grounding)', async () => {
+  it('baseline hit does NOT emit a cost event (there was no grounding)', async () => {
     const { model, state } = spyModel({ status: 'vigente', fonte: 'x' });
     const eventos: unknown[] = [];
     const verifier = new GeminiNormaVerifier(
@@ -323,7 +323,7 @@ describe('GeminiNormaVerifier — custo de grounding POR chamada (§11b)', () =>
     expect(eventos).toHaveLength(0);
   });
 
-  it('cache hit NÃO emite novo evento de custo (só a 1ª chamada)', async () => {
+  it('cache hit does NOT emit a new cost event (only the 1st call)', async () => {
     const { model } = spyModel({
       status: 'revogada',
       fonte: 'https://planalto.gov.br/y',

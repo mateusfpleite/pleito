@@ -46,7 +46,7 @@ function reqComTexto(texto: string): Request {
 }
 
 describe('POST /api/job', () => {
-  it('cria Job pending e retorna { jobId }', async () => {
+  it('creates a pending Job and returns { jobId }', async () => {
     const repo = fakeJobRepo();
     const fetchSpy = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 202 }));
     const POST = criarJobPOST({
@@ -63,7 +63,7 @@ describe('POST /api/job', () => {
     expect(repo.jobs[0].status).toBe('pending');
   });
 
-  it('dispara POST no WORKER_URL com { jobId } (acorda scale-to-zero)', async () => {
+  it('fires POST to WORKER_URL with { jobId } (wakes scale-to-zero)', async () => {
     const repo = fakeJobRepo();
     const fetchSpy = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 202 }));
     const POST = criarJobPOST({
@@ -81,7 +81,7 @@ describe('POST /api/job', () => {
     expect(JSON.parse(init?.body as string)).toEqual({ jobId: 'job-1' });
   });
 
-  it('persiste o input no inputRef recuperável pelo worker', async () => {
+  it('persists the input in the inputRef recoverable by the worker', async () => {
     const repo = fakeJobRepo();
     const POST = criarJobPOST({
       jobRepo: repo,
@@ -101,7 +101,7 @@ describe('POST /api/job', () => {
     ).toBe('CONTEÚDO DO EDITAL XYZ');
   });
 
-  it('falha do trigger NÃO perde o job (fica pending p/ repesca)', async () => {
+  it('trigger failure does NOT lose the job (stays pending for re-pickup)', async () => {
     const repo = fakeJobRepo();
     const fetchSpy = vi.fn(async () => {
       throw new Error('worker indisponível (cold start / rede)');
@@ -121,7 +121,7 @@ describe('POST /api/job', () => {
     expect(repo.jobs[0].status).toBe('pending');
   });
 
-  it('rejeita upload acima de MAX_UPLOAD_BYTES com 413 (sem criar job nem disparar trigger)', async () => {
+  it('rejects upload above MAX_UPLOAD_BYTES with 413 (without creating job or firing trigger)', async () => {
     const repo = fakeJobRepo();
     const fetchSpy = vi.fn(
       async () => new Response(null, { status: 202 })
@@ -154,7 +154,7 @@ describe('POST /api/job', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('aceita upload exatamente no limite (MAX_UPLOAD_BYTES) — fluxo normal', async () => {
+  it('accepts upload exactly at the limit (MAX_UPLOAD_BYTES) — normal flow', async () => {
     const repo = fakeJobRepo();
     const POST = criarJobPOST({
       jobRepo: repo,
@@ -177,7 +177,7 @@ describe('POST /api/job', () => {
     expect(repo.jobs).toHaveLength(1);
   });
 
-  it('trigger lento NÃO segura a resposta: 202 sai e job fica pending', async () => {
+  it('slow trigger does NOT hold the response: 202 returns and job stays pending', async () => {
     const repo = fakeJobRepo();
     // Simula worker em cold start: o fetch pendura até o AbortSignal
     // do handler abortar (timeout). O handler engole e responde 202.
@@ -210,7 +210,7 @@ describe('POST /api/job', () => {
     expect(init?.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it('rejeita upload vazio com 400 (sem criar job)', async () => {
+  it('rejects empty upload with 400 (without creating job)', async () => {
     const repo = fakeJobRepo();
     const POST = criarJobPOST({
       jobRepo: repo,

@@ -115,8 +115,8 @@ function fakeModel(payload: unknown) {
   };
 }
 
-describe('montarPrompt — ordem documento antes da tarefa (SPEC §7)', () => {
-  it('(a) põe o texto do documento ANTES da string de tarefa', () => {
+describe('montarPrompt — document before task order (SPEC §7)', () => {
+  it('(a) places the document text BEFORE the task string', () => {
     const documento = 'CONTEUDO_UNICO_DO_EDITAL_12345';
     const prompt = montarPrompt(documento);
 
@@ -128,7 +128,7 @@ describe('montarPrompt — ordem documento antes da tarefa (SPEC §7)', () => {
     expect(idxDoc).toBeLessThan(idxTarefa);
   });
 
-  it('few-shot fica no system prompt estático (cacheável), não no user', () => {
+  it('few-shot stays in the static system prompt (cacheable), not in the user', () => {
     const prompt = montarPrompt('qualquer texto');
     // Os exemplos few-shot vivem no SYSTEM (estático), não no prompt do user.
     expect(SYSTEM_PROMPT).toContain('EXEMPLO');
@@ -136,8 +136,8 @@ describe('montarPrompt — ordem documento antes da tarefa (SPEC §7)', () => {
   });
 });
 
-describe('GeminiExtractor — parse/validação (model injetado, sem rede)', () => {
-  it('(b) model devolvendo objeto válido → retorna o parseado', async () => {
+describe('GeminiExtractor — parse/validation (injected model, no network)', () => {
+  it('(b) model returning a valid object → returns the parsed result', async () => {
     const extractor = new GeminiExtractor(fakeModel(objetoValido) as never);
     const r = await extractor.extrair('texto do edital', fonte);
 
@@ -149,7 +149,7 @@ describe('GeminiExtractor — parse/validação (model injetado, sem rede)', () 
     expect('pontosDeAtencao' in r).toBe(false);
   });
 
-  it('(c) model devolvendo objeto fora do schema → rejeita (throw)', async () => {
+  it('(c) model returning an off-schema object → rejects (throw)', async () => {
     const invalido = { ...objetoValido, uf: 'BAHIA' }; // uf deve ter length 2
     const extractor = new GeminiExtractor(fakeModel(invalido) as never);
 
@@ -158,7 +158,7 @@ describe('GeminiExtractor — parse/validação (model injetado, sem rede)', () 
     ).rejects.toThrow();
   });
 
-  it('o objeto válido satisfaz ExtractorOutputSchema diretamente', () => {
+  it('the valid object satisfies ExtractorOutputSchema directly', () => {
     const parsed = ExtractorOutputSchema.parse(objetoValido);
     expect(parsed.municipio).toBe('Jaborandi');
   });

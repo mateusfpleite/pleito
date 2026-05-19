@@ -309,7 +309,7 @@ const oficio: OficioGerado = {
 };
 
 describe('PrismaAnalysisRepo', () => {
-  it('round-trip: salvar→buscarPorId devolve registro equivalente', async () => {
+  it('round-trip: salvar→buscarPorId returns an equivalent record', async () => {
     const repo = new PrismaAnalysisRepo(fakePrisma());
     const extracao = baseExtraction();
 
@@ -333,7 +333,7 @@ describe('PrismaAnalysisRepo', () => {
     expect(buscado!.jobId).toBe('job-1');
   });
 
-  it('mapeia oficioGerado ausente para null (nullable no schema)', async () => {
+  it('maps absent oficioGerado to null (nullable in schema)', async () => {
     const repo = new PrismaAnalysisRepo(fakePrisma());
     const salvo = await repo.salvar({
       jobId: 'job-2',
@@ -350,12 +350,12 @@ describe('PrismaAnalysisRepo', () => {
     expect(buscado!.oficioExportadoEm).toBeNull();
   });
 
-  it('buscarPorId devolve null para id inexistente', async () => {
+  it('buscarPorId returns null for a nonexistent id', async () => {
     const repo = new PrismaAnalysisRepo(fakePrisma());
     expect(await repo.buscarPorId('nao-existe')).toBeNull();
   });
 
-  it('buscarPorJobId acha a análise pelo jobId (status route)', async () => {
+  it('buscarPorJobId finds the analysis by jobId (status route)', async () => {
     const repo = new PrismaAnalysisRepo(fakePrisma());
     const salvo = await repo.salvar({
       jobId: 'job-77',
@@ -373,7 +373,7 @@ describe('PrismaAnalysisRepo', () => {
     expect(await repo.buscarPorJobId('job-inexistente')).toBeNull();
   });
 
-  it('buscarPorJobId é determinístico: 2 análises p/ o mesmo job → a mais recente (M-2)', async () => {
+  it('buscarPorJobId is deterministic: 2 analyses for the same job → the most recent (M-2)', async () => {
     const prisma = fakePrisma();
     const repo = new PrismaAnalysisRepo(prisma);
     // Invariante de produto é 1:1 (1 análise/job), mas se a invariante
@@ -410,7 +410,7 @@ describe('PrismaAnalysisRepo', () => {
     expect(achado!.municipio).toBe('Nova');
   });
 
-  it('listarRecentes devolve as análises mais novas primeiro (/admin §11b)', async () => {
+  it('listarRecentes returns the newest analyses first (/admin §11b)', async () => {
     const prisma = fakePrisma();
     const repo = new PrismaAnalysisRepo(prisma);
     await repo.salvar({
@@ -442,7 +442,7 @@ describe('PrismaAnalysisRepo', () => {
     expect(limitada[0].municipio).toBe('Nova');
   });
 
-  it('registrarOficioExportado grava o texto editado + carimbo (Phase 14 / §9)', async () => {
+  it('registrarOficioExportado stores the edited text + timestamp (Phase 14 / §9)', async () => {
     const repo = new PrismaAnalysisRepo(fakePrisma());
     const salvo = await repo.salvar({
       jobId: 'job-exp',
@@ -473,8 +473,8 @@ describe('PrismaAnalysisRepo', () => {
   });
 });
 
-describe('PrismaJobRepo (CRUD básico — claim atômico é Phase 12)', () => {
-  it('criar → status pending, depois buscarPorId reflete', async () => {
+describe('PrismaJobRepo (basic CRUD — atomic claim is Phase 12)', () => {
+  it('criar → status pending, then buscarPorId reflects it', async () => {
     const repo = new PrismaJobRepo(fakePrisma());
     const job = await repo.criar('uploads/edital.zip');
     expect(job.status).toBe('pending');
@@ -486,7 +486,7 @@ describe('PrismaJobRepo (CRUD básico — claim atômico é Phase 12)', () => {
     expect(buscado).toEqual(job);
   });
 
-  it('marcarConcluido transiciona pending→done e limpa erro', async () => {
+  it('marcarConcluido transitions pending→done and clears erro', async () => {
     const repo = new PrismaJobRepo(fakePrisma());
     const job = await repo.criar('uploads/x.zip');
     await repo.marcarConcluido(job.id);
@@ -495,7 +495,7 @@ describe('PrismaJobRepo (CRUD básico — claim atômico é Phase 12)', () => {
     expect(depois!.erro).toBeNull();
   });
 
-  it('marcarErro transiciona para erro e persiste a mensagem', async () => {
+  it('marcarErro transitions to erro and persists the message', async () => {
     const repo = new PrismaJobRepo(fakePrisma());
     const job = await repo.criar('uploads/y.zip');
     await repo.marcarErro(job.id, 'preprocessor falhou: zip corrompido');
@@ -504,17 +504,17 @@ describe('PrismaJobRepo (CRUD básico — claim atômico é Phase 12)', () => {
     expect(depois!.erro).toBe('preprocessor falhou: zip corrompido');
   });
 
-  it('buscarPorId devolve null para id inexistente', async () => {
+  it('buscarPorId returns null for a nonexistent id', async () => {
     const repo = new PrismaJobRepo(fakePrisma());
     expect(await repo.buscarPorId('nope')).toBeNull();
   });
 
-  it('claimNext: sem pending devolve null', async () => {
+  it('claimNext: no pending returns null', async () => {
     const repo = new PrismaJobRepo(fakePrisma());
     expect(await repo.claimNext()).toBeNull();
   });
 
-  it('claimNext: claima o pending mais antigo e o marca running', async () => {
+  it('claimNext: claims the oldest pending and marks it running', async () => {
     const prisma = fakePrisma();
     const repo = new PrismaJobRepo(prisma);
     const j1 = await repo.criar('uploads/antigo.zip');
@@ -525,7 +525,7 @@ describe('PrismaJobRepo (CRUD básico — claim atômico é Phase 12)', () => {
     expect(claimed!.status).toBe('running');
   });
 
-  it('claimNext emite SQL com FOR UPDATE SKIP LOCKED + RETURNING', async () => {
+  it('claimNext emits SQL with FOR UPDATE SKIP LOCKED + RETURNING', async () => {
     const prisma = fakePrisma();
     const repo = new PrismaJobRepo(prisma);
     await repo.criar('uploads/a.zip');
@@ -551,7 +551,7 @@ describe('PrismaJobRepo (CRUD básico — claim atômico é Phase 12)', () => {
    * DIFERENTES; com 1 job pending, um pega o job e o outro pega `null`
    * (skip — não rouba o já claimed).
    */
-  it('claimNext: 2 claims simultâneos pegam jobs DIFERENTES', async () => {
+  it('claimNext: 2 simultaneous claims take DIFFERENT jobs', async () => {
     const prisma = fakePrisma();
     const repo = new PrismaJobRepo(prisma);
     const a = await repo.criar('uploads/a.zip');
@@ -572,7 +572,7 @@ describe('PrismaJobRepo (CRUD básico — claim atômico é Phase 12)', () => {
     expect(c2!.status).toBe('running');
   });
 
-  it('claimNext: 2 claims simultâneos, 1 só pending → o outro pega null', async () => {
+  it('claimNext: 2 simultaneous claims, only 1 pending → the other gets null', async () => {
     const prisma = fakePrisma();
     const repo = new PrismaJobRepo(prisma);
     const a = await repo.criar('uploads/unico.zip');
@@ -590,7 +590,7 @@ describe('PrismaJobRepo (CRUD básico — claim atômico é Phase 12)', () => {
     expect(claimados[0]!.status).toBe('running');
   });
 
-  it('claimNext: drena a fila (claima até esgotar os pending)', async () => {
+  it('claimNext: drains the queue (claims until pending is exhausted)', async () => {
     const prisma = fakePrisma();
     const repo = new PrismaJobRepo(prisma);
     await repo.criar('uploads/1.zip');
@@ -608,8 +608,8 @@ describe('PrismaJobRepo (CRUD básico — claim atômico é Phase 12)', () => {
   });
 });
 
-describe('PrismaNormaCache (get/set + reuso)', () => {
-  it('gravar → obter devolve a entrada equivalente', async () => {
+describe('PrismaNormaCache (get/set + reuse)', () => {
+  it('gravar → obter returns the equivalent entry', async () => {
     const cache = new PrismaNormaCache(fakePrisma());
     await cache.gravar({
       chave: 'lei:8666:1993',
@@ -624,12 +624,12 @@ describe('PrismaNormaCache (get/set + reuso)', () => {
     expect(got!.verificadoEm).toBeInstanceOf(Date);
   });
 
-  it('obter devolve null para chave ausente (miss)', async () => {
+  it('obter returns null for an absent key (miss)', async () => {
     const cache = new PrismaNormaCache(fakePrisma());
     expect(await cache.obter('lei:9999:2099')).toBeNull();
   });
 
-  it('gravar duas vezes a mesma chave faz upsert (reuso, não duplica)', async () => {
+  it('gravar the same key twice does an upsert (reuse, no duplicate)', async () => {
     const prisma = fakePrisma();
     const cache = new PrismaNormaCache(prisma);
     await cache.gravar({
@@ -652,7 +652,7 @@ describe('PrismaNormaCache (get/set + reuso)', () => {
     ).toBe(1);
   });
 
-  it('coluna fonte null mapeia para string vazia no domínio', async () => {
+  it('null fonte column maps to empty string in the domain', async () => {
     const prisma = fakePrisma();
     const cache = new PrismaNormaCache(prisma);
     // Simula linha legada com fonte NULL inserida fora do adapter.
@@ -672,7 +672,7 @@ describe('PrismaNormaCache (get/set + reuso)', () => {
 });
 
 describe('PrismaTelemetry', () => {
-  it('registrar grava evento com analysisId e payload Json', async () => {
+  it('registrar stores an event with analysisId and Json payload', async () => {
     const prisma = fakePrisma();
     const tele = new PrismaTelemetry(prisma);
     await tele.registrar('analysis-1', 'grounding.custo', {
@@ -695,7 +695,7 @@ describe('PrismaTelemetry', () => {
     });
   });
 
-  it('listarPorAnalises devolve só os eventos das análises pedidas (/admin)', async () => {
+  it('listarPorAnalises returns only the events of the requested analyses (/admin)', async () => {
     const prisma = fakePrisma();
     const tele = new PrismaTelemetry(prisma);
     await tele.registrar('a-1', 'feedback', { util: true });
@@ -713,8 +713,8 @@ describe('PrismaTelemetry', () => {
   });
 });
 
-describe('boundary / fábrica de produção', () => {
-  it('criarPrismaClient lança erro acionável (RESÍDUO de banco)', () => {
+describe('boundary / production factory', () => {
+  it('criarPrismaClient throws an actionable error (RESÍDUO de banco)', () => {
     expect(() => criarPrismaClient()).toThrow(/RESÍDUO de banco/);
   });
 });

@@ -108,8 +108,8 @@ function leiRef(
   };
 }
 
-describe('checarContencao — Tier 0 estrutural', () => {
-  it('(a) análise limpa: ofício coerente → violacoes:[]', () => {
+describe('checarContencao — structural Tier 0', () => {
+  it('(a) clean analysis: coherent ofício → violacoes:[]', () => {
     const extracao = extracaoBase({
       leisReferenciadas: [leiRef('8666', 1993, 'revogada')],
     });
@@ -124,14 +124,14 @@ describe('checarContencao — Tier 0 estrutural', () => {
     expect(checarContencao({ extracao, oficio }).violacoes).toEqual([]);
   });
 
-  it('(a2) análise limpa: ofício null → violacoes:[]', () => {
+  it('(a2) clean analysis: ofício null → violacoes:[]', () => {
     const extracao = extracaoBase();
     expect(
       checarContencao({ extracao, oficio: null }).violacoes
     ).toEqual([]);
   });
 
-  it('(a3) ofício com lei afirmacaoVigencia=nenhuma e markdown neutro → []', () => {
+  it('(a3) ofício with law afirmacaoVigencia=nenhuma and neutral markdown → []', () => {
     const extracao = extracaoBase({
       leisReferenciadas: [leiRef('14133', 2021, 'vigente')],
     });
@@ -145,7 +145,7 @@ describe('checarContencao — Tier 0 estrutural', () => {
     expect(checarContencao({ extracao, oficio }).violacoes).toEqual([]);
   });
 
-  it('(b) afirmacaoVigencia=revogada mas statusVerificado=contestada → afirmacao-indevida', () => {
+  it('(b) afirmacaoVigencia=revogada but statusVerificado=contestada → afirmacao-indevida', () => {
     // Lei municipal fictícia (NÃO está no baseline curado) — isola o
     // confronto afirmacaoVigencia×statusVerificado sem ruído de baseline.
     const extracao = extracaoBase({
@@ -166,7 +166,7 @@ describe('checarContencao — Tier 0 estrutural', () => {
     expect(violacoes[0].tipo).toBe('afirmacao-indevida');
   });
 
-  it('(b2) afirmacaoVigencia=revogada sobre lei NÃO identificável (numero null) → afirmacao-indevida', () => {
+  it('(b2) afirmacaoVigencia=revogada on a NON-identifiable law (numero null) → afirmacao-indevida', () => {
     const extracao = extracaoBase({
       leisReferenciadas: [leiRef(null, 1988, 'nao-verificado')],
     });
@@ -179,7 +179,7 @@ describe('checarContencao — Tier 0 estrutural', () => {
     expect(violacoes.some((v) => v.tipo === 'afirmacao-indevida')).toBe(true);
   });
 
-  it('(c) markdown "a norma perdeu vigência" sem respaldo → lexico-inconsistente', () => {
+  it('(c) markdown "a norma perdeu vigência" without support → lexico-inconsistente', () => {
     const extracao = extracaoBase({
       leisReferenciadas: [leiRef('1234', 2010, 'vigente')],
     });
@@ -197,7 +197,7 @@ describe('checarContencao — Tier 0 estrutural', () => {
     );
   });
 
-  it('(d) 5 paráfrases de revogação sem respaldo → todas pegas pelo backstop', () => {
+  it('(d) 5 revocation paraphrases without support → all caught by the backstop', () => {
     const parafrases = [
       'a norma foi revogada pela legislação superveniente',
       'a norma perdeu vigência em 2023',
@@ -224,7 +224,7 @@ describe('checarContencao — Tier 0 estrutural', () => {
     }
   });
 
-  it('(e) baseline-divergente: lei zona-cinzenta mas statusVerificado=revogada', () => {
+  it('(e) baseline-divergente: zona-cinzenta law but statusVerificado=revogada', () => {
     // Única entrada zona-cinzenta do baseline curado: IN SEGES nº 05/2017
     // (numero "5", ano 2017, federal, instrucao-normativa). Esperado pela
     // categoria: 'contestada'. Marcar 'revogada' = binarização indevida.
@@ -243,7 +243,7 @@ describe('checarContencao — Tier 0 estrutural', () => {
     ).toBe(true);
   });
 
-  it('(e2) zona-cinzenta nunca vira binário no ofício: afirmacaoVigencia=revogada → violação', () => {
+  it('(e2) zona-cinzenta never becomes binary in the ofício: afirmacaoVigencia=revogada → violation', () => {
     const extracao = extracaoBase({
       leisReferenciadas: [
         leiRef('5', 2017, 'contestada', {
@@ -266,7 +266,7 @@ describe('checarContencao — Tier 0 estrutural', () => {
     );
   });
 
-  it('(f) afirmacaoVigencia=vigente no ofício → violação', () => {
+  it('(f) afirmacaoVigencia=vigente in the ofício → violation', () => {
     const extracao = extracaoBase({
       leisReferenciadas: [leiRef('14133', 2021, 'vigente')],
     });
@@ -283,7 +283,7 @@ describe('checarContencao — Tier 0 estrutural', () => {
     );
   });
 
-  it('gold-like: extração sem statusVerificado (nao-verificado) + oficio null → []', () => {
+  it('gold-like: extraction without statusVerificado (nao-verificado) + oficio null → []', () => {
     // Gold fixtures são extrações cruas (statusVerificado default
     // nao-verificado). Não deve haver baseline-divergente: nao-verificado
     // não é divergência, é "ainda não verificado".

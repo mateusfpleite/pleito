@@ -13,54 +13,54 @@ import {
  * quais normas foram confirmadas) e severidade→cor (destaque de risco).
  */
 
-describe('badgeStatusVerificado — torna visível a confirmação de norma', () => {
-  it('vigente → check verde', () => {
+describe('badgeStatusVerificado — makes norm confirmation visible', () => {
+  it('vigente → green check', () => {
     const b = badgeStatusVerificado('vigente');
     expect(b.simbolo).toBe('✓');
     expect(b.tom).toBe('ok');
     expect(b.rotulo).toMatch(/vigente/i);
   });
 
-  it('revogada → x vermelho', () => {
+  it('revogada → red x', () => {
     const b = badgeStatusVerificado('revogada');
     expect(b.simbolo).toBe('✗');
     expect(b.tom).toBe('perigo');
   });
 
-  it('contestada → ⚠ alerta', () => {
+  it('contestada → ⚠ alert', () => {
     expect(badgeStatusVerificado('contestada').simbolo).toBe('⚠');
     expect(badgeStatusVerificado('contestada').tom).toBe('alerta');
   });
 
-  it('inexistente → ⚠ alerta', () => {
+  it('inexistente → ⚠ alert', () => {
     expect(badgeStatusVerificado('inexistente').simbolo).toBe('⚠');
     expect(badgeStatusVerificado('inexistente').tom).toBe('alerta');
   });
 
-  it('nao-verificado → ⚠ neutro/alerta (não confirmado)', () => {
+  it('nao-verificado → ⚠ neutral/alert (not confirmed)', () => {
     const b = badgeStatusVerificado('nao-verificado');
     expect(b.simbolo).toBe('⚠');
     expect(b.rotulo).toMatch(/não.?verificad/i);
   });
 });
 
-describe('corSeveridade — destaque de risco', () => {
-  it('alta = vermelho', () => {
+describe('corSeveridade — risk highlight', () => {
+  it('alta = red', () => {
     expect(corSeveridade('alta').tom).toBe('perigo');
   });
-  it('media = âmbar/alerta', () => {
+  it('media = amber/alert', () => {
     expect(corSeveridade('media').tom).toBe('alerta');
   });
-  it('baixa = neutro', () => {
+  it('baixa = neutral', () => {
     expect(corSeveridade('baixa').tom).toBe('neutro');
   });
 });
 
-describe('formatadores de valor', () => {
-  it('fmtMoedaBRL formata número em BRL', () => {
+describe('value formatters', () => {
+  it('fmtMoedaBRL formats a number in BRL', () => {
     expect(fmtMoedaBRL(1234.5)).toMatch(/1\.234,50/);
   });
-  it('fmtMoedaBRL nulo → travessão', () => {
+  it('fmtMoedaBRL null → em-dash', () => {
     expect(fmtMoedaBRL(null)).toBe('—');
   });
   it('fmtMeses', () => {

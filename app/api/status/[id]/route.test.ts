@@ -106,7 +106,7 @@ function req(): Request {
 }
 
 describe('GET /api/status/:id', () => {
-  it('pending: status pending, sem resultado', async () => {
+  it('pending: status pending, no result', async () => {
     const GET = criarStatusGET({
       jobRepo: jobs({
         id: 'j1',
@@ -124,7 +124,7 @@ describe('GET /api/status/:id', () => {
     expect(b.resultado).toBeNull();
   });
 
-  it('running: reflete running', async () => {
+  it('running: reflects running', async () => {
     const GET = criarStatusGET({
       jobRepo: jobs({
         id: 'j2',
@@ -139,7 +139,7 @@ describe('GET /api/status/:id', () => {
     expect((await res.json()).status).toBe('running');
   });
 
-  it('done: devolve a análise persistida', async () => {
+  it('done: returns the persisted analysis', async () => {
     const GET = criarStatusGET({
       jobRepo: jobs({
         id: 'j3',
@@ -169,7 +169,7 @@ describe('GET /api/status/:id', () => {
     expect(b.resultado!.extracao.municipio).toBe('Jaborandi');
   });
 
-  it('erro: devolve a mensagem persistida', async () => {
+  it('erro: returns the persisted message', async () => {
     const GET = criarStatusGET({
       jobRepo: jobs({
         id: 'j4',
@@ -186,7 +186,7 @@ describe('GET /api/status/:id', () => {
     expect(b.erro).toMatch(/zip-bomb/);
   });
 
-  it('job inexistente: 404', async () => {
+  it('nonexistent job: 404', async () => {
     const GET = criarStatusGET({
       jobRepo: jobs(),
       analysisRepo: analyses(),

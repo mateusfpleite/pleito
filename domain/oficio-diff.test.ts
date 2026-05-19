@@ -12,8 +12,8 @@ import { calcularDiffOficio } from './oficio-diff.ts';
  *  (e) CRLF normalizado (não conta como edição falsa).
  */
 
-describe('calcularDiffOficio — sinal-ouro + fallback de sinal vazio', () => {
-  it('(a) gerado === exportado → foiEditado=false (sinal-ouro nulo)', () => {
+describe('calcularDiffOficio — gold-signal + empty-signal fallback', () => {
+  it('(a) generated === exported → foiEditado=false (gold-signal null)', () => {
     const t = '# Ofício\n\nLinha um.\nLinha dois.';
     const d = calcularDiffOficio(t, t);
     expect(d.foiEditado).toBe(false);
@@ -24,7 +24,7 @@ describe('calcularDiffOficio — sinal-ouro + fallback de sinal vazio', () => {
     expect(d.tamanhoExportado).toBe(t.length);
   });
 
-  it('(b) exportado=null (não exportou) → foiEditado=false, exportado vazio', () => {
+  it('(b) exported=null (did not export) → foiEditado=false, exported empty', () => {
     const g = '# Ofício\n\nTexto gerado.';
     const d = calcularDiffOficio(g, null);
     expect(d.foiEditado).toBe(false);
@@ -33,7 +33,7 @@ describe('calcularDiffOficio — sinal-ouro + fallback de sinal vazio', () => {
     expect(d.tamanhoGerado).toBe(g.length);
   });
 
-  it('(c) edição real → foiEditado=true + distância e linhas > 0', () => {
+  it('(c) real edit → foiEditado=true + distance and lines > 0', () => {
     const g = '# Ofício\n\nQual a vigência da Lei 8.666?';
     const e = '# Ofício de Impugnação\n\nQual a vigência da Lei 8.666?';
     const d = calcularDiffOficio(g, e);
@@ -44,7 +44,7 @@ describe('calcularDiffOficio — sinal-ouro + fallback de sinal vazio', () => {
     expect(d.linhasRemovidas).toBe(1);
   });
 
-  it('(d) linha NOVA inserida → +1 adicionada, 0 removida', () => {
+  it('(d) NEW line inserted → +1 added, 0 removed', () => {
     const g = 'a\nb\nc';
     const e = 'a\nb\nNOVA\nc';
     const d = calcularDiffOficio(g, e);
@@ -53,7 +53,7 @@ describe('calcularDiffOficio — sinal-ouro + fallback de sinal vazio', () => {
     expect(d.linhasRemovidas).toBe(0);
   });
 
-  it('(d) linha REMOVIDA → 0 adicionada, +1 removida', () => {
+  it('(d) line REMOVED → 0 added, +1 removed', () => {
     const g = 'a\nb\nc';
     const e = 'a\nc';
     const d = calcularDiffOficio(g, e);
@@ -62,7 +62,7 @@ describe('calcularDiffOficio — sinal-ouro + fallback de sinal vazio', () => {
     expect(d.linhasRemovidas).toBe(1);
   });
 
-  it('(e) só diferença CRLF → NÃO conta como edição (normalizado)', () => {
+  it('(e) only CRLF difference → does NOT count as an edit (normalized)', () => {
     const g = 'linha1\nlinha2';
     const e = 'linha1\r\nlinha2';
     const d = calcularDiffOficio(g, e);

@@ -114,8 +114,8 @@ function fakeRepo(r: AnaliseRegistro | null): AnalysisRepo {
   };
 }
 
-describe('promoverParaCorpus — 1 passo p/ fixtures/gold (§11b)', () => {
-  it('escreve em fixtures/gold/ com slug de município/uf + JSON válido de Tier 0', async () => {
+describe('promoverParaCorpus — 1 step to fixtures/gold (§11b)', () => {
+  it('writes to fixtures/gold/ with município/uf slug + valid Tier 0 JSON', async () => {
     const escritos: Array<{ caminho: string; conteudo: string }> = [];
     const res = await promoverParaCorpus('a-99', {
       analysisRepo: fakeRepo(registro()),
@@ -153,7 +153,7 @@ describe('promoverParaCorpus — 1 passo p/ fixtures/gold (§11b)', () => {
     expect(prov.promovidoEm).toBe('2026-05-19T12:00:00.000Z');
   });
 
-  it('análise inexistente → lança (1 passo exige algo persistido)', async () => {
+  it('nonexistent analysis → throws (1 step requires something persisted)', async () => {
     await expect(
       promoverParaCorpus('nao-existe', {
         analysisRepo: fakeRepo(null),
@@ -162,7 +162,7 @@ describe('promoverParaCorpus — 1 passo p/ fixtures/gold (§11b)', () => {
     ).rejects.toThrow(/não encontrada/);
   });
 
-  it('slugFixture: normaliza acentos/espaços/símbolos', () => {
+  it('slugFixture: normalizes accents/spaces/symbols', () => {
     expect(slugFixture('Dom Basílio', 'BA')).toBe('dom-basilio-ba');
     expect(slugFixture('Mata Grande', 'AL')).toBe('mata-grande-al');
     expect(slugFixture('', '')).toBe('analise');

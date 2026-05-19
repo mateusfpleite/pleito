@@ -88,10 +88,10 @@ function gateADispara(extracao: EditalExtraction): boolean {
 
 const GOLDS = ['dombasilio', 'jaborandi', 'niteroi'] as const;
 
-describe('E2E determinístico — corpus-ouro (Phase 17.1)', () => {
-  describe('(1) cada gold parseia contra EditalExtractionSchema (Done V0: schema 100% válido)', () => {
+describe('deterministic E2E — gold corpus (Phase 17.1)', () => {
+  describe('(1) each gold parses against EditalExtractionSchema (Done V0: schema 100% valid)', () => {
     for (const nome of GOLDS) {
-      it(`${nome} reconstrói e parseia (schema v3)`, () => {
+      it(`${nome} reconstructs and parses (schema v3)`, () => {
         const extracao = carregarGold(nome);
         // Re-parse defensivo: o objeto reconstruído é estritamente válido.
         expect(() =>
@@ -103,8 +103,8 @@ describe('E2E determinístico — corpus-ouro (Phase 17.1)', () => {
     }
   });
 
-  describe('(2) matchNorma + Gate A — leis revogadas notórias detectadas', () => {
-    it('Jaborandi: 8666/1993 e 10520/2002 casam baseline como revogada-notoria', () => {
+  describe('(2) matchNorma + Gate A — notorious revoked laws detected', () => {
+    it('Jaborandi: 8666/1993 and 10520/2002 match baseline as revogada-notoria', () => {
       const j = carregarGold('jaborandi');
       const achar = (numero: string, ano: number) =>
         j.leisReferenciadas.find(
@@ -131,11 +131,11 @@ describe('E2E determinístico — corpus-ouro (Phase 17.1)', () => {
       }
     });
 
-    it('Gate A dispara para Jaborandi (lei revogada notória → exige Verifier)', () => {
+    it('Gate A fires for Jaborandi (notorious revoked law → requires Verifier)', () => {
       expect(gateADispara(carregarGold('jaborandi'))).toBe(true);
     });
 
-    it('NENHUM gold marca lei vigente-âncora como risco (anti-falso-positivo)', () => {
+    it('NO gold marks a vigente-ancora law as risk (anti-false-positive)', () => {
       for (const nome of GOLDS) {
         const extracao = carregarGold(nome);
         for (const lei of extracao.leisReferenciadas) {
@@ -153,8 +153,8 @@ describe('E2E determinístico — corpus-ouro (Phase 17.1)', () => {
     });
   });
 
-  describe('(3) achados-armadilha registrados na extração do POC', () => {
-    it('Jaborandi: incoerência objeto-divergente (capa mentirosa) presente', () => {
+  describe('(3) trap findings recorded in the POC extraction', () => {
+    it('Jaborandi: objeto-divergente incoerência (lying cover) present', () => {
       const j = carregarGold('jaborandi');
       const objetoDivergente = j.incoerencias.find(
         (i) => i.tipo === 'objeto-divergente'
@@ -170,7 +170,7 @@ describe('E2E determinístico — corpus-ouro (Phase 17.1)', () => {
       ).toBe(true);
     });
 
-    it('Niterói: regime 13.303 + anexo declarado ausente', () => {
+    it('Niterói: regime 13.303 + annex declared absent', () => {
       const n = carregarGold('niteroi');
       expect(n.regimeJuridico).toBe('lei-13303');
       const anexoAusente = n.anexos.find(
@@ -182,7 +182,7 @@ describe('E2E determinístico — corpus-ouro (Phase 17.1)', () => {
       ).toBeTruthy();
     });
 
-    it('Dom Basílio: incoerência valor-divergente severidade alta', () => {
+    it('Dom Basílio: valor-divergente incoerência severidade alta', () => {
       const d = carregarGold('dombasilio');
       const valorDivergente = d.incoerencias.find(
         (i) => i.tipo === 'valor-divergente'
@@ -192,9 +192,9 @@ describe('E2E determinístico — corpus-ouro (Phase 17.1)', () => {
     });
   });
 
-  describe('(4) checarContencao(gold, oficio:null) → 0 violações', () => {
+  describe('(4) checarContencao(gold, oficio:null) → 0 violations', () => {
     for (const nome of GOLDS) {
-      it(`${nome}: sem ofício, 0 violações de contenção`, () => {
+      it(`${nome}: no ofício, 0 containment violations`, () => {
         const extracao = carregarGold(nome);
         const { violacoes } = checarContencao({
           extracao,
@@ -223,7 +223,7 @@ describe('E2E determinístico — corpus-ouro (Phase 17.1)', () => {
    *  - telemetria gravando em Postgres real
    *  - deploy acessível à Stefany
    */
-  it('referência: pnpm eval:tier0 cobre o Gate Tier 0 sobre o corpus completo', () => {
+  it('reference: pnpm eval:tier0 covers the Tier 0 Gate over the full corpus', () => {
     // Marcador documental — o gate duro roda em `pnpm eval:tier0`
     // (eval/run-tier0.ts), não reimplementado aqui. Ver docs/DEPLOY.md.
     expect(true).toBe(true);

@@ -21,13 +21,13 @@ const SECRET = 'segredo-super-secreto-de-teste';
 const T0 = 1_700_000_000_000;
 
 describe('sessao: assinar → verificar', () => {
-  it('round-trip: assina e verifica OK dentro da validade', async () => {
+  it('round-trip: signs and verifies OK within the validity period', async () => {
     const cookie = await assinarSessao(SECRET, { agora: T0 });
     const r = await verificarSessao(cookie, SECRET, { agora: T0 + 1000 });
     expect(r).toEqual({ valido: true });
   });
 
-  it('cookie adulterado (payload trocado) → inválido', async () => {
+  it('tampered cookie (payload swapped) → invalid', async () => {
     const cookie = await assinarSessao(SECRET, { agora: T0 });
     const [, sig] = cookie.split('.');
     const forjado = `${btoa('{"exp":99999999999999}')
@@ -38,7 +38,7 @@ describe('sessao: assinar → verificar', () => {
     expect(r.valido).toBe(false);
   });
 
-  it('assinatura adulterada → inválido', async () => {
+  it('tampered signature → invalid', async () => {
     const cookie = await assinarSessao(SECRET, { agora: T0 });
     const [payload] = cookie.split('.');
     const r = await verificarSessao(
@@ -58,7 +58,7 @@ describe('sessao: assinar → verificar', () => {
     expect(r).toEqual({ valido: false, expirado: true });
   });
 
-  it('secret errado → inválido (sem vazar expirado)', async () => {
+  it('wrong secret → invalid (without leaking expired)', async () => {
     const cookie = await assinarSessao(SECRET, { agora: T0 });
     const r = await verificarSessao(cookie, 'outro-secret', {
       agora: T0,
@@ -66,7 +66,7 @@ describe('sessao: assinar → verificar', () => {
     expect(r).toEqual({ valido: false });
   });
 
-  it('cookie ausente/null/vazio/malformado → inválido', async () => {
+  it('cookie absent/null/empty/malformed → invalid', async () => {
     for (const c of [undefined, null, '', 'semponto', '.só-sig', 'payload.']) {
       const r = await verificarSessao(
         c as string | undefined,
@@ -77,7 +77,7 @@ describe('sessao: assinar → verificar', () => {
     }
   });
 
-  it('I1: verificarSessao com secret vazio → inválido (fail-closed explícito)', async () => {
+  it('I1: verificarSessao with empty secret → invalid (explicit fail-closed)', async () => {
     // O GUARD explícito deve retornar ANTES de qualquer HMAC: prova-se
     // espionando crypto.subtle.importKey. Se a falha dependesse só do
     // side-effect do importKey lançar p/ chave vazia, importKey SERIA
@@ -106,7 +106,7 @@ describe('sessao: assinar → verificar', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('I1: assinarSessao com secret vazio LANÇA (não emite cookie inseguro)', async () => {
+  it('I1: assinarSessao with empty secret THROWS (does not emit an insecure cookie)', async () => {
     // Deve lançar pelo GUARD explícito — ANTES de tocar importKey
     // (não confiar no DataError incidental da Web Crypto).
     const spy = vi.spyOn(crypto.subtle, 'importKey');
@@ -119,7 +119,7 @@ describe('sessao: assinar → verificar', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('duração padrão é 7 dias', async () => {
+  it('default duration is 7 days', async () => {
     const cookie = await assinarSessao(SECRET, { agora: T0 });
     const seteDiasMenos1s = await verificarSessao(cookie, SECRET, {
       agora: T0 + DURACAO_SESSAO_MS - 1000,
