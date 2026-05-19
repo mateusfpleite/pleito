@@ -24,6 +24,8 @@ V0–V1 Stefany (analista única) · V2+ equipe Zelo · V3+ outras empresas B2G 
 
 Princípios: hexagonal no LLM boundary (ports trocáveis por env var) · YAGNI (sem Mastra até V2) · schema evoluído contra editais reais · defense in depth na segurança do Verifier · persistir conteúdo nunca derivado.
 
+**Reaproveitamento (corrigido pós plan-review):** reaproveita-se **prompts validados, `data/norma-baseline.json` e o schema**; o I/O dos scripts CLI (`src/extract.ts`, `src/spike-verifier.ts`) é **reescrito** como adapters (eram `main()`+`process.exit`, não módulos). "Reaproveitar tudo" era impreciso.
+
 **Estrutura de pastas:**
 
 ```
@@ -71,6 +73,10 @@ Risco: flag `revogada` do Extractor é palpite (~57% acurácia, viés falso-posi
 
 **Gate A fecha o falso-negativo:** o baseline matcher roda em TODAS as `leisReferenciadas` (lookup local, sem LLM, grátis), não só nas que o extractor marcou. Lei revogada conhecida é pega mesmo se o extractor disse `revogada=false`. Não existe sinal "incerto" no schema — removido; o gatilho é matcher-classifica-risco OU extractor-flag.
 
+**Design do matcher (validado empiricamente — spike `src/spike-matcher.ts` contra 99 leis reais de `output/*.json`):** match **número+ano-primário**; `escopo`/`tipoNorma` são sinais **soft** (fallback tolerante que ignora ambos), porque o extractor erra escopo/tipo em ~54% das citações. `normalizarNumero` aplicado nos **dois lados** (extractor produz `"14133"`, baseline tem `"14.133"`). Resultado: falso-negativo **0/37** com normalização+fallback vs **23/37 (62%)** com match estrito não-normalizado (o bug que o plano mascarava). Match estrito sozinho pegaria só 46%. **Risco residual registrado:** colisão número+ano entre lei federal e estadual distintas não ocorreu no corpus — não refutado; mitigação: fallback prefere escopo quando presente, entradas `citacao-suspeita` sinalizam em vez de silenciar.
+
+**#2 — Contenção estrutural (não regex em prosa):** o Drafter decide e emite, por lei citada no ofício, um campo estruturado **`afirmacaoVigencia ∈ {nenhuma, revogada, vigente}`**, e gera a prosa *a partir* dessa decisão (ordem: decide → escreve). Tier 0 (§11a) confronta `afirmacaoVigencia` vs `statusVerificado` — determinístico, imune a paráfrase. Regra dura: `afirmacaoVigencia=revogada` só com `statusVerificado=revogada`. Scan léxico amplo de revogação fica como **alarme secundário** (defense-in-depth), nunca o gate primário.
+
 `norma-baseline.json` é ativo acumulável (moat).
 
 ## 6. Schema de extração (v3)
@@ -96,7 +102,8 @@ Gemini 2.5 Flash. ~$0.09/edital (extractor ~75%). Single-user <$5/mês. `pdftote
 ## 11. Verificação & Observabilidade
 
 **11a. Gate Tier 0 (embarca no V0, property-based, determinístico, custo zero, toda mudança):** invariantes estruturais, não comparação com corpus, logo generalizam pra editais nunca vistos:
-- Ofício externo **nunca** afirma revogação/(in)vigência de lei com `statusVerificado != revogada`. Verificável parseando o ofício contra o status das leis citadas. **Gate duro = 0 violações.**
+- Para cada lei citada no ofício: `afirmacaoVigencia=revogada` **só** se `statusVerificado=revogada` (confronto do campo estruturado do Drafter, §5 #2 — não regex em prosa). **Gate duro = 0 violações.**
+- Alarme secundário: scan léxico amplo de revogação no markdown — se dispara mas `afirmacaoVigencia=nenhuma`, é inconsistência do Drafter → falha (defense-in-depth).
 - Nenhuma norma da `norma-baseline.json` resolvida com status divergente da tabela.
 - zona-cinzenta nunca vira binário no ofício.
 Roda em `eval/`. Falhou → build falha. Não depende de uso da Stefany — protege o dano catastrófico desde o 1º uso.
@@ -105,8 +112,10 @@ Roda em `eval/`. Falhou → build falha. Não depende de uso da Stefany — prot
 - **Diff ofício gerado × exportado** (sinal-ouro: rótulo direto e não-supervisionado de erro/lacuna do Drafter).
 - Export/quais artefatos, re-upload do mesmo edital, painéis abertos, latência, custo.
 - Explícito mínimo: 👍/👎 + texto opcional por análise; micro-pergunta rotativa.
+- **Custo por chamada de grounding** logado individualmente (não só agregado) — a cauda municipal real aciona grounding pago; bomba silenciosa se não instrumentado.
+- Fallback de sinal: se o diff ofício gerado×exportado vier vazio (ela aceita sem editar / não exporta), o sinal-ouro é nulo — usar export-sim/não + 👍/👎 como sinal de reserva.
 - **Superfície de revisão** interna (lista de análises + feedback + diffs) — sem isso o loop não fecha.
-- **Promote-to-corpus** em 1 passo (telemetria desenhada pra virar fixture de regressão).
+- **Promote-to-corpus** em 1 passo grava em **`fixtures/gold/` (versionado, NÃO em `output/` que é gitignored)** — vira fixture de regressão do Tier 0/E2E.
 
 **11c. Evals de acurácia/decisão = V1**, construídos a partir da telemetria coletada (não a-priori). Eixo: propriedade-primeiro / corpus-por-cobertura-de-falha, não corpus-centric.
 
@@ -137,6 +146,6 @@ Não substituir julgamento jurídico · sem proposta automática V0/V1 · sem ER
 ## 14. Deploy
 
 - **Vercel:** Next.js (Node runtime nas rotas com Prisma). `DATABASE_URL` pooled (Supabase pgBouncer, `?pgbouncer=true&connection_limit=1`), `directUrl` p/ migrations, `prisma generate` no `postinstall`.
-- **Worker:** container (Railway/Cloud Run, scale-to-zero), Dockerfile `apt-get install poppler-utils` + chromium; conexão Postgres direta (não pooled); loop que consome `jobs`.
-- **Auth (decidida):** V0 single-user — segredo compartilhado via env + cookie de sessão assinado (middleware protege tudo exceto /login). Supabase Auth fica pra V1 multi-usuário.
+- **Worker:** container (Railway/Cloud Run, scale-to-zero), Dockerfile `apt-get install poppler-utils chromium`; conexão Postgres direta. **#3 wake-up:** `/api/job` (Vercel) faz `POST` HTTP no endpoint do worker ao criar o job — *essa requisição acorda o container* (scale-to-zero só desperta por HTTP, não por linha no DB; polling cego não funciona dormindo). **#3 lock:** claim atômico `UPDATE jobs SET status='running' WHERE id=(SELECT id FROM jobs WHERE status='pending' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *` — dois workers nunca pegam o mesmo job.
+- **Auth (#7, decidida):** V0 single-user. `APP_SECRET` em env. `/login` = form com campo de senha → `POST /api/login` valida contra `APP_SECRET` → set-cookie de sessão assinado (HMAC, httpOnly). Middleware protege tudo exceto `/login`, `/api/login`, `/api/health`. O segredo é passado à Stefany fora-de-banda (mensagem direta). Supabase Auth fica pra V1 multi-usuário.
 - Chave Gemini: a do empregamed em dev; revisar p/ deploy.
