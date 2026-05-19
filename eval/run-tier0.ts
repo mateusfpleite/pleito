@@ -43,51 +43,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { EditalExtractionSchema } from '../domain/schema.ts';
 import { checarContencao, type Violacao } from './tier0.ts';
+import { normalizarGold } from './normalizar-gold.ts';
 
 const GOLD_DIR = fileURLToPath(new URL('../fixtures/gold', import.meta.url));
-
-/**
- * Reconstrói o `EditalExtraction` completo a partir do gold cru (POC) do
- * MESMO modo que o `application/`: `pontosDeAtencao: []` (é do Risk Analyst,
- * não do Extractor) e `fonteVerificacao: null` quando ausente por lei.
- * `statusVerificado` ausente é suprido pelo default do schema. Não-objeto /
- * sem `leisReferenciadas` (ex.: baserate) passa direto → safeParse falha →
- * ignorado.
- */
-function normalizarGold(raw: unknown): unknown {
-  if (typeof raw !== 'object' || raw === null) return raw;
-  const obj = raw as Record<string, unknown>;
-  const leis = obj.leisReferenciadas;
-  if (!Array.isArray(leis)) return raw;
-  // Campos v3 (SPEC §6) ausentes no POC pré-v3: todos `.nullable()` no
-  // schema → null quando o gold não os trazia.
-  const v3Nullable = [
-    'plataforma',
-    'subcontratacaoPermitida',
-    'intervaloMinimoLances',
-    'prazoRecursosDiasUteis',
-    'informacoesViabilidade',
-  ] as const;
-  const v3Defaults: Record<string, null> = {};
-  for (const k of v3Nullable) {
-    if (obj[k] === undefined) v3Defaults[k] = null;
-  }
-  return {
-    ...obj,
-    ...v3Defaults,
-    pontosDeAtencao: Array.isArray(obj.pontosDeAtencao)
-      ? obj.pontosDeAtencao
-      : [],
-    leisReferenciadas: leis.map((l) => {
-      const lei = l as Record<string, unknown>;
-      return {
-        ...lei,
-        fonteVerificacao:
-          lei.fonteVerificacao === undefined ? null : lei.fonteVerificacao,
-      };
-    }),
-  };
-}
 
 function main(): void {
   const arquivos = readdirSync(GOLD_DIR)

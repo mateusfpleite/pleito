@@ -145,6 +145,11 @@ Não substituir julgamento jurídico · sem proposta automática V0/V1 · sem ER
 
 ## 14. Deploy
 
+> **Runbook operacional acionável (passo-a-passo, env vars exatas,
+> resíduos consolidados, checklist Done V0): [`docs/DEPLOY.md`](DEPLOY.md).**
+> Esta seção registra só as DECISÕES de arquitetura de deploy; os passos
+> de execução não são duplicados aqui.
+
 - **Vercel:** Next.js (Node runtime nas rotas com Prisma). `DATABASE_URL` pooled (Supabase pgBouncer, `?pgbouncer=true&connection_limit=1`), `directUrl` p/ migrations, `prisma generate` no `postinstall`.
 - **Worker:** container (Railway/Cloud Run, scale-to-zero), Dockerfile `apt-get install poppler-utils chromium`; conexão Postgres direta. **#3 wake-up:** `/api/job` (Vercel) faz `POST` HTTP no endpoint do worker ao criar o job — *essa requisição acorda o container* (scale-to-zero só desperta por HTTP, não por linha no DB; polling cego não funciona dormindo). **#3 lock:** claim atômico `UPDATE jobs SET status='running' WHERE id=(SELECT id FROM jobs WHERE status='pending' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *` — dois workers nunca pegam o mesmo job.
 - **Auth (#7, decidida):** V0 single-user. `APP_SECRET` em env. `/login` = form com campo de senha → `POST /api/login` valida contra `APP_SECRET` → set-cookie de sessão assinado (HMAC, httpOnly). Middleware protege tudo exceto `/login`, `/api/login`, `/api/health`. O segredo é passado à Stefany fora-de-banda (mensagem direta). Supabase Auth fica pra V1 multi-usuário.
