@@ -54,6 +54,19 @@ function makeTable<T extends { [k: string]: unknown }>(pk: keyof T) {
         Object.values(where)[0]) as string;
       return rows.get(key) ?? null;
     },
+    findFirst: async ({
+      where,
+    }: {
+      where: Record<string, unknown>;
+    }) => {
+      for (const row of rows.values()) {
+        const ok = Object.entries(where).every(
+          ([k, v]) => (row as Record<string, unknown>)[k] === v
+        );
+        if (ok) return row;
+      }
+      return null;
+    },
     update: async ({
       where,
       data,
@@ -91,12 +104,67 @@ function makeTable<T extends { [k: string]: unknown }>(pk: keyof T) {
   };
 }
 
+type JobRowShape = {
+  id: string;
+  status: string;
+  erro: string | null;
+  inputRef: string;
+  createdAt: Date;
+};
+
+/**
+ * Fake de `$queryRaw` que MODELA a semântica de `FOR UPDATE SKIP LOCKED`
+ * sem Postgres real (RESÍDUO de banco — testing-anti-patterns: provar a
+ * INVARIANTE, não o engine). O claim atômico é a única operação que o
+ * `claimNext` executa via SQL cru; o fake:
+ *
+ *  1. registra o SQL recebido (texto do template) p/ o teste assertir que
+ *     ele contém literalmente `FOR UPDATE SKIP LOCKED` + `RETURNING` — a
+ *     cláusula que entrega a garantia no Postgres real;
+ *  2. executa o claim de forma ATÔMICA e SERIALIZADA sobre a tabela
+ *     in-memory: seleciona o `pending` mais antigo, flipa para `running`
+ *     no MESMO passo síncrono e o retorna. Como a transição pending→running
+ *     é indivisível, dois `claimNext()` interleaved NUNCA observam a mesma
+ *     linha pending — exatamente o que SKIP LOCKED garante (o 2º "pula" a
+ *     linha já travada/claimed).
+ */
+function makeQueryRaw(jobRows: Map<string, JobRowShape>) {
+  const sqlVisto: string[] = [];
+  const queryRaw = async (
+    strings: TemplateStringsArray | { sql?: string },
+    ..._values: unknown[]
+  ) => {
+    const sql = Array.isArray(strings)
+      ? (strings as unknown as string[]).join(' ? ')
+      : ((strings as { sql?: string }).sql ?? String(strings));
+    sqlVisto.push(sql);
+
+    if (!/jobs/i.test(sql)) return [];
+
+    // Claim atômico serializado: pega o pending mais antigo e o flipa
+    // para running indivisivelmente (modela FOR UPDATE SKIP LOCKED).
+    const pendentes = [...jobRows.values()]
+      .filter((r) => r.status === 'pending')
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    const alvo = pendentes[0];
+    if (!alvo) return [];
+    alvo.status = 'running';
+    return [{ ...alvo }];
+  };
+  return Object.assign(queryRaw, { sqlVisto });
+}
+
 function fakePrisma(): PrismaClientLike {
+  const job = makeTable('id');
+  const queryRaw = makeQueryRaw(
+    job.rows as unknown as Map<string, JobRowShape>
+  );
   return {
-    job: makeTable('id'),
+    job,
     analysis: makeTable('id'),
     normaCache: makeTable('chave'),
     telemetria: makeTable('id'),
+    $queryRaw: queryRaw,
   } as unknown as PrismaClientLike;
 }
 
@@ -224,6 +292,23 @@ describe('PrismaAnalysisRepo', () => {
     const repo = new PrismaAnalysisRepo(fakePrisma());
     expect(await repo.buscarPorId('nao-existe')).toBeNull();
   });
+
+  it('buscarPorJobId acha a análise pelo jobId (status route)', async () => {
+    const repo = new PrismaAnalysisRepo(fakePrisma());
+    const salvo = await repo.salvar({
+      jobId: 'job-77',
+      municipio: 'Niterói',
+      uf: 'RJ',
+      extracao: baseExtraction({ municipio: 'Niterói', uf: 'RJ' }),
+      oficioGerado: null,
+      oficioExportado: null,
+    });
+    const achado = await repo.buscarPorJobId('job-77');
+    expect(achado).not.toBeNull();
+    expect(achado!.id).toBe(salvo.id);
+    expect(achado!.jobId).toBe('job-77');
+    expect(await repo.buscarPorJobId('job-inexistente')).toBeNull();
+  });
 });
 
 describe('PrismaJobRepo (CRUD básico — claim atômico é Phase 12)', () => {
@@ -262,9 +347,102 @@ describe('PrismaJobRepo (CRUD básico — claim atômico é Phase 12)', () => {
     expect(await repo.buscarPorId('nope')).toBeNull();
   });
 
-  it('claimNext lança (é Phase 12, não simular o lock atômico)', async () => {
+  it('claimNext: sem pending devolve null', async () => {
     const repo = new PrismaJobRepo(fakePrisma());
-    await expect(repo.claimNext()).rejects.toThrow(/Phase 12/);
+    expect(await repo.claimNext()).toBeNull();
+  });
+
+  it('claimNext: claima o pending mais antigo e o marca running', async () => {
+    const prisma = fakePrisma();
+    const repo = new PrismaJobRepo(prisma);
+    const j1 = await repo.criar('uploads/antigo.zip');
+    await repo.criar('uploads/novo.zip');
+    const claimed = await repo.claimNext();
+    expect(claimed).not.toBeNull();
+    expect(claimed!.id).toBe(j1.id); // ORDER BY created_at
+    expect(claimed!.status).toBe('running');
+  });
+
+  it('claimNext emite SQL com FOR UPDATE SKIP LOCKED + RETURNING', async () => {
+    const prisma = fakePrisma();
+    const repo = new PrismaJobRepo(prisma);
+    await repo.criar('uploads/a.zip');
+    await repo.claimNext();
+    const sql = (
+      (prisma as unknown as { $queryRaw: { sqlVisto: string[] } })
+        .$queryRaw.sqlVisto
+    )
+      .join('\n')
+      .toUpperCase();
+    // A cláusula que entrega a garantia de concorrência no Postgres real.
+    expect(sql).toMatch(/FOR UPDATE\s+SKIP LOCKED/);
+    expect(sql).toContain('RETURNING');
+    expect(sql).toMatch(/SET\s+STATUS\s*=\s*'RUNNING'/);
+    expect(sql).toMatch(/WHERE\s+STATUS\s*=\s*'PENDING'/);
+    expect(sql).toMatch(/ORDER BY\s+["']?CREATEDAT/);
+  });
+
+  /**
+   * INVARIANTE CENTRAL (#3 lock): dois workers concorrentes NUNCA pegam o
+   * mesmo job. Provado de forma determinística e honesta: dois `claimNext()`
+   * disparados juntos (Promise.all) sobre 2 jobs pending devem pegar jobs
+   * DIFERENTES; com 1 job pending, um pega o job e o outro pega `null`
+   * (skip — não rouba o já claimed).
+   */
+  it('claimNext: 2 claims simultâneos pegam jobs DIFERENTES', async () => {
+    const prisma = fakePrisma();
+    const repo = new PrismaJobRepo(prisma);
+    const a = await repo.criar('uploads/a.zip');
+    const b = await repo.criar('uploads/b.zip');
+
+    const [c1, c2] = await Promise.all([
+      repo.claimNext(),
+      repo.claimNext(),
+    ]);
+
+    expect(c1).not.toBeNull();
+    expect(c2).not.toBeNull();
+    // A invariante: jamais o mesmo id para dois claims.
+    expect(c1!.id).not.toBe(c2!.id);
+    const ids = new Set([c1!.id, c2!.id]);
+    expect(ids).toEqual(new Set([a.id, b.id]));
+    expect(c1!.status).toBe('running');
+    expect(c2!.status).toBe('running');
+  });
+
+  it('claimNext: 2 claims simultâneos, 1 só pending → o outro pega null', async () => {
+    const prisma = fakePrisma();
+    const repo = new PrismaJobRepo(prisma);
+    const a = await repo.criar('uploads/unico.zip');
+
+    const [c1, c2] = await Promise.all([
+      repo.claimNext(),
+      repo.claimNext(),
+    ]);
+
+    const claimados = [c1, c2].filter((c) => c !== null);
+    const nulos = [c1, c2].filter((c) => c === null);
+    expect(claimados).toHaveLength(1);
+    expect(nulos).toHaveLength(1);
+    expect(claimados[0]!.id).toBe(a.id);
+    expect(claimados[0]!.status).toBe('running');
+  });
+
+  it('claimNext: drena a fila (claima até esgotar os pending)', async () => {
+    const prisma = fakePrisma();
+    const repo = new PrismaJobRepo(prisma);
+    await repo.criar('uploads/1.zip');
+    await repo.criar('uploads/2.zip');
+    await repo.criar('uploads/3.zip');
+
+    const claimados: string[] = [];
+    let j = await repo.claimNext();
+    while (j) {
+      claimados.push(j.id);
+      j = await repo.claimNext();
+    }
+    expect(claimados).toHaveLength(3);
+    expect(new Set(claimados).size).toBe(3); // nunca repetiu
   });
 });
 

@@ -115,6 +115,11 @@ export interface AnalysisRepo {
     registro: Omit<AnaliseRegistro, 'id'>
   ): Promise<AnaliseRegistro>;
   buscarPorId(id: string): Promise<AnaliseRegistro | null>;
+  /**
+   * Busca a análise de um Job (1:1 no V0). `/api/status/:id` recebe o
+   * jobId; a UI nunca conhece o id da Analysis — só o do Job.
+   */
+  buscarPorJobId(jobId: string): Promise<AnaliseRegistro | null>;
 }
 
 export type JobStatus = 'pending' | 'running' | 'done' | 'erro';

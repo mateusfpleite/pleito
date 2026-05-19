@@ -1,11 +1,12 @@
 /**
  * PrismaJobRepo — `JobRepo` (domain/ports.ts) sobre Prisma.
  *
- * Phase 11: só o CRUD básico (criar / atualizar status / buscar). O
- * `claimNext` ATÔMICO (`UPDATE ... FOR UPDATE SKIP LOCKED ... RETURNING`)
- * é Phase 12 (SPEC §14, #3 lock) e usa SQL bruto — fica `not implemented`
- * aqui de propósito para não fingir a garantia de concorrência antes da
- * fase que a testa sob 2 claims simultâneos.
+ * Phase 12: `claimNext` ATÔMICO via SQL cru — Prisma NÃO expõe
+ * `FOR UPDATE SKIP LOCKED` na API tipada, então usamos `$queryRaw`. A
+ * cláusula garante (no Postgres real) que dois workers concorrentes nunca
+ * pegam o mesmo job: o `SELECT ... FOR UPDATE SKIP LOCKED LIMIT 1` trava a
+ * linha escolhida e PULA as já travadas por outra transação; o `UPDATE
+ * ... RETURNING *` flipa pending→running atomicamente. SPEC §14, #3 lock.
  */
 import type { Job, JobRepo, JobStatus } from '../../domain/ports.ts';
 import type { PrismaClientLike } from './client.ts';
@@ -41,15 +42,29 @@ export class PrismaJobRepo implements JobRepo {
   }
 
   /**
-   * RESÍDUO de Phase 12: claim atômico FOR UPDATE SKIP LOCKED via
-   * `$queryRaw`. Não implementado aqui — implementá-lo sem o lock real
-   * mascararia o requisito de concorrência (testing-anti-patterns:
-   * não simular a garantia que outra fase precisa provar).
+   * Claim atômico (SPEC §14, #3 lock). O subselect `FOR UPDATE SKIP
+   * LOCKED LIMIT 1` escolhe o pending mais antigo travando-o e ignorando
+   * linhas já travadas por outra transação concorrente; o `UPDATE ...
+   * RETURNING *` o flipa para `running` no mesmo passo. Resultado: dois
+   * workers NUNCA pegam o mesmo job (um pega o próximo livre ou `null`).
+   *
+   * SQL cru via `$queryRaw` porque Prisma não expõe SKIP LOCKED. Sem
+   * interpolação (query 100% estática) — nenhuma superfície de injeção.
    */
   async claimNext(): Promise<Job | null> {
-    throw new Error(
-      'claimNext: claim atômico (FOR UPDATE SKIP LOCKED) é Phase 12.'
-    );
+    const rows = (await this.prisma.$queryRaw`
+      UPDATE jobs SET status = 'running'
+      WHERE id = (
+        SELECT id FROM jobs
+        WHERE status = 'pending'
+        ORDER BY "createdAt"
+        FOR UPDATE SKIP LOCKED
+        LIMIT 1
+      )
+      RETURNING *
+    `) as JobRow[];
+    const row = rows[0];
+    return row ? paraJob(row) : null;
   }
 
   async marcarConcluido(id: string): Promise<void> {

@@ -67,4 +67,13 @@ export class PrismaAnalysisRepo implements AnalysisRepo {
     })) as AnalysisRow | null;
     return row ? paraRegistro(row) : null;
   }
+
+  async buscarPorJobId(
+    jobId: string
+  ): Promise<AnaliseRegistro | null> {
+    const row = (await this.prisma.analysis.findFirst({
+      where: { jobId },
+    })) as AnalysisRow | null;
+    return row ? paraRegistro(row) : null;
+  }
 }

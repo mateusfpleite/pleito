@@ -16,6 +16,27 @@ const execFileAsync = promisify(execFile);
 /** Mínimo de caracteres alfanuméricos p/ considerar a extração utilizável. */
 const MIN_ALFANUM = 500;
 
+/**
+ * CARRY-FORWARD Phase 3+4 — cap de tamanho DESCOMPRIMIDO (anti zip-bomb).
+ * Editais reais ficam muito abaixo de 50 MB (o maior do corpus < 5 MB).
+ * Conteúdo descomprimido acima disso é rejeitado ANTES de ser
+ * materializado — o worker transforma a rejeição em Job `erro` (mensagem
+ * clara), nunca OOM. Aplica-se a: texto/pdf cru, gzip inflado, e cada
+ * entry de zip (pelo `uncompressedSize` declarado no header).
+ */
+export const MAX_DESCOMPRIMIDO_BYTES = 50 * 1024 * 1024;
+
+/** Erro de boundary: entrada excede o cap de descompressão (zip-bomb). */
+export class EntradaGrandeDemaisError extends Error {
+  constructor(detalhe: string) {
+    super(
+      `Entrada rejeitada: excede o limite de tamanho descomprimido ` +
+        `(${MAX_DESCOMPRIMIDO_BYTES} bytes / zip-bomb) — ${detalhe}`
+    );
+    this.name = 'EntradaGrandeDemaisError';
+  }
+}
+
 type Formato = 'zip' | 'pdf' | 'gzip' | 'texto';
 
 /** Detecção por magic bytes (sem confiar na extensão do nome). */
@@ -101,6 +122,32 @@ async function extrairPdf(bytes: Uint8Array): Promise<string> {
   }
 }
 
+/** gunzip com teto de saída — aborta a inflação antes de OOM (zip-bomb). */
+function gunzipComTeto(buf: Buffer): Buffer {
+  try {
+    return gunzipSync(buf, {
+      maxOutputLength: MAX_DESCOMPRIMIDO_BYTES,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const code =
+      e && typeof e === 'object' && 'code' in e
+        ? String((e as { code?: unknown }).code)
+        : '';
+    // Node lança RangeError ERR_BUFFER_TOO_LARGE ao passar de
+    // maxOutputLength — sinal inequívoco de zip-bomb.
+    if (
+      code === 'ERR_BUFFER_TOO_LARGE' ||
+      /maxOutputLength|buffer larger than|too large/i.test(msg)
+    ) {
+      throw new EntradaGrandeDemaisError(
+        `gzip inflaria além do cap (${msg})`
+      );
+    }
+    throw e;
+  }
+}
+
 /** Extrai o maior arquivo de texto/pdf de um .zip e o processa. */
 async function extrairZip(
   bytes: Uint8Array
@@ -109,6 +156,15 @@ async function extrairZip(
   const candidatos = dir.files
     .filter((f) => f.type === 'File')
     .sort((a, b) => b.uncompressedSize - a.uncompressedSize);
+
+  // Rejeita ANTES de inflar qualquer entry: o maior `uncompressedSize`
+  // declarado no header já passa do cap → zip-bomb (não materializa nada).
+  const maiorDeclarado = candidatos[0]?.uncompressedSize ?? 0;
+  if (maiorDeclarado > MAX_DESCOMPRIMIDO_BYTES) {
+    throw new EntradaGrandeDemaisError(
+      `entry de zip declara uncompressedSize=${maiorDeclarado} > cap`
+    );
+  }
 
   for (const f of candidatos) {
     const buf = await f.buffer();
@@ -119,7 +175,7 @@ async function extrairZip(
         return { texto, pdfNativo: true };
       }
     } else if (fmt === 'gzip') {
-      const texto = gunzipSync(buf).toString('utf-8');
+      const texto = gunzipComTeto(buf).toString('utf-8');
       if (contarAlfanum(texto) >= MIN_ALFANUM) {
         return { texto, pdfNativo: false };
       }
@@ -144,6 +200,18 @@ export class Preprocessor implements PreprocessorPort {
     const { bytes, nomeArquivo, url } = arquivo;
     const formato = detectarFormato(bytes);
 
+    // Cap de tamanho descomprimido (anti zip-bomb). Para texto/pdf crus o
+    // próprio buffer já É o conteúdo descomprimido — rejeita antes de
+    // tocar. zip/gzip são checados na inflação (header / maxOutputLength).
+    if (
+      (formato === 'texto' || formato === 'pdf') &&
+      bytes.length > MAX_DESCOMPRIMIDO_BYTES
+    ) {
+      throw new EntradaGrandeDemaisError(
+        `${formato} cru tem ${bytes.length} bytes > cap`
+      );
+    }
+
     let texto = '';
     let pdfNativo = false;
 
@@ -155,9 +223,13 @@ export class Preprocessor implements PreprocessorPort {
       texto = await extrairPdf(bytes);
       pdfNativo = true;
     } else if (formato === 'gzip') {
+      // gunzipComTeto lança EntradaGrandeDemaisError se inflaria além do
+      // cap — propaga (NÃO mascarar como ''); outros erros viram '' (gzip
+      // corrompido → cai p/ ocr a jusante, comportamento legado).
       try {
-        texto = gunzipSync(Buffer.from(bytes)).toString('utf-8');
-      } catch {
+        texto = gunzipComTeto(Buffer.from(bytes)).toString('utf-8');
+      } catch (e) {
+        if (e instanceof EntradaGrandeDemaisError) throw e;
         texto = '';
       }
     } else {

@@ -38,7 +38,9 @@ import type { PrismaClient } from '../../prisma/generated/client.ts';
  */
 export type PrismaClientLike = Pick<
   PrismaClient,
-  'job' | 'analysis' | 'normaCache' | 'telemetria'
+  // `$queryRaw` é necessário para o claim atômico `FOR UPDATE SKIP LOCKED`
+  // (Phase 12) — Prisma não expõe SKIP LOCKED via API tipada, só SQL cru.
+  'job' | 'analysis' | 'normaCache' | 'telemetria' | '$queryRaw'
 >;
 
 /**
