@@ -74,6 +74,20 @@ export async function assinarSessao(
   secret: string,
   opts: { agora?: number; duracaoMs?: number } = {}
 ): Promise<string> {
+  // GUARD EXPLÍCITO (I1): NUNCA assinar com secret vazio/ausente —
+  // emitir um cookie HMAC com chave vazia seria emitir credencial
+  // insegura (forjável trivialmente). Fail-closed INTENCIONAL: lança
+  // ANTES de qualquer crypto.subtle, sem depender do `DataError`
+  // incidental da Web Crypto p/ chave de tamanho zero. Callers
+  // legítimos (handler de login) só assinam após validar a senha
+  // contra `APP_SECRET`, que o schema de config exige não-vazio
+  // (z.string().min(1)) — logo este throw não quebra fluxo válido.
+  if (!secret) {
+    throw new Error(
+      'assinarSessao: APP_SECRET ausente/vazio — recusando assinar ' +
+        'cookie de sessão inseguro (fail-closed)'
+    );
+  }
   const agora = opts.agora ?? Date.now();
   const exp = agora + (opts.duracaoMs ?? DURACAO_SESSAO_MS);
   const payloadB64 = b64urlEncode(enc.encode(JSON.stringify({ exp })));
@@ -92,6 +106,15 @@ export async function verificarSessao(
   secret: string,
   opts: { agora?: number } = {}
 ): Promise<ResultadoVerificacao> {
+  // GUARD EXPLÍCITO (I1): secret vazio/ausente ⇒ fail-closed
+  // INTENCIONAL e imediato. Esta é a garantia PRIMÁRIA de que um
+  // misconfig de `APP_SECRET` (env faltando no Edge/middleware) nunca
+  // aceita um cookie — em vez de depender do side-effect não
+  // documentado de `crypto.subtle.importKey` lançar p/ chave vazia
+  // (mascarado pelo `catch` amplo abaixo, que confundiria misconfig
+  // com cookie meramente "inválido"). O try/catch em volta de hmac()
+  // permanece como defesa secundária, mas este guard vem ANTES.
+  if (!secret) return { valido: false };
   if (!cookie || typeof cookie !== 'string') return { valido: false };
   const ponto = cookie.indexOf('.');
   if (ponto <= 0 || ponto === cookie.length - 1) return { valido: false };

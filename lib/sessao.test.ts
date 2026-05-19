@@ -1,9 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   assinarSessao,
   verificarSessao,
   DURACAO_SESSAO_MS,
 } from './sessao.ts';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 /**
  * Testes DETERMINÍSTICOS da assinatura/verificação de sessão (SPEC §14).
@@ -71,6 +75,48 @@ describe('sessao: assinar → verificar', () => {
       );
       expect(r.valido).toBe(false);
     }
+  });
+
+  it('I1: verificarSessao com secret vazio → inválido (fail-closed explícito)', async () => {
+    // O GUARD explícito deve retornar ANTES de qualquer HMAC: prova-se
+    // espionando crypto.subtle.importKey. Se a falha dependesse só do
+    // side-effect do importKey lançar p/ chave vazia, importKey SERIA
+    // chamado — este spy garante que NÃO é (guard vem antes).
+    const spy = vi.spyOn(crypto.subtle, 'importKey');
+
+    const cookieValido = await assinarSessao(SECRET, { agora: T0 });
+    spy.mockClear();
+
+    expect(await verificarSessao(cookieValido, '', { agora: T0 })).toEqual({
+      valido: false,
+    });
+    // Caminho que NÃO depende do throw de importKey: o guard explícito
+    // retorna ANTES de chegar a qualquer parsing/HMAC.
+    expect(
+      await verificarSessao('payload.assinatura', '', { agora: T0 })
+    ).toEqual({ valido: false });
+    // secret undefined (env ausente) idem.
+    expect(
+      await verificarSessao(cookieValido, undefined as unknown as string, {
+        agora: T0,
+      })
+    ).toEqual({ valido: false });
+
+    // Prova do guard explícito: HMAC nunca foi invocado p/ secret vazio.
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('I1: assinarSessao com secret vazio LANÇA (não emite cookie inseguro)', async () => {
+    // Deve lançar pelo GUARD explícito — ANTES de tocar importKey
+    // (não confiar no DataError incidental da Web Crypto).
+    const spy = vi.spyOn(crypto.subtle, 'importKey');
+    await expect(assinarSessao('', { agora: T0 })).rejects.toThrow(
+      /APP_SECRET|secret/i
+    );
+    await expect(
+      assinarSessao(undefined as unknown as string, { agora: T0 })
+    ).rejects.toThrow(/APP_SECRET|secret/i);
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it('duração padrão é 7 dias', async () => {
