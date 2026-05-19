@@ -1,7 +1,8 @@
 /**
- * POST /api/admin/promover/:id (Vercel / Next.js App Router) — wiring de
- * produção do promote-to-corpus em 1 passo (SPEC §11b). `runtime='nodejs'`
- * (Prisma + escrita em `fixtures/gold/`). Lógica testável em `./handler.ts`.
+ * POST /api/admin/promover/:id (Vercel / Next.js App Router) —
+ * production wiring of the one-step promote-to-corpus (SPEC §11b).
+ * `runtime='nodejs'` (Prisma + write to `fixtures/gold/`). Testable
+ * logic in `./handler.ts`.
  */
 import { criarPrismaClient } from '../../../../../adapters/repo/client.ts';
 import { PrismaAnalysisRepo } from '../../../../../adapters/repo/analysis.ts';

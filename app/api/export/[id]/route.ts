@@ -1,13 +1,14 @@
 /**
- * POST /api/export/:jobId (Vercel / Next.js App Router) — wiring de
- * produção. Export PDF on-demand (SPEC §8/§9): relatório da análise ou
- * ofício (a partir do texto editado persistido).
+ * POST /api/export/:jobId (Vercel / Next.js App Router) — production
+ * wiring. On-demand PDF export (SPEC §8/§9): analysis relatório or
+ * ofício (from the persisted edited text).
  *
- * `runtime='nodejs'` (Prisma + chromium precisam de Node, não Edge). A
- * render real usa o chromium do WORKER container (RESÍDUO: chromium não
- * existe nas funções Vercel; em deploy o engine aponta pro chromium do
- * container — `/usr/bin/chromium`, ver adapters/pdf/render.ts). Lógica
- * testável em `./handler.ts` (Next valida os exports de `route.ts`).
+ * `runtime='nodejs'` (Prisma + chromium need Node, not Edge). The actual
+ * render uses the WORKER container's chromium (RESIDUE: chromium does
+ * not exist in Vercel functions; in deploy the engine points to the
+ * container's chromium — `/usr/bin/chromium`, see
+ * adapters/pdf/render.ts). Testable logic in `./handler.ts` (Next
+ * validates the `route.ts` exports).
  */
 import { criarPrismaClient } from '../../../../adapters/repo/client.ts';
 import { PrismaAnalysisRepo } from '../../../../adapters/repo/analysis.ts';

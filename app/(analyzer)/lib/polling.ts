@@ -1,20 +1,21 @@
 /**
- * Máquina de estado PURA do polling do dashboard single-edital (SPEC §8).
+ * PURE state machine for the single-edital dashboard polling (SPEC §8).
  *
- * Isolada do React de propósito: o `page.tsx` só dispara os efeitos
- * (POST /api/job, setInterval em /api/status, abort) e despacha ações
- * aqui. Toda a regra de transição — quando parar de pollar, como propagar
- * erro, idempotência em estado terminal — é testável sem render nem timers.
+ * Isolated from React on purpose: `page.tsx` only fires the effects
+ * (POST /api/job, setInterval on /api/status, abort) and dispatches
+ * actions here. The whole transition rule — when to stop polling, how to
+ * propagate errors, idempotency in a terminal state — is testable
+ * without render or timers.
  *
- * Fases:
- *   idle       — nada enviado ainda (formulário de upload visível)
- *   submetendo — POST /api/job em voo
- *   aguardando — job criado; polling de /api/status ativo (pending/running)
- *   concluido  — status=done com resultado → renderiza painéis
- *   erro       — falha (submit, rede, ou job com status=erro)
+ * Phases:
+ *   idle       — nothing submitted yet (upload form visible)
+ *   submetendo — POST /api/job in flight
+ *   aguardando — job created; /api/status polling active (pending/running)
+ *   concluido  — status=done with a result → renders the panels
+ *   erro       — failure (submit, network, or job with status=erro)
  *
- * O pipeline leva ~70-160s; `aguardando` é estado longo e esperado — a UI
- * deve deixar claro que está PROCESSANDO, não travado (usa `statusJob`).
+ * The pipeline takes ~70-160s; `aguardando` is a long, expected state —
+ * the UI must make clear it is PROCESSING, not stuck (uses `statusJob`).
  */
 import type { JobStatus, StatusResponse, StatusResultado } from './types.ts';
 
@@ -28,7 +29,7 @@ export type Fase =
 export type PollingState = {
   fase: Fase;
   jobId: string | null;
-  /** Último status do Job observado no poll (pending/running). */
+  /** Last Job status observed in the poll (pending/running). */
   statusJob: JobStatus;
   resultado: StatusResultado | null;
   erro: string | null;
@@ -49,7 +50,7 @@ export type PollingAction =
   | { tipo: 'falha'; mensagem: string }
   | { tipo: 'reiniciar' };
 
-/** Estado terminal: o polling DEVE parar (não agendar novo tick). */
+/** Terminal state: polling MUST stop (do not schedule a new tick). */
 export function ehTerminal(s: PollingState): boolean {
   return s.fase === 'concluido' || s.fase === 'erro';
 }
@@ -60,8 +61,8 @@ export function reducirPolling(
 ): PollingState {
   if (a.tipo === 'reiniciar') return estadoInicial;
 
-  // Idempotência: em estado terminal, ignora eventos tardios de status
-  // (um tick em voo pode chegar após done/erro — não deve "ressuscitar").
+  // Idempotency: in a terminal state, ignore late status events (an
+  // in-flight tick may arrive after done/erro — must not "resurrect").
   if (ehTerminal(s) && a.tipo === 'status') return s;
 
   switch (a.tipo) {
@@ -96,7 +97,7 @@ export function reducirPolling(
           erro: null,
         };
       }
-      // pending | running — continua aguardando (estado longo, ~70-160s).
+      // pending | running — keep waiting (long state, ~70-160s).
       return { ...s, fase: 'aguardando', statusJob: r.status };
     }
 

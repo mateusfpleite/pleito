@@ -1,8 +1,8 @@
 /**
- * POST /api/login (Next.js App Router) — wiring de produção da auth
- * single-user (SPEC §14, #7). `runtime='nodejs'` (usa
- * `crypto.timingSafeEqual` do Node p/ a comparação da senha em tempo
- * constante). Lógica testável em `./handler.ts`.
+ * POST /api/login (Next.js App Router) — production wiring of the
+ * single-user auth (SPEC §14, #7). `runtime='nodejs'` (uses Node's
+ * `crypto.timingSafeEqual` for the constant-time password comparison).
+ * Testable logic in `./handler.ts`.
  */
 import { getConfig } from '../../../infrastructure/config.ts';
 import { criarLoginPOST } from './handler.ts';

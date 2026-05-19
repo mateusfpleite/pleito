@@ -1,7 +1,7 @@
 /**
- * Primitivas visuais do dashboard. Sem estado — só apresentação.
- * `Painel` é colapsável (painéis informativos podem recolher; SPEC §8).
- * `Badge` mapeia o token `Tom` (de lib/format) → paleta.
+ * Visual primitives for the dashboard. Stateless — presentation only.
+ * `Painel` is collapsible (informational panels can collapse; SPEC §8).
+ * `Badge` maps the `Tom` token (from lib/format) → palette.
  */
 'use client';
 

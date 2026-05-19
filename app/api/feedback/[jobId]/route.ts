@@ -1,7 +1,7 @@
 /**
- * POST /api/feedback/:jobId (Vercel / Next.js App Router) — wiring de
- * produção. Feedback explícito mínimo (SPEC §11b). `runtime='nodejs'`
- * (Prisma). Lógica testável em `./handler.ts`.
+ * POST /api/feedback/:jobId (Vercel / Next.js App Router) — production
+ * wiring. Minimal explicit feedback (SPEC §11b). `runtime='nodejs'`
+ * (Prisma). Testable logic in `./handler.ts`.
  */
 import { criarPrismaClient } from '../../../../adapters/repo/client.ts';
 import { PrismaAnalysisRepo } from '../../../../adapters/repo/analysis.ts';

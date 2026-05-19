@@ -1,8 +1,8 @@
 /**
- * GET /api/admin/list (Vercel / Next.js App Router) — dados da superfície
- * de revisão interna `/admin` (SPEC §11b). `runtime='nodejs'` (Prisma).
- * Lógica em `app/admin/handler.ts` (`listarAdmin`). Read-only; fica sob a
- * mesma proteção da auth global (Phase 16).
+ * GET /api/admin/list (Vercel / Next.js App Router) — data for the
+ * internal `/admin` review surface (SPEC §11b). `runtime='nodejs'`
+ * (Prisma). Logic in `app/admin/handler.ts` (`listarAdmin`). Read-only;
+ * sits under the global auth protection (Phase 16).
  */
 import { criarPrismaClient } from '../../../../adapters/repo/client.ts';
 import { PrismaAnalysisRepo } from '../../../../adapters/repo/analysis.ts';

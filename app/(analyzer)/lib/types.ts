@@ -1,11 +1,12 @@
 /**
- * Tipos do contrato HTTP que a UI consome — espelham EXATAMENTE o shape
- * devolvido por `GET /api/status/:id` (app/api/status/[id]/handler.ts):
+ * Types of the HTTP contract the UI consumes — they mirror EXACTLY the
+ * shape returned by `GET /api/status/:id` (app/api/status/[id]/handler.ts):
  *   { status, erro, resultado: { extracao, oficioGerado, municipio, uf } | null }
  *
- * `extracao` chega como JSON serializado (vindo do Prisma via Response.json);
- * a UI o trata como `EditalExtraction` (o domínio é a fonte de verdade do
- * shape; o status handler só repassa o que o AnalysisRepo persistiu).
+ * `extracao` arrives as serialized JSON (from Prisma via Response.json);
+ * the UI treats it as `EditalExtraction` (the domain is the source of
+ * truth for the shape; the status handler just relays whatever the
+ * AnalysisRepo persisted).
  */
 import type { EditalExtraction } from '../../../domain/schema.ts';
 import type { OficioGerado } from '../../../domain/ports.ts';

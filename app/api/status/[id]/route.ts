@@ -1,7 +1,7 @@
 /**
- * GET /api/status/:id (Vercel / Next.js App Router) — wiring de produção.
+ * GET /api/status/:id (Vercel / Next.js App Router) — production wiring.
  *
- * `runtime='nodejs'` (Prisma). Lógica testável em `./handler.ts`.
+ * `runtime='nodejs'` (Prisma). Testable logic in `./handler.ts`.
  */
 import { criarPrismaClient } from '../../../../adapters/repo/client.ts';
 import { PrismaJobRepo } from '../../../../adapters/repo/job.ts';

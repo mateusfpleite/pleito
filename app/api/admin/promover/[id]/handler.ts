@@ -1,8 +1,9 @@
 /**
- * Lógica testável de POST /api/admin/promover/:id — promote-to-corpus em
- * 1 passo (SPEC §11b). `id` é o analysisId. Botão no /admin → este
- * endpoint → `promoverParaCorpus` grava em `fixtures/gold/`. Read-mostly
- * (escreve só a fixture versionada). Erro de análise inexistente → 404.
+ * Testable logic for POST /api/admin/promover/:id — one-step
+ * promote-to-corpus (SPEC §11b). `id` is the analysisId. Button in
+ * /admin → this endpoint → `promoverParaCorpus` writes to
+ * `fixtures/gold/`. Read-mostly (writes only the versioned fixture).
+ * "Analysis not found" error → 404.
  */
 import type { AnalysisRepo } from '../../../../../domain/ports.ts';
 import {
@@ -12,7 +13,7 @@ import {
 
 export type PromoverPostDeps = {
   analysisRepo: AnalysisRepo;
-  /** Hooks injetáveis p/ teste (escritor/relógio/dir). */
+  /** Injectable hooks for testing (writer/clock/dir). */
   promoverOpts?: Omit<PromoverDeps, 'analysisRepo'>;
 };
 

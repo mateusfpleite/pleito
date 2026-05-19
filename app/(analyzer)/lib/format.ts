@@ -1,11 +1,12 @@
 /**
- * Mapeadores PUROS de apresentação para o dashboard (SPEC §8). Separados
- * do JSX porque a regra "qual badge / qual cor" é a parte com semântica
- * (e a que a Stefany lê de relance) — testável sem render.
+ * PURE presentation mappers for the dashboard (SPEC §8). Kept separate
+ * from the JSX because the "which badge / which color" rule is the part
+ * with semantics (the one Stefany reads at a glance) — testable without
+ * render.
  *
- * `tom` é um token semântico (não uma cor literal): o CSS mapeia
- * ok/alerta/perigo/neutro → paleta. Mantém o teste estável a mudança de
- * design e a regra de negócio explícita.
+ * `tom` is a semantic token (not a literal color): the CSS maps
+ * ok/alerta/perigo/neutro → palette. Keeps the test stable across design
+ * changes and the business rule explicit.
  */
 
 export type Tom = 'ok' | 'alerta' | 'perigo' | 'neutro';
@@ -22,10 +23,10 @@ export type Severidade = 'alta' | 'media' | 'baixa';
 export type Badge = { simbolo: string; rotulo: string; tom: Tom };
 
 /**
- * statusVerificado → badge. Núcleo do valor pra Stefany: ✓ vigente
- * (confirmada) / ✗ revogada (não use) / ⚠ tudo que NÃO foi confirmado
- * como vigente (contestada, inexistente, não-verificado) — cético por
- * padrão: ausência de confirmação NUNCA é apresentada como "ok".
+ * statusVerificado → badge. Core of the value for Stefany: ✓ vigente
+ * (confirmed) / ✗ revogada (do not use) / ⚠ everything NOT confirmed as
+ * vigente (contestada, inexistente, não-verificado) — skeptical by
+ * default: absence of confirmation is NEVER presented as "ok".
  */
 export function badgeStatusVerificado(s: StatusVerificado): Badge {
   switch (s) {
@@ -46,7 +47,7 @@ export function badgeStatusVerificado(s: StatusVerificado): Badge {
   }
 }
 
-/** severidade → cor (alta=vermelho / média=âmbar / baixa=neutro). */
+/** severidade → color (alta=red / media=amber / baixa=neutral). */
 export function corSeveridade(s: Severidade): { tom: Tom; rotulo: string } {
   switch (s) {
     case 'alta':

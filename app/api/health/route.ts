@@ -1,7 +1,7 @@
 /**
- * GET /api/health — liveness probe (SPEC §14). Público (não exige
- * sessão): usado pelo uptime/monitoramento e como sinal de que a app
- * está de pé. Sem dependências (não toca DB) p/ ser barato e confiável.
+ * GET /api/health — liveness probe (SPEC §14). Public (no session
+ * required): used by uptime/monitoring and as a signal that the app is
+ * up. No dependencies (does not touch the DB) to be cheap and reliable.
  */
 export const runtime = 'nodejs';
 

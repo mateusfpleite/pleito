@@ -1,9 +1,9 @@
 /**
- * POST /api/job (Vercel / Next.js App Router) — wiring de produção.
+ * POST /api/job (Vercel / Next.js App Router) — production wiring.
  *
- * `runtime='nodejs'` (Prisma precisa de Node, não Edge); DATABASE_URL
- * pooled (pgBouncer) configurado no deploy (RESÍDUO). A lógica testável
- * está em `./handler.ts` (Next valida os exports de `route.ts`).
+ * `runtime='nodejs'` (Prisma needs Node, not Edge); pooled DATABASE_URL
+ * (pgBouncer) configured in deploy (RESIDUE). The testable logic is in
+ * `./handler.ts` (Next validates the `route.ts` exports).
  */
 import { getConfig } from '../../../infrastructure/config.ts';
 import { criarPrismaClient } from '../../../adapters/repo/client.ts';

@@ -1,16 +1,16 @@
 /**
- * Lógica testável da superfície de revisão interna `/admin` (SPEC §11b:
- * "lista de análises + feedback + diffs — sem isso o loop não fecha").
- * Read-only. Sem auth fancy (a auth global é Phase 16; /admin fica sob a
- * mesma proteção que vier lá).
+ * Testable logic for the internal `/admin` review surface (SPEC §11b:
+ * "list of analyses + feedback + diffs — without this the loop never
+ * closes"). Read-only. No fancy auth (global auth is Phase 16; /admin
+ * sits under whatever protection ships there).
  *
- * Monta, por análise: município/uf, data, feedback (se houver), e o
- * SINAL-OURO computado (diff ofício gerado×exportado) + o FALLBACK
- * (exportou? — quando o diff é vazio/nulo). Agrupa `submissao` por
- * `inputHash` p/ marcar RE-UPLOAD (mesmo edital re-submetido).
+ * Builds, per analysis: município/uf, date, feedback (if any), and the
+ * computed GOLD-SIGNAL (generated×exported ofício diff) + the FALLBACK
+ * (exported? — when the diff is empty/null). Groups `submissao` by
+ * `inputHash` to flag RE-UPLOAD (same edital re-submitted).
  *
- * O caller (page.tsx server component) injeta os repos reais; o teste
- * injeta fakes. Determinístico: ordena por data desc.
+ * The caller (page.tsx server component) injects the real repos; the
+ * test injects fakes. Deterministic: orders by date desc.
  */
 import type {
   AnalysisRepo,
@@ -25,15 +25,15 @@ export type LinhaAdmin = {
   municipio: string;
   uf: string;
   criadoEm: string | null;
-  /** Feedback explícito (último, se houver). */
+  /** Explicit feedback (latest, if any). */
   feedback: { util: boolean; texto: string | null } | null;
-  /** SINAL-OURO: o ofício exportado difere do gerado? */
+  /** GOLD-SIGNAL: does the exported ofício differ from the generated one? */
   oficioFoiEditado: boolean;
-  /** Magnitude do diff (chars) — 0 se sinal-ouro nulo. */
+  /** Diff magnitude (chars) — 0 if gold signal is null. */
   diffDistancia: number;
-  /** FALLBACK: exportou o ofício? (sinal de reserva quando ouro nulo). */
+  /** FALLBACK: was the ofício exported? (backup signal when gold is null). */
   exportouOficio: boolean;
-  /** RE-UPLOAD: este edital (hash) aparece em >1 análise. */
+  /** RE-UPLOAD: this edital (hash) appears in >1 analysis. */
   reupload: boolean;
 };
 
@@ -45,8 +45,8 @@ export type AdminDeps = {
 function ultimoFeedback(
   eventos: EventoTelemetria[]
 ): { util: boolean; texto: string | null } | null {
-  // listarPorAnalises devolve desc por createdAt → o 1º feedback é o
-  // mais recente.
+  // listarPorAnalises returns desc by createdAt → the 1st feedback is
+  // the most recent one.
   const f = eventos.find((e) => e.evento === 'feedback');
   if (!f) return null;
   return {
@@ -64,8 +64,8 @@ export async function listarAdmin(
   const ids = analises.map((a) => a.id);
   const eventos = await deps.telemetry.listarPorAnalises(ids);
 
-  // RE-UPLOAD: agrupa `submissao` por inputHash; hash em ≥2 análises
-  // distintas ⇒ o MESMO edital foi re-submetido.
+  // RE-UPLOAD: group `submissao` by inputHash; a hash in ≥2 distinct
+  // analyses ⇒ the SAME edital was re-submitted.
   const analisesPorHash = new Map<string, Set<string>>();
   for (const e of eventos) {
     if (e.evento !== 'submissao') continue;

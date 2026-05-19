@@ -1,14 +1,14 @@
 /**
- * Superfície de revisão interna `/admin` (SPEC §11b: "lista de análises +
- * feedback + diffs — sem isso o loop não fecha"). Read-only, simples.
- * Sem auth fancy: a auth global é Phase 16; /admin fica sob a mesma
- * proteção que vier lá (por ora rota simples).
+ * Internal `/admin` review surface (SPEC §11b: "list of analyses +
+ * feedback + diffs — without this the loop never closes"). Read-only,
+ * simple. No fancy auth: global auth is Phase 16; /admin sits under
+ * whatever protection ships there (a simple route for now).
  *
- * Client component: busca `GET /api/admin/list`. Cada linha mostra
- * município/uf, data, feedback (👍/👎+texto), sinal-ouro
- * (foiEditado/distância do diff) + fallback (exportou?), re-upload, e o
- * botão PROMOTE-TO-CORPUS em 1 passo (POST /api/admin/promover/:id →
- * grava em `fixtures/gold/`, vira regressão do Tier 0).
+ * Client component: fetches `GET /api/admin/list`. Each row shows
+ * município/uf, date, feedback (👍/👎+text), gold signal
+ * (foiEditado/diff distance) + fallback (exported?), re-upload, and the
+ * one-step PROMOTE-TO-CORPUS button (POST /api/admin/promover/:id →
+ * writes to `fixtures/gold/`, becomes a Tier 0 regression).
  */
 'use client';
 

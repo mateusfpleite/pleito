@@ -1,13 +1,13 @@
 /**
- * Tela de resultado single-edital (SPEC §8). Client component:
- *  1. Upload (arquivo OU texto colado) → POST /api/job → { jobId }.
- *  2. Polling de GET /api/status/:id a cada POLL_MS; para em done/erro
- *     (máquina de estado pura em lib/polling.ts — testada).
- *  3. done → <Dashboard> em painéis seccionados.
+ * Single-edital result screen (SPEC §8). Client component:
+ *  1. Upload (file OR pasted text) → POST /api/job → { jobId }.
+ *  2. Polling of GET /api/status/:id every POLL_MS; stops on done/erro
+ *     (pure state machine in lib/polling.ts — tested).
+ *  3. done → <Dashboard> in sectioned panels.
  *
- * O processamento real leva ~70-160s (pipeline no worker). A fase
- * `aguardando` é longa e ESPERADA — a UI deixa explícito que está
- * processando (status do job + tempo decorrido), não travado.
+ * The actual processing takes ~70-160s (pipeline in the worker). The
+ * `aguardando` phase is long and EXPECTED — the UI makes it explicit
+ * that it is processing (job status + elapsed time), not stuck.
  */
 'use client';
 
@@ -34,8 +34,8 @@ export default function AnalyzerPage() {
   const [decorridoS, setDecorridoS] = useState(0);
   const inicioRef = useRef<number>(0);
 
-  // Polling: enquanto aguardando, busca /api/status a cada POLL_MS.
-  // Para assim que o estado vira terminal (ehTerminal) ou desmonta.
+  // Polling: while waiting, fetch /api/status every POLL_MS.
+  // Stops as soon as the state becomes terminal (ehTerminal) or unmounts.
   useEffect(() => {
     if (state.fase !== 'aguardando' || !state.jobId) return;
     let vivo = true;
@@ -69,7 +69,7 @@ export default function AnalyzerPage() {
     };
   }, [state.fase, state.jobId]);
 
-  // Cronômetro do "processando" — feedback de que NÃO travou.
+  // "Processing" stopwatch — feedback that it did NOT freeze.
   useEffect(() => {
     if (state.fase !== 'aguardando') return;
     inicioRef.current = Date.now();
@@ -83,7 +83,7 @@ export default function AnalyzerPage() {
   async function aoEnviar(ev: FormEvent<HTMLFormElement>) {
     ev.preventDefault();
     const form = new FormData(ev.currentTarget);
-    // Mantém só o campo do modo ativo (file vazio + texto vazio = 400).
+    // Keep only the active mode's field (empty file + empty text = 400).
     if (modo === 'arquivo') form.delete('texto');
     else form.delete('file');
     dispatch({ tipo: 'submeter' });

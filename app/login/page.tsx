@@ -1,7 +1,8 @@
 /**
- * /login — form mínimo de auth single-user (SPEC §14, #7). Client
- * component: campo senha → POST /api/login. Sucesso → redireciona p/ `/`.
- * Erro → mensagem genérica ("senha inválida"), sem vazar detalhe.
+ * /login — minimal single-user auth form (SPEC §14, #7). Client
+ * component: password field → POST /api/login. Success → redirects to
+ * `/`. Error → generic message ("invalid password"), without leaking
+ * any detail.
  */
 'use client';
 
@@ -23,7 +24,7 @@ export default function LoginPage() {
         body: JSON.stringify({ senha }),
       });
       if (r.ok) {
-        // Cookie httpOnly já setado pelo servidor; navega p/ a app.
+        // httpOnly cookie already set by the server; navigate to the app.
         window.location.assign('/');
         return;
       }
