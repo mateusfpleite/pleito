@@ -1,0 +1,74 @@
+// Persistência Pleito V0 (SPEC §9). Serverless-safe.
+//
+// Prisma 7: as URLs de conexão NÃO ficam mais no bloco `datasource`; vão
+// para `prisma.config.ts` (migrate) e o `PrismaClient` recebe um driver
+// adapter em runtime (`@prisma/adapter-pg`). Ver prisma.config.ts e o
+// RESÍDUO documentado em adapters/repo/client.ts:
+//   - DATABASE_URL  → pooled (Supabase pgBouncer,
+//     `?pgbouncer=true&connection_limit=1`) — rotas Vercel.
+//   - DIRECT_URL    → conexão direta p/ `prisma migrate`.
+//
+// Persistir conteúdo, nunca derivado: JSON da análise + ofício gerado e
+// como exportado (o diff é sinal de eval, §11b). PDF é sempre on-demand.
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Job {
+  id        String   @id @default(uuid())
+  status    String // pending | running | done | erro (JobStatus, domain/ports.ts)
+  erro      String?
+  inputRef  String
+  createdAt DateTime @default(now())
+
+  analyses Analysis[]
+
+  @@index([status, createdAt]) // claim atômico FOR UPDATE SKIP LOCKED (Phase 12)
+  @@map("jobs")
+}
+
+model Analysis {
+  id                String    @id @default(uuid())
+  jobId             String
+  municipio         String
+  uf                String
+  extractionJson    Json
+  oficioGerado      Json?
+  oficioExportado   String?
+  oficioExportadoEm DateTime?
+  createdAt         DateTime  @default(now())
+
+  job        Job          @relation(fields: [jobId], references: [id])
+  telemetria Telemetria[]
+
+  @@index([jobId])
+  @@map("analyses")
+}
+
+model NormaCache {
+  chave        String   @id @unique
+  status       String // NormaStatus (domain/ports.ts)
+  fonte        String?
+  verificadoEm DateTime @default(now())
+
+  @@map("norma_cache")
+}
+
+model Telemetria {
+  id          String   @id @default(uuid())
+  analysisId  String?
+  evento      String
+  payloadJson Json
+  createdAt   DateTime @default(now())
+
+  analysis Analysis? @relation(fields: [analysisId], references: [id])
+
+  @@index([analysisId])
+  @@map("telemetria")
+}
