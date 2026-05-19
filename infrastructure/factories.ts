@@ -1,18 +1,18 @@
 /**
- * Composição da infraestrutura (hexagonal) — único lugar que monta os
- * ADAPTERS CONCRETOS e os injeta no `application/`. O domínio e a aplicação
- * nunca conhecem Gemini/Prisma; aqui o boundary é fechado.
+ * Infrastructure composition (hexagonal) — the single place that assembles
+ * the CONCRETE ADAPTERS and injects them into `application/`. The domain and
+ * the application never know about Gemini/Prisma; the boundary is closed here.
  *
- * - `montarRepos(prisma)`: os 4 repos Prisma sobre um `PrismaClientLike`
- *   (produção: `criarPrismaClient()`; testes: fake estrutural).
- * - `montarAnalyzeDeps({ model?, normaCache })`: o `AnalyzeDeps` do
- *   workflow com os adapters Gemini reais (extractor/verifier/risk/drafter)
- *   + Preprocessor. `model` é injetável (testes passam fake — não resolve
- *   API key); em produção cada adapter resolve `google(config.MODEL)`
- *   preguiçosamente se nenhum for passado.
+ * - `montarRepos(prisma)`: the 4 Prisma repos over a `PrismaClientLike`
+ *   (production: `criarPrismaClient()`; tests: structural fake).
+ * - `montarAnalyzeDeps({ model?, normaCache })`: the workflow's
+ *   `AnalyzeDeps` with the real Gemini adapters (extractor/verifier/risk/drafter)
+ *   + Preprocessor. `model` is injectable (tests pass a fake — does not resolve
+ *   the API key); in production each adapter resolves `google(config.MODEL)`
+ *   lazily if none is passed.
  *
- * O worker (Phase 12) chama `criarPrismaClient()` → `montarRepos` →
- * `montarAnalyzeDeps` e roda `analyzeEdital`.
+ * The worker (Phase 12) calls `criarPrismaClient()` → `montarRepos` →
+ * `montarAnalyzeDeps` and runs `analyzeEdital`.
  */
 import type { LanguageModel } from 'ai';
 import type { AnalyzeDeps } from '../application/analyze-edital.ts';
@@ -39,7 +39,7 @@ import {
   type PrismaClientLike,
 } from '../adapters/repo/client.ts';
 
-/** Repos Prisma montados sobre um único client (boundary de persistência). */
+/** Prisma repos assembled over a single client (persistence boundary). */
 export type Repos = {
   jobRepo: JobRepo;
   analysisRepo: AnalysisRepo;
@@ -47,7 +47,7 @@ export type Repos = {
   telemetry: TelemetryPort;
 };
 
-/** Monta os 4 repos Prisma sobre o client injetado (default: produção). */
+/** Assembles the 4 Prisma repos over the injected client (default: production). */
 export function montarRepos(
   prisma: PrismaClientLike = criarPrismaClient()
 ): Repos {
@@ -60,18 +60,18 @@ export function montarRepos(
 }
 
 /**
- * Monta o `AnalyzeDeps` com os adapters Gemini reais + Preprocessor.
- * `model` opcional (injetável p/ teste). `normaCache` é obrigatório — o
- * Verifier precisa do cache real (vem de `montarRepos`).
+ * Assembles the `AnalyzeDeps` with the real Gemini adapters + Preprocessor.
+ * `model` is optional (injectable for tests). `normaCache` is required — the
+ * Verifier needs the real cache (comes from `montarRepos`).
  */
 export function montarAnalyzeDeps(opts: {
   model?: LanguageModel;
   normaCache: NormaCache;
   /**
-   * Sink OPCIONAL de custo de grounding POR chamada (SPEC §11b). O worker
-   * injeta um coletor por-job (acumula e grava telemetria após o save,
-   * com o analysisId real); ausente = no-op (não há instrumentação fora
-   * do worker).
+   * OPTIONAL sink for grounding cost PER call (SPEC §11b). The worker
+   * injects a per-job collector (accumulates and writes telemetry after the
+   * save, with the real analysisId); absent = no-op (no instrumentation
+   * outside the worker).
    */
   onGroundingCusto?: GroundingCustoSink;
 }): AnalyzeDeps {

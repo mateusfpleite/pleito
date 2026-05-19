@@ -1,17 +1,17 @@
 /**
- * Envelope do input do edital persistido em `Job.inputRef`.
+ * Envelope for the edital input persisted in `Job.inputRef`.
  *
- * DECISÃO (documentada, escolha simples): o conteúdo do edital é guardado
- * INLINE — um JSON `{ nomeArquivo, contentBase64 }` serializado no campo
- * `inputRef` (String do Job). Sem blob storage / bucket externo (Supabase
- * Storage / S3) no V0: editais reais são pequenos (< ~5 MB no corpus; o cap
- * anti zip-bomb do Preprocessor é 50 MB), single-user, e isso elimina uma
- * dependência de infra inteira. base64 garante round-trip de bytes
- * arbitrários (zip/pdf binário) através de uma coluna de texto.
+ * DECISION (documented, simple choice): the edital content is stored
+ * INLINE — a JSON `{ nomeArquivo, contentBase64 }` serialized into the
+ * `inputRef` field (String on Job). No blob storage / external bucket
+ * (Supabase Storage / S3) in V0: real editais are small (< ~5 MB in the
+ * corpus; the Preprocessor anti zip-bomb cap is 50 MB), single-user, and
+ * this eliminates an entire infra dependency. base64 guarantees a
+ * round-trip of arbitrary bytes (binary zip/pdf) through a text column.
  *
- * O `/api/job` (Vercel) ESCREVE o envelope; o worker o LÊ e reconstrói o
- * `ArquivoEntrada`. RESÍDUO V1: para editais grandes/multiusuário, trocar
- * por referência a um bucket (mudar só estas duas funções — boundary).
+ * `/api/job` (Vercel) WRITES the envelope; the worker READS it and
+ * rebuilds the `ArquivoEntrada`. V1 DEBT: for large/multi-user editais,
+ * swap to a bucket reference (change only these two functions — boundary).
  */
 import type { ArquivoEntrada } from '../domain/ports.ts';
 

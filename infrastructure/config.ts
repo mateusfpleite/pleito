@@ -12,8 +12,8 @@ const configSchema = z.object({
 export type Config = z.infer<typeof configSchema>;
 
 /**
- * Parseia e valida a configuração a partir de um objeto de env injetado.
- * Falha cedo (throw) se uma variável obrigatória estiver ausente.
+ * Parses and validates the configuration from an injected env object.
+ * Fails early (throws) if a required variable is missing.
  */
 export function parseConfig(env: Record<string, string | undefined>): Config {
   const result = configSchema.safeParse(env);
@@ -21,7 +21,7 @@ export function parseConfig(env: Record<string, string | undefined>): Config {
     const issues = result.error.issues
       .map((i) => `${i.path.join(".")}: ${i.message}`)
       .join("; ");
-    throw new Error(`Configuração de ambiente inválida: ${issues}`);
+    throw new Error(`Invalid environment configuration: ${issues}`);
   }
   return result.data;
 }
@@ -29,8 +29,8 @@ export function parseConfig(env: Record<string, string | undefined>): Config {
 let cachedConfig: Config | undefined;
 
 /**
- * Retorna a configuração validada do processo (process.env), cacheada.
- * Falha cedo na primeira chamada se faltar variável obrigatória.
+ * Returns the validated process configuration (process.env), cached.
+ * Fails early on the first call if a required variable is missing.
  */
 export function getConfig(): Config {
   if (!cachedConfig) {
