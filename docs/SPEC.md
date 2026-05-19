@@ -1,159 +1,159 @@
-# Pleito — Especificação
+# Pleito — Specification
 
-> Documento **vivo**. Estado autoritativo atual. "Porquê" e trilha de evidências em `PROVENANCE.md`. Pitch não-técnico em `pitch-stefany.md`.
+> **Living** document. Current authoritative state. The "why" and the evidence trail are in `PROVENANCE.md`. A non-technical pitch is maintained separately, outside this repository.
 
-**Atualizado:** 2026-05-15 (rev. pós plan-review: arquitetura async/worker + observabilidade)
+**Updated:** 2026-05-15 (rev. post plan-review: async/worker architecture + observability)
 
 ---
 
-## 1. Visão & tese
+## 1. Vision & thesis
 
-Vertical AI para análise de licitações B2G municipais brasileiras, wedge no setor funerário. Cliente-âncora: Zelo. O LLM é substrato commodity; o valor vem do **acúmulo estruturado do stack regulatório composto** por município/setor + integração no workflow do cliente. Moat = dado curado com proveniência (`data/norma-baseline.json`), começando no V0.
+Vertical AI for analyzing Brazilian municipal B2G procurement (licitações), with the funeral sector as the wedge. Anchor customer: Zelo. The LLM is a commodity substrate; the value comes from the **structured accumulation of the composite regulatory stack** per municipality/sector + integration into the customer's workflow. Moat = curated data with provenance (`data/norma-baseline.json`), starting at V0.
 
-## 2. Usuário-alvo
+## 2. Target user
 
-V0–V1 Stefany (analista única) · V2+ equipe Zelo · V3+ outras empresas B2G municipais · V4+ outros verticais.
+V0–V1 Stefany (sole analyst) · V2+ Zelo team · V3+ other municipal B2G companies · V4+ other verticals.
 
-## 3. Arquitetura
+## 3. Architecture
 
-**Split de execução (decisão pós plan-review):**
+**Execution split (decision post plan-review):**
 
-- **Vercel / Next.js** — só o que é rápido e request-scoped: UI/dashboard, auth, upload (cria job), polling de status, export PDF on-demand.
-- **Worker container** (Railway ou Cloud Run, scale-to-zero, Dockerfile com `poppler-utils` + chromium) — roda o pipeline de 7 componentes. **Fora do modelo serverless**: sem limite de timeout, com binários de sistema. Reaproveita TODO o código TS validado.
-- **Supabase Postgres** — `jobs`, `analyses`, `norma_cache`, telemetria.
+- **Vercel / Next.js** — only what is fast and request-scoped: UI/dashboard, auth, upload (creates job), status polling, on-demand PDF export.
+- **Worker container** (Railway or Cloud Run, scale-to-zero, Dockerfile with `poppler-utils` + chromium) — runs the 7-component pipeline. **Outside the serverless model**: no timeout limit, with system binaries. Reuses ALL the validated TS code.
+- **Supabase Postgres** — `jobs`, `analyses`, `norma_cache`, telemetry.
 
-Princípios: hexagonal no LLM boundary (ports trocáveis por env var) · YAGNI (sem Mastra até V2) · schema evoluído contra editais reais · defense in depth na segurança do Verifier · persistir conteúdo nunca derivado.
+Principles: hexagonal at the LLM boundary (ports swappable by env var) · YAGNI (no Mastra until V2) · schema evolved against real editais · defense in depth in the Verifier's security · persist content that is never derived.
 
-**Reaproveitamento (corrigido pós plan-review):** reaproveita-se **prompts validados, `data/norma-baseline.json` e o schema**; o I/O dos scripts CLI (`src/extract.ts`, `src/spike-verifier.ts`) é **reescrito** como adapters (eram `main()`+`process.exit`, não módulos). "Reaproveitar tudo" era impreciso.
+**Reuse (corrected post plan-review):** what is reused is **validated prompts, `data/norma-baseline.json` and the schema**; the I/O of the CLI scripts (`src/extract.ts`, `src/spike-verifier.ts`) is **rewritten** as adapters (they were `main()`+`process.exit`, not modules). "Reuse everything" was imprecise.
 
-**Estrutura de pastas:**
+**Folder structure:**
 
 ```
 pleito/
 ├── app/                  # Next.js (Vercel): upload, dashboard, /api/{job,status,export}
-├── worker/               # entrypoint do worker container (loop de jobs)
-├── domain/               # tipos, schema Zod, ports, baseline matcher (zero dep)
-├── application/          # workflow analyzeEdital (orquestra + 2 gates)
+├── worker/               # worker container entrypoint (job loop)
+├── domain/               # types, Zod schema, ports, baseline matcher (zero dep)
+├── application/          # analyzeEdital workflow (orchestrates + 2 gates)
 ├── adapters/             # extractor, verifier, risk-analyst, drafter, pdf, repo, telemetry
 ├── data/norma-baseline.json
 ├── infrastructure/       # config, factories, env
-├── eval/                 # Tier 0 gate determinístico (property-based)
-├── fixtures/             # corpus de validação
+├── eval/                 # deterministic Tier 0 gate (property-based)
+├── fixtures/             # validation corpus
 └── docs/
 ```
 
-## 4. Pipeline (async, no worker)
+## 4. Pipeline (async, in the worker)
 
 ```
-Vercel: upload → cria job(status=pending) → retorna jobId   │  dashboard faz polling /api/status/:id
+Vercel: upload → creates job(status=pending) → returns jobId   │  dashboard polls /api/status/:id
                           │                                  ▲
-                          ▼ worker pega job (status=running)  │ status/result
-  1. Preprocessor [código] zip/gz/pdf → texto (pdftotext -layout, roda no container)
-  2. Extractor   [Gemini Flash, sem tool] schema v3; flags revogada PROVISÓRIAS
-  3. gate A: baseline matcher em TODAS as leis (determinístico, custo zero) →
-       dispara verificação se matcher ∈ {revogada-*, zona-cinzenta, citacao-suspeita}
-       OU extractor marcou revogada=true   [fecha falso-negativo]
-  4. Norma Verifier [condicional] baseline (precedência) → web grounding (cauda) → cache
-  5. Risk Analyst  pontosDeAtencao{severidade,categoria}, consome status VERIFICADO
-  6. gate B: incoerência sev≥média OU trecho ambíguo OU recomendaManifestacao
-  7. Drafter [condicional] esclarecimento/impugnação; só afirma revogação se
-       statusVerificado=revogada; senão → pergunta ao órgão
-  → grava analyses + telemetria; job status=done
+                          ▼ worker picks up job (status=running)  │ status/result
+  1. Preprocessor [code] zip/gz/pdf → text (pdftotext -layout, runs in the container)
+  2. Extractor   [Gemini Flash, no tool] schema v3; PROVISIONAL revogada flags
+  3. gate A: baseline matcher over ALL leis (deterministic, zero cost) →
+       triggers verification if matcher ∈ {revogada-*, zona-cinzenta, citacao-suspeita}
+       OR extractor flagged revogada=true   [closes false-negative]
+  4. Norma Verifier [conditional] baseline (precedence) → web grounding (tail) → cache
+  5. Risk Analyst  pontosDeAtencao{severidade,categoria}, consumes VERIFIED status
+  6. gate B: incoherence sev≥medium OR ambiguous excerpt OR recomendaManifestacao
+  7. Drafter [conditional] clarification/challenge; only asserts revogação if
+       statusVerificado=revogada; otherwise → asks the issuing body
+  → writes analyses + telemetry; job status=done
 ```
 
-Modelos: Gemini 2.5 Flash (fallback Haiku 4.5 tool / Sonnet 4.6 schema), via env por adapter.
+Models: Gemini 2.5 Flash (fallback Haiku 4.5 tool / Sonnet 4.6 schema), via env per adapter.
 
-## 5. Segurança do Verifier (3 camadas, defense in depth)
+## 5. Verifier security (3 layers, defense in depth)
 
-Risco: flag `revogada` do Extractor é palpite (~57% acurácia, viés falso-positivo). Se vaza pro ofício externo → dano irreversível à credibilidade da Zelo.
+Risk: the Extractor's `revogada` flag is a guess (~57% accuracy, false-positive bias). If it leaks into the external ofício → irreversible damage to Zelo's credibility.
 
-1. **Baseline curada** (`data/norma-baseline.json`) — categorias: `revogada-notoria`, `revogada-confirmada`, `vigente-ancora` (anti-falso-positivo), `zona-cinzenta` (nunca binário), `citacao-suspeita`. Hit = determinístico, custo zero.
-2. **Web grounding** (Gemini + Google Search) — só cauda fora da baseline.
-3. **Contenção no Drafter** — status infralegal nunca afirmado como fato nu no ofício externo; zona-cinzenta/não-verificado → pergunta; revisão humana obrigatória antes do export.
+1. **Curated baseline** (`data/norma-baseline.json`) — categories: `revogada-notoria`, `revogada-confirmada`, `vigente-ancora` (anti-false-positive), `zona-cinzenta` (never binary), `citacao-suspeita`. Hit = deterministic, zero cost.
+2. **Web grounding** (Gemini + Google Search) — only the tail outside the baseline.
+3. **Containment in the Drafter** — infralegal status is never asserted as bare fact in the external ofício; zona-cinzenta/unverified → asks; mandatory human review before export.
 
-**Gate A fecha o falso-negativo:** o baseline matcher roda em TODAS as `leisReferenciadas` (lookup local, sem LLM, grátis), não só nas que o extractor marcou. Lei revogada conhecida é pega mesmo se o extractor disse `revogada=false`. Não existe sinal "incerto" no schema — removido; o gatilho é matcher-classifica-risco OU extractor-flag.
+**Gate A closes the false-negative:** the baseline matcher runs over ALL `leisReferenciadas` (local lookup, no LLM, free), not just the ones the extractor flagged. A known revogada law is caught even if the extractor said `revogada=false`. There is no "uncertain" signal in the schema — removed; the trigger is matcher-classifies-risk OR extractor-flag.
 
-**Design do matcher (validado empiricamente — spike `src/spike-matcher.ts` contra 99 leis reais de `output/*.json`):** match **número+ano-primário**; `escopo`/`tipoNorma` são sinais **soft** (fallback tolerante que ignora ambos), porque o extractor erra escopo/tipo em ~54% das citações. `normalizarNumero` aplicado nos **dois lados** (extractor produz `"14133"`, baseline tem `"14.133"`). Resultado: falso-negativo **0/37** com normalização+fallback vs **23/37 (62%)** com match estrito não-normalizado (o bug que o plano mascarava). Match estrito sozinho pegaria só 46%. **Risco residual registrado:** colisão número+ano entre lei federal e estadual distintas não ocorreu no corpus — não refutado; mitigação: fallback prefere escopo quando presente, entradas `citacao-suspeita` sinalizam em vez de silenciar.
+**Matcher design (empirically validated — spike `src/spike-matcher.ts` against 99 real laws from `output/*.json`):** match on **primary number+year**; `escopo`/`tipoNorma` are **soft** signals (tolerant fallback that ignores both), because the extractor gets escopo/tipo wrong in ~54% of citations. `normalizarNumero` is applied to **both sides** (the extractor produces `"14133"`, the baseline has `"14.133"`). Result: false-negative **0/37** with normalization+fallback vs **23/37 (62%)** with strict non-normalized matching (the bug the plan masked). Strict matching alone would catch only 46%. **Residual risk recorded:** a number+year collision between distinct federal and state laws did not occur in the corpus — not refuted; mitigation: the fallback prefers escopo when present, `citacao-suspeita` entries flag rather than silence.
 
-**#2 — Contenção estrutural REAL (ZERO prosa livre do modelo no ofício externo):** o modelo do Drafter **NÃO escreve NENHUM texto que entre no documento**. Ele emite SOMENTE decisões estruturadas: `tipo`; `selecoes[]` — referências por `{fonte∈{incoerencia,trechoAmbiguo,pontoDeAtencao}, indice}` a achados **JÁ EXISTENTES** na extração (o modelo escolhe O QUE levantar e a ORDEM, **não REDIGE**); e `leisCitadas[]` com **`afirmacaoVigencia ∈ {nenhuma, revogada, vigente}`** (ainda sobrescrito pelo lookup). **NÃO existe campo de texto livre no schema do modelo** (`pontos[].{titulo,argumento}` removido); o Zod `.strip()` descarta qualquer campo extra que o modelo invente — ele nunca chega ao adapter. O **corpo do ofício é montado 100% por TEMPLATES determinísticos do adapter** (`adapters/drafter/gemini.ts`), keyed pelo **TIPO ESTRUTURADO** do achado: incoerência → template por `incoerencia.tipo` (enum; `lei-revogada` roteia pela lógica de vigência); trechoAmbiguo → template com referência por **ÍNDICE não-LLM** ("ponto nº N da análise"); pontoDeAtencao → template por `categoria` (enum). **INVARIANTE EXAUSTIVO (C1 3ª — não whack-a-mole de canal):** todo caractere de `oficio.markdown` é **(a)** literal fixo de template, **(b)** valor de enum restrito (`incoerencia.tipo`, `pontoDeAtencao.categoria`, `tipo` do ofício), **(c)** escalar **NÃO-LLM** (índice, contagem, host curado de URL de baseline), ou **(d)** frase-template determinística de vigência. **NENHUMA string de texto livre de LLM** — nem do modelo do Drafter, nem de QUALQUER campo `z.string()` livre produzido a montante pelo extractor (`trechosAmbiguos[].secaoOndeAparece`, `incoerencia.descricao`, `porQueAmbiguo`, `pontoDeAtencao.descricao`) ou pelo verifier (`fonteVerificacao` de grounding — `VerdictSchema.fonte` é `z.string()` do LLM) — é interpolada, **em lugar nenhum**. `secaoOndeAparece` (campo `z.string()` livre do extractor) **NÃO** é mais slot: vazava verbatim, guardado só pelo tripwire que esta SPEC proíbe como garantia. Afirmação de revogação = frase-**template keyed pelo `statusVerificado` verificado**, só para lei com match ÚNICO + `statusVerificado=revogada`; qualquer outra → pergunta-template neutra. A **proveniência** da revogação é frase **FIXA** ("conforme verificação de vigência registrada na análise"); a `fonteVerificacao` só é citada — e ainda assim **só o HOST** (domínio, escalar não-LLM, allowlist de domínios oficiais), nunca o texto — quando a origem é comprovadamente a **baseline curada** (`matchNorma` → categoria revogada-* de `data/norma-baseline.json`), **nunca** a string de grounding. Por isso "ab-rogada"/"não subsiste"/"eficácia exaurida"/"tacitamente afastada"/etc. são **estruturalmente impossíveis** de aparecer — **não há canal por onde texto livre de LLM (modelo OU extração/verificação) escreva no documento**; não são "filtradas". Lookup robusto: `numero/ano=null` ou chave `numero|ano` não-única → não-identificável → sempre `nenhuma`/neutro. **O scan léxico (no adapter e no Tier 0) é TRIPWIRE DEFENSIVO, NÃO o mecanismo de contenção:** a garantia é a ausência de prosa livre; se o tripwire disparar (markdown casa léxico sem lei revogada verificada) é **bug estrutural** (um template introduziu prosa de status) → hard fail. Regex expandido (`ab-rogad|derrogad|revogou-se|não subsiste|superad|exaurid|deixou de produzir efeitos|não vige|sem eficácia|não está em vigor|…`) é defesa-em-profundidade, não a barreira. **Mapa `categoriaParaStatus` centralizado** em `domain/categoria-status.ts` (fonte única; Verifier e Tier 0 importam — mapeamento de segurança sem cópia divergível).
+**#2 — REAL structural containment (ZERO free model prose in the external ofício):** the Drafter's model **writes NO text that enters the document**. It emits ONLY structured decisions: `tipo`; `selecoes[]` — references by `{fonte∈{incoerencia,trechoAmbiguo,pontoDeAtencao}, indice}` to findings **ALREADY EXISTING** in the extraction (the model chooses WHAT to raise and the ORDER, it does **NOT WRITE**); and `leisCitadas[]` with **`afirmacaoVigencia ∈ {nenhuma, revogada, vigente}`** (still overridden by the lookup). **There is NO free-text field in the model's schema** (`pontos[].{titulo,argumento}` removed); the Zod `.strip()` discards any extra field the model invents — it never reaches the adapter. The **body of the ofício is assembled 100% by deterministic TEMPLATES in the adapter** (`adapters/drafter/gemini.ts`), keyed by the **STRUCTURED TYPE** of the finding: incoherence → template by `incoerencia.tipo` (enum; `lei-revogada` routes through the vigência logic); trechoAmbiguo → template with reference by **non-LLM INDEX** ("item nº N of the analysis"); pontoDeAtencao → template by `categoria` (enum). **EXHAUSTIVE INVARIANT (C1 3rd — not whack-a-mole by channel):** every character of `oficio.markdown` is **(a)** a fixed template literal, **(b)** a restricted enum value (`incoerencia.tipo`, `pontoDeAtencao.categoria`, the ofício's `tipo`), **(c)** a **non-LLM** scalar (index, count, curated host of a baseline URL), or **(d)** a deterministic vigência template phrase. **NO free-text LLM string** — neither from the Drafter's model, nor from ANY free `z.string()` field produced upstream by the extractor (`trechosAmbiguos[].secaoOndeAparece`, `incoerencia.descricao`, `porQueAmbiguo`, `pontoDeAtencao.descricao`) or by the verifier (grounding `fonteVerificacao` — `VerdictSchema.fonte` is an LLM `z.string()`) — is interpolated, **anywhere**. `secaoOndeAparece` (a free `z.string()` field from the extractor) is **NO LONGER** a slot: it leaked verbatim, guarded only by the tripwire that this SPEC forbids as a guarantee. A revogação assertion = a **template phrase keyed by the verified `statusVerificado`**, only for a law with a UNIQUE match + `statusVerificado=revogada`; anything else → a neutral question template. The **provenance** of the revogação is a **FIXED** phrase ("per the vigência verification recorded in the analysis"); the `fonteVerificacao` is only cited — and even then **only the HOST** (domain, non-LLM scalar, allowlist of official domains), never the text — when the source is provably the **curated baseline** (`matchNorma` → revogada-* category of `data/norma-baseline.json`), **never** the grounding string. That is why "ab-rogada"/"não subsiste"/"eficácia exaurida"/"tacitamente afastada"/etc. are **structurally impossible** to appear — **there is no channel through which free LLM text (model OR extraction/verification) can write into the document**; they are not "filtered". Robust lookup: `numero/ano=null` or a non-unique `numero|ano` key → non-identifiable → always `nenhuma`/neutral. **The lexical scan (in the adapter and in Tier 0) is a DEFENSIVE TRIPWIRE, NOT the containment mechanism:** the guarantee is the absence of free prose; if the tripwire fires (markdown matches the lexicon without a verified revogada law) it is a **structural bug** (a template introduced status prose) → hard fail. The expanded regex (`ab-rogad|derrogad|revogou-se|não subsiste|superad|exaurid|deixou de produzir efeitos|não vige|sem eficácia|não está em vigor|…`) is defense-in-depth, not the barrier. **Centralized `categoriaParaStatus` map** in `domain/categoria-status.ts` (single source; Verifier and Tier 0 import it — a security mapping without a divergeable copy).
 
-`norma-baseline.json` é ativo acumulável (moat).
+`norma-baseline.json` is an accumulable asset (moat).
 
-## 6. Schema de extração (v3)
+## 6. Extraction schema (v3)
 
-Em `domain/schema.ts` (migrar de `src/schema.ts` v2). Sobre v2: `plataforma`, `subcontratacaoPermitida`, `intervaloMinimoLances`, `prazoRecursosDiasUteis`, `informacoesViabilidade`, e `pontosDeAtencao[]` (`{descricao, categoria∈{financeiro,operacional,juridico,competitivo}, severidade∈{alta,media,baixa}, recomendaManifestacao}`). `leisReferenciadas[]` ganha `statusVerificado∈{vigente,revogada,contestada,inexistente,nao-verificado}` (default `nao-verificado`) + `fonteVerificacao`. **Não há campo "incerto" no output do extractor** (era premissa fantasma).
+In `domain/schema.ts` (migrate from `src/schema.ts` v2). Over v2: `plataforma`, `subcontratacaoPermitida`, `intervaloMinimoLances`, `prazoRecursosDiasUteis`, `informacoesViabilidade`, and `pontosDeAtencao[]` (`{descricao, categoria∈{financeiro,operacional,juridico,competitivo}, severidade∈{alta,media,baixa}, recomendaManifestacao}`). `leisReferenciadas[]` gains `statusVerificado∈{vigente,revogada,contestada,inexistente,nao-verificado}` (default `nao-verificado`) + `fonteVerificacao`. **There is no "uncertain" field in the extractor output** (it was a phantom premise).
 
-## 7. Convenções de prompt
+## 7. Prompt conventions
 
-System (estático, cacheável): papel → regras → 1-3 few-shot. User: `[contexto grande]` → `[tarefa]` → `[contrato de saída]` (recência long-context). Few-shot **não existem no POC — devem ser criados** a partir dos gold reais (3 editais-armadilha; análise Mata Grande; ofício Pariconha; baseline por categoria), versionados como assets.
+System (static, cacheable): role → rules → 1-3 few-shot. User: `[large context]` → `[task]` → `[output contract]` (long-context recency). Few-shot examples **do not exist in the POC — they must be created** from the real gold artifacts (3 trap editais; Mata Grande analysis; Pariconha ofício; baseline per category), versioned as assets.
 
 ## 8. UI
 
-Dashboard single-edital: painéis seccionados; pontos de atenção/inconsistências/ambíguos em destaque por severidade; tabela de leis com badge de `statusVerificado` (✓/✗/⚠); ofício como textarea editável (human-in-the-loop). Estado de processamento via polling do job. Botões export PDF on-demand. Histórico/busca/comparação = V1.
+Single-edital dashboard: sectioned panels; pontos de atenção/inconsistencies/ambiguous excerpts highlighted by severity; table of laws with a `statusVerificado` badge (✓/✗/⚠); ofício as an editable textarea (human-in-the-loop). Processing state via job polling. On-demand PDF export buttons. History/search/comparison = V1.
 
-## 9. Persistência
+## 9. Persistence
 
-Persistir conteúdo: JSON da análise + ofício **gerado** e **como exportado** (o diff entre os dois é sinal de eval — §11b). Nunca PDF (derivado regenerável). `jobs` (status/erro), `norma_cache` (status verificado reusável). PDF sempre on-demand.
+Persist content: the analysis JSON + the ofício **as generated** and **as exported** (the diff between the two is an eval signal — §11b). Never the PDF (a regenerable derivative). `jobs` (status/error), `norma_cache` (reusable verified status). PDF always on-demand.
 
-## 10. Modelo & custo
+## 10. Model & cost
 
-Gemini 2.5 Flash. ~$0.09/edital (extractor ~75%). Single-user <$5/mês. `pdftotext -layout` roda no worker container (problema do binário Vercel **dissolvido** pela arquitetura async). Verifier ≈ grátis no conjunto recorrente (baseline determinística). Alavancas modo-produto: enxugar output > caching (dev) > model swap (desprezível). Não otimizar no V0.
+Gemini 2.5 Flash. ~$0.09/edital (extractor ~75%). Single-user <$5/month. `pdftotext -layout` runs in the worker container (the Vercel binary problem is **dissolved** by the async architecture). Verifier ≈ free on the recurring set (deterministic baseline). Product-mode levers: trim output > caching (dev) > model swap (negligible). Do not optimize at V0.
 
-## 11. Verificação & Observabilidade
+## 11. Verification & Observability
 
-**11a. Gate Tier 0 (embarca no V0, property-based, determinístico, custo zero, toda mudança):** invariantes estruturais, não comparação com corpus, logo generalizam pra editais nunca vistos:
-- Para cada lei citada no ofício: `afirmacaoVigencia=revogada` **só** se `statusVerificado=revogada` (confronto do campo estruturado do Drafter, §5 #2 — não regex em prosa). **Gate duro = 0 violações.** A contenção é **estrutural** pelo **invariante exaustivo** (§5 #2): o documento externo é montado SÓ de literais/enums/escalares-não-LLM/frases-template de vigência — **nenhuma string de texto livre de LLM** (do modelo do Drafter OU de QUALQUER campo `z.string()` livre da extração/verificação — `secaoOndeAparece`, `*.descricao`, `porQueAmbiguo`, `fonteVerificacao` de grounding) é interpolada, em lugar nenhum. O tripwire léxico é detector de regressão DEFENSIVO que NUNCA deveria disparar, **não a garantia**. Este Tier 0 é redundância de verificação, não a barreira única.
-- **Tripwire defensivo (NÃO o mecanismo de contenção):** scan léxico amplo de revogação no markdown — o Drafter já o aplica internamente; aqui o Tier 0 reconfere — se dispara mas não há lei revogada verificada que o respalde, é **bug estrutural** (um template introduziu prosa de status, OU um slot voltou a interpolar string livre de LLM) → falha. Nunca deveria disparar; a garantia é o invariante exaustivo (zero string livre de LLM), não este scan. **Limite conhecido:** o tripwire só pega *léxico* de revogação; prosa de status SEM esse léxico ("tacitamente afastada", "já não produz efeito") passaria silenciosa — exatamente por isso a garantia NÃO pode ser o tripwire, e sim a ausência estrutural de qualquer slot de string livre (testado por testes adversariais de AUSÊNCIA ESTRUTURAL, não regex-absence).
-- Nenhuma norma da `norma-baseline.json` resolvida com status divergente da tabela (mapa `categoriaParaStatus` centralizado em `domain/categoria-status.ts`, importado por Verifier e Tier 0). **Honestidade de cobertura:** no corpus gold do POC esta checagem é inerte (tudo `nao-verificado`); a fixture sintética versionada `fixtures/gold/synthetic-verificado.json` (1 lei `statusVerificado` divergente da baseline) é tratada pelo runner em modo auto-teste — DEVE produzir a violação `baseline-divergente`, senão a checagem está quebrada → gate falha. Assim a checagem 3 é efetivamente exercitada.
-- zona-cinzenta nunca vira binário no ofício.
-Roda em `eval/`. Falhou → build falha. Não depende de uso da Stefany — protege o dano catastrófico desde o 1º uso.
+**11a. Tier 0 gate (ships in V0, property-based, deterministic, zero cost, every change):** structural invariants, not corpus comparison, so they generalize to never-seen editais:
+- For each law cited in the ofício: `afirmacaoVigencia=revogada` **only** if `statusVerificado=revogada` (a check on the Drafter's structured field, §5 #2 — not regex on prose). **Hard gate = 0 violations.** Containment is **structural** via the **exhaustive invariant** (§5 #2): the external document is assembled ONLY from literals/enums/non-LLM scalars/vigência template phrases — **no free-text LLM string** (from the Drafter's model OR from ANY free `z.string()` field of extraction/verification — `secaoOndeAparece`, `*.descricao`, `porQueAmbiguo`, grounding `fonteVerificacao`) is interpolated, anywhere. The lexical tripwire is a DEFENSIVE regression detector that should NEVER fire, **not the guarantee**. This Tier 0 is verification redundancy, not the single barrier.
+- **Defensive tripwire (NOT the containment mechanism):** a broad lexical scan for revogação in the markdown — the Drafter already applies it internally; here Tier 0 re-checks it — if it fires but there is no verified revogada law backing it, it is a **structural bug** (a template introduced status prose, OR a slot went back to interpolating a free LLM string) → fail. It should never fire; the guarantee is the exhaustive invariant (zero free LLM string), not this scan. **Known limit:** the tripwire only catches revogação *lexicon*; status prose WITHOUT that lexicon ("tacitamente afastada", "já não produz efeito") would pass silently — precisely why the guarantee CANNOT be the tripwire, but rather the structural absence of any free-string slot (tested by adversarial STRUCTURAL-ABSENCE tests, not regex-absence).
+- No norma from `norma-baseline.json` resolved with a status divergent from the table (the `categoriaParaStatus` map centralized in `domain/categoria-status.ts`, imported by Verifier and Tier 0). **Coverage honesty:** in the POC gold corpus this check is inert (everything is `nao-verificado`); the versioned synthetic fixture `fixtures/gold/synthetic-verificado.json` (1 law with `statusVerificado` divergent from the baseline) is handled by the runner in self-test mode — it MUST produce the `baseline-divergente` violation, otherwise the check is broken → gate fails. Thus check 3 is effectively exercised.
+- zona-cinzenta never becomes binary in the ofício.
+Runs in `eval/`. Failed → build fails. Does not depend on Stefany's usage — it protects against catastrophic damage from the 1st use.
 
-**11b. Observabilidade (V0):** sinais implícitos (fricção zero) > explícitos:
-- **Diff ofício gerado × exportado** (sinal-ouro: rótulo direto e não-supervisionado de erro/lacuna do Drafter).
-- Export/quais artefatos, re-upload do mesmo edital, painéis abertos, latência, custo.
-- Explícito mínimo: 👍/👎 + texto opcional por análise; micro-pergunta rotativa.
-- **Custo por chamada de grounding** logado individualmente (não só agregado) — a cauda municipal real aciona grounding pago; bomba silenciosa se não instrumentado.
-- Fallback de sinal: se o diff ofício gerado×exportado vier vazio (ela aceita sem editar / não exporta), o sinal-ouro é nulo — usar export-sim/não + 👍/👎 como sinal de reserva.
-- **Superfície de revisão** interna (lista de análises + feedback + diffs) — sem isso o loop não fecha.
-- **Promote-to-corpus** em 1 passo grava em **`fixtures/gold/` (versionado, NÃO em `output/` que é gitignored)** — vira fixture de regressão do Tier 0/E2E.
+**11b. Observability (V0):** implicit signals (zero friction) > explicit:
+- **Generated × exported ofício diff** (gold signal: a direct, unsupervised label of the Drafter's error/gap).
+- Export/which artifacts, re-upload of the same edital, opened panels, latency, cost.
+- Minimal explicit: 👍/👎 + optional text per analysis; a rotating micro-question.
+- **Cost per grounding call** logged individually (not just aggregated) — the real municipal tail triggers paid grounding; a silent bomb if not instrumented.
+- Signal fallback: if the generated×exported ofício diff comes back empty (she accepts without editing / does not export), the gold signal is null — use export-yes/no + 👍/👎 as a reserve signal.
+- Internal **review surface** (list of analyses + feedback + diffs) — without it the loop does not close.
+- **Promote-to-corpus** in 1 step writes to **`fixtures/gold/` (versioned, NOT to `output/` which is gitignored)** — becomes a Tier 0/E2E regression fixture.
 
-**11c. Evals de acurácia/decisão = V1**, construídos a partir da telemetria coletada (não a-priori). Eixo: propriedade-primeiro / corpus-por-cobertura-de-falha, não corpus-centric.
+**11c. Accuracy/decision evals = V1**, built from the collected telemetry (not a-priori). Axis: property-first / corpus-by-failure-coverage, not corpus-centric.
 
 ## 12. Roadmap
 
-**V0 (em construção)** — escopo:
+**V0 (under construction)** — scope:
 
-| Entra | Fora (V1+) |
+| In | Out (V1+) |
 |---|---|
-| Vercel UI + worker container + jobs async | Histórico/busca/comparação |
-| Preprocessor (pdftotext no container) | Perfil municipal completo |
-| Extractor (schema v3) | Compliance vs perfil empresa |
-| Norma Verifier (baseline + grounding) | Análise operacional detalhada (Tier 2) |
-| Risk Analyst (pontosDeAtencao) | Detecção de direcionamento (Tier 2) |
-| Drafter (esclarecimento/impugnação editável) | Evals de acurácia/decisão |
-| Dashboard + export PDF on-demand | |
-| **Gate Tier 0** + **observabilidade/feedback** | |
-| Persistência + deploy (Vercel+worker+Supabase) | |
+| Vercel UI + worker container + async jobs | History/search/comparison |
+| Preprocessor (pdftotext in the container) | Full municipal profile |
+| Extractor (schema v3) | Compliance vs company profile |
+| Norma Verifier (baseline + grounding) | Detailed operational analysis (Tier 2) |
+| Risk Analyst (pontosDeAtencao) | Bid-rigging detection (Tier 2) |
+| Drafter (editable clarification/challenge) | Accuracy/decision evals |
+| Dashboard + on-demand PDF export | |
+| **Tier 0 Gate** + **observability/feedback** | |
+| Persistence + deploy (Vercel+worker+Supabase) | |
 
-Done V0: 3 editais ref + Mata Grande sem erro; schema 100% válido; capa-mentirosa/lei-revogada/anexo-ausente detectados; **Gate Tier 0 = 0 violações**; pipeline completo no worker sem timeout; dashboard funcional; ofício editável; telemetria gravando; deploy acessível à Stefany.
+Done V0: 3 ref editais + Mata Grande with no error; schema 100% valid; lying-cover/revogada-law/missing-annex detected; **Tier 0 Gate = 0 violations**; full pipeline in the worker with no timeout; functional dashboard; editable ofício; telemetry recording; deploy accessible to Stefany.
 
-**V1** histórico/busca, comparação, perfil municipal, perfil Zelo+compliance, evals de acurácia (da telemetria), auth robusta. **V2** biblioteca pgvector+RAG, chat NLP, memória (**Mastra**), monitor PNCP. **V3** multi-agent paralelo, diff cross-município, proposta draft. **V4+** financeiro (cobrança municipal), multi-tenancy, ERP, outros verticais.
+**V1** history/search, comparison, municipal profile, Zelo profile+compliance, accuracy evals (from telemetry), robust auth. **V2** pgvector+RAG library, NLP chat, memory (**Mastra**), PNCP monitor. **V3** parallel multi-agent, cross-municipality diff, draft proposal. **V4+** financial (municipal billing), multi-tenancy, ERP, other verticals.
 
 ## 13. Out of scope
 
-Não substituir julgamento jurídico · sem proposta automática V0/V1 · sem ERP V0/V1/V2 · só funerário até V4 · ~200-300 municípios Zelo · sem mobile.
+Do not replace legal judgment · no automatic proposal V0/V1 · no ERP V0/V1/V2 · funeral only until V4 · ~200-300 Zelo municipalities · no mobile.
 
 ## 14. Deploy
 
-> **Runbook operacional acionável (passo-a-passo, env vars exatas,
-> resíduos consolidados, checklist Done V0): [`docs/DEPLOY.md`](DEPLOY.md).**
-> Esta seção registra só as DECISÕES de arquitetura de deploy; os passos
-> de execução não são duplicados aqui.
+> **Actionable operational runbook (step-by-step, exact env vars,
+> consolidated residuals, Done V0 checklist): [`docs/DEPLOY.md`](DEPLOY.md).**
+> This section records only the deploy architecture DECISIONS; the
+> execution steps are not duplicated here.
 
-- **Vercel:** Next.js (Node runtime nas rotas com Prisma). `DATABASE_URL` pooled (Supabase pgBouncer, `?pgbouncer=true&connection_limit=1`), `directUrl` p/ migrations, `prisma generate` no `postinstall`.
-- **Worker:** container (Railway/Cloud Run, scale-to-zero), Dockerfile `apt-get install poppler-utils chromium`; conexão Postgres direta. **#3 wake-up:** `/api/job` (Vercel) faz `POST` HTTP no endpoint do worker ao criar o job — *essa requisição acorda o container* (scale-to-zero só desperta por HTTP, não por linha no DB; polling cego não funciona dormindo). **#3 lock:** claim atômico `UPDATE jobs SET status='running' WHERE id=(SELECT id FROM jobs WHERE status='pending' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *` — dois workers nunca pegam o mesmo job.
-- **Auth (#7, decidida):** V0 single-user. `APP_SECRET` em env. `/login` = form com campo de senha → `POST /api/login` valida contra `APP_SECRET` → set-cookie de sessão assinado (HMAC, httpOnly). Middleware protege tudo exceto `/login`, `/api/login`, `/api/health`. O segredo é passado à Stefany fora-de-banda (mensagem direta). Supabase Auth fica pra V1 multi-usuário.
-- Chave Gemini: a do empregamed em dev; revisar p/ deploy.
-- **Resíduo Phase 12 (preciso):** `WORKER_URL` = URL **pública** do endpoint do worker (a Vercel não alcança rede privada do container). Worker container abre conexão Postgres **DIRETA** (sem pgBouncer; pool próprio). Rotas Vercel que tocam Prisma já com `runtime='nodejs'` (feito). Falta no deploy: provisionar o container (Railway/Cloud Run), publicar a URL, setar `WORKER_URL` na Vercel, instalar `@prisma/adapter-pg pg` e rodar `prisma migrate deploy` via `DIRECT_URL` (ver `adapters/repo/client.ts`).
-- **Liveness sem sweeper (caveat V0):** não há sweeper/cron de jobs `pending`. O `/api/job` acorda o worker por HTTP (#3); se esse trigger falhar, o job sobrevive `pending` e é repescado no **próximo** wake do worker (`claimNext`). Mas worker permanentemente fora ⇒ jobs ficam `pending` indefinidamente (nenhum re-trigger automático). Aceitável single-user V0 (operador reenvia); **revisitar V1** com cron/healthcheck que re-dispara pendentes.
-- **Limite de body (concern de deploy):** Vercel **Hobby** corta request body em **~4.5 MB** no platform, ANTES do código (413 opaco do edge). `/api/job` aplica um guard UPSTREAM próprio — `MAX_UPLOAD_BYTES = 8 MiB` (pré-base64), barrando com **413** claro antes de empacotar/persistir (base64 infla ~33 % → `inputRef` ~10.7 MiB, ainda << cap de descompressão de 50 MB). Editais do corpus < ~5 MB, então o guard cobre o caso real; uploads de 4.5–8 MiB só passam fora do Hobby (resolver com plano Pro / body maior é resíduo de deploy).
+- **Vercel:** Next.js (Node runtime on routes with Prisma). `DATABASE_URL` pooled (Supabase pgBouncer, `?pgbouncer=true&connection_limit=1`), `directUrl` for migrations, `prisma generate` in `postinstall`.
+- **Worker:** container (Railway/Cloud Run, scale-to-zero), Dockerfile `apt-get install poppler-utils chromium`; direct Postgres connection. **#3 wake-up:** `/api/job` (Vercel) does an HTTP `POST` to the worker endpoint when creating the job — *that request wakes the container* (scale-to-zero only wakes on HTTP, not on a DB row; blind polling does not work while asleep). **#3 lock:** atomic claim `UPDATE jobs SET status='running' WHERE id=(SELECT id FROM jobs WHERE status='pending' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *` — two workers never pick up the same job.
+- **Auth (#7, decided):** V0 single-user. `APP_SECRET` in env. `/login` = a form with a password field → `POST /api/login` validates against `APP_SECRET` → sets a signed session cookie (HMAC, httpOnly). Middleware protects everything except `/login`, `/api/login`, `/api/health`. The secret is passed to Stefany out-of-band (direct message). Supabase Auth is deferred to V1 multi-user.
+- Gemini key: the employer's in dev; review for deploy.
+- **Phase 12 residual (precise):** `WORKER_URL` = the **public** URL of the worker endpoint (Vercel cannot reach the container's private network). The worker container opens a **DIRECT** Postgres connection (no pgBouncer; its own pool). Vercel routes that touch Prisma are already set with `runtime='nodejs'` (done). Remaining for deploy: provision the container (Railway/Cloud Run), publish the URL, set `WORKER_URL` on Vercel, install `@prisma/adapter-pg pg` and run `prisma migrate deploy` via `DIRECT_URL` (see `adapters/repo/client.ts`).
+- **Liveness without a sweeper (V0 caveat):** there is no sweeper/cron for `pending` jobs. `/api/job` wakes the worker over HTTP (#3); if that trigger fails, the job survives `pending` and is picked up at the worker's **next** wake (`claimNext`). But a worker permanently down ⇒ jobs stay `pending` indefinitely (no automatic re-trigger). Acceptable for single-user V0 (the operator resubmits); **revisit in V1** with a cron/healthcheck that re-dispatches pending ones.
+- **Body size limit (deploy concern):** Vercel **Hobby** cuts the request body at **~4.5 MB** at the platform, BEFORE the code (an opaque 413 from the edge). `/api/job` applies its own UPSTREAM guard — `MAX_UPLOAD_BYTES = 8 MiB` (pre-base64), blocking with a clear **413** before packing/persisting (base64 inflates ~33% → `inputRef` ~10.7 MiB, still << the 50 MB decompression cap). Corpus editais are < ~5 MB, so the guard covers the real case; uploads of 4.5–8 MiB only pass outside Hobby (resolving with a Pro plan / larger body is a deploy residual).
