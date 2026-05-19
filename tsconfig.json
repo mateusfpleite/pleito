@@ -26,8 +26,12 @@
   },
   "include": [
     "src/**/*",
+    "domain/**/*",
+    "application/**/*",
+    "adapters/**/*",
     "app/**/*",
     "worker/**/*",
+    "eval/**/*",
     "infrastructure/**/*",
     ".next/types/**/*.ts"
   ],

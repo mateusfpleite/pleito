@@ -218,6 +218,18 @@ export const EditalExtractionSchema = z.object({
       ano: z.number().nullable(),
       contextoNoEdital: z.string(),
       revogada: z.boolean(),
+      // v3: status pós-verificação (Norma Verifier). Default = não-verificado;
+      // o extractor não preenche — só a flag `revogada` (palpite provisório).
+      statusVerificado: z
+        .enum([
+          'vigente',
+          'revogada',
+          'contestada',
+          'inexistente',
+          'nao-verificado',
+        ])
+        .default('nao-verificado'),
+      fonteVerificacao: z.string().nullable(),
     })
   ),
 
@@ -264,6 +276,28 @@ export const EditalExtractionSchema = z.object({
     })
   ),
 
+  // --- Campos v3 (SPEC §6) ---
+  plataforma: z.string().nullable(),
+  subcontratacaoPermitida: z.boolean().nullable(),
+  intervaloMinimoLances: z.number().nullable(),
+  prazoRecursosDiasUteis: z.number().nullable(),
+  informacoesViabilidade: z.string().nullable(),
+
+  // Pontos de atenção (Risk Analyst) — severidade dirige UI/Gate B
+  pontosDeAtencao: z.array(
+    z.object({
+      descricao: z.string(),
+      categoria: z.enum([
+        'financeiro',
+        'operacional',
+        'juridico',
+        'competitivo',
+      ]),
+      severidade: z.enum(['alta', 'media', 'baixa']),
+      recomendaManifestacao: z.boolean(),
+    })
+  ),
+
   // Metadata da fonte
   fonte: z.object({
     pdfNativo: z.boolean(),
@@ -274,3 +308,16 @@ export const EditalExtractionSchema = z.object({
 });
 
 export type EditalExtraction = z.infer<typeof EditalExtractionSchema>;
+
+/**
+ * Metadados da fonte do edital, propagados pelo Preprocessor para o Extractor
+ * (origem do arquivo, OCR aplicado, paginação). Distinto do `fonte` do schema,
+ * que é o que o LLM declara — `FonteMeta` é o que o pipeline observa.
+ */
+export type FonteMeta = {
+  nomeArquivo: string;
+  pdfNativo: boolean;
+  ocr: boolean;
+  paginas: number;
+  url: string | null;
+};

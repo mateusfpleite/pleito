@@ -3,7 +3,7 @@ import { google } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { EditalExtractionSchema } from './schema.ts';
+import { EditalExtractionSchema } from '../domain/schema.ts';
 
 const SYSTEM_PROMPT = `Você é um especialista em análise de editais de licitação brasileiros.
 Sua tarefa é extrair informações estruturadas do edital fornecido, seguindo rigorosamente o schema.
