@@ -110,3 +110,8 @@ app/(analyzer)/components/Dashboard.tsx:672:672
 application/promover-corpus.ts:70:73
 adapters/verifier/gemini.ts:167:182
 adapters/repo/client.ts:60:64
+src/extract.ts:8:35
+src/extract.ts:63:63
+src/baserate.ts:53:61
+src/baserate.ts:117:117
+src/spike-verifier.ts:121:139
