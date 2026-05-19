@@ -13,7 +13,7 @@ docs/*.pdf
 *.log
 .DS_Store
 
-# Documentos privados de terceiros (não publicar)
+# Third-party private documents (do not publish)
 docs/inputs/
 docs/pitch-stefany.md
 docs/plans/2026-05-19-en-structure-ptbr-product-migration.md
