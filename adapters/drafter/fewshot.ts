@@ -14,16 +14,18 @@
  *      seguida de PERGUNTAS concretas ao órgão;
  *   5. Encerramento cordial + identificação do solicitante.
  *
- * Os dois exemplos demonstram a REGRA DE CONTENÇÃO (SPEC §5 #2 / §11a), que é
- * o núcleo deste agente:
+ * Os dois exemplos demonstram a REGRA DE CONTENÇÃO ESTRUTURAL (SPEC §5 #2 /
+ * §11a): o modelo produz só `pontos` (titulo+argumento) + `leisCitadas`. Ele
+ * NUNCA escreve markdown nem frase de (não)vigência — o adapter monta o
+ * ofício deterministicamente (frase de revogação = template keyed pelo
+ * statusVerificado verificado).
  *
  *  - EXEMPLO 1 (lei VERIFICADA como revogada → afirmacaoVigencia="revogada"):
- *    quando o Norma Verifier confirmou a revogação, o ofício PODE afirmá-la
- *    e usá-la como fundamento da divergência.
+ *    o modelo só registra o status e o argumento NEUTRO; a frase de
+ *    revogação é montada pelo adapter, não pelo modelo.
  *  - EXEMPLO 2 (lei em zona-cinzenta / não-verificada → afirmacaoVigencia=
- *    "nenhuma"): NUNCA afirmar (não)vigência; transformar em PERGUNTA ao
- *    órgão ("solicita-se confirmação/esclarecimento sobre a norma
- *    aplicável...").
+ *    "nenhuma"): argumento NÃO afirma (não)vigência; o adapter emite só
+ *    pergunta-template ao órgão.
  *
  * Vivem no SYSTEM prompt (estático → cacheável pelo provider, SPEC §7).
  */
@@ -47,8 +49,16 @@ ano:1993, statusVerificado:"revogada"} (confirmada pelo Norma Verifier).`,
   "leisCitadas": [
     { "numero": "8666", "ano": 1993, "afirmacaoVigencia": "revogada" }
   ],
-  "markdown": "À Comissão de Licitação / Sr. Pregoeiro\\nPrefeitura Municipal de Pariconha/AL\\n\\n**Assunto:** Pedido de esclarecimento — Pregão Eletrônico nº 008/2026.\\n\\nPrezados Senhores,\\n\\nA empresa interessada em participar do certame em epígrafe vem, tempestivamente, solicitar os seguintes esclarecimentos:\\n\\n1. **Fundamento legal do certame.** O preâmbulo do edital indica como base jurídica a Lei nº 8.666/1993, a qual foi revogada pela Lei nº 14.133/2021 (art. 193, II). Solicita-se esclarecimento sobre qual o regime jurídico efetivamente aplicável ao presente certame e, sendo o caso, a devida retificação do instrumento convocatório, de modo a assegurar segurança jurídica aos licitantes.\\n\\nDiante do exposto, requer-se a prestação dos esclarecimentos acima, se necessário com a republicação do edital e reabertura do prazo legal.\\n\\nAtenciosamente,\\n[Identificação do solicitante]"
-}`,
+  "pontos": [
+    {
+      "titulo": "Fundamento legal do certame",
+      "argumento": "O preâmbulo do edital indica como base jurídica a Lei nº 8.666/1993, cujo regime de aplicação ao certame se questiona, de modo a assegurar segurança jurídica aos licitantes."
+    }
+  ]
+}
+// NOTA: o modelo NÃO escreveu nenhuma frase afirmando revogação. O adapter,
+// vendo afirmacaoVigencia="revogada" (statusVerificado verificado),
+// MONTA deterministicamente a frase-template de revogação no ofício final.`,
   },
   {
     titulo:
@@ -63,8 +73,19 @@ confirmada revogada). Trecho ambíguo sobre o critério de julgamento.`,
   "leisCitadas": [
     { "numero": "5", "ano": 2017, "afirmacaoVigencia": "nenhuma" }
   ],
-  "markdown": "À Comissão de Licitação / Sr. Pregoeiro\\nPrefeitura Municipal de Pariconha/AL\\n\\n**Assunto:** Pedido de esclarecimento — Pregão Eletrônico nº 008/2026.\\n\\nPrezados Senhores,\\n\\nA empresa interessada vem solicitar os seguintes esclarecimentos:\\n\\n1. **Norma aplicável à habilitação técnica.** O edital invoca a Instrução Normativa SEGES nº 05/2017 como base das exigências de habilitação técnica. Considerando as alterações normativas supervenientes e eventual recepção sob a Lei nº 14.133/2021, solicita-se confirmação sobre qual a norma efetivamente aplicável e o exato alcance das exigências dela decorrentes para fins de habilitação neste certame.\\n\\n2. **Critério de julgamento.** Solicita-se esclarecimento quanto à redação do item que trata do critério de julgamento, de modo a dirimir a ambiguidade apontada e permitir a correta formulação das propostas.\\n\\nDiante do exposto, requer-se a prestação dos esclarecimentos acima.\\n\\nAtenciosamente,\\n[Identificação do solicitante]"
-}`,
+  "pontos": [
+    {
+      "titulo": "Norma aplicável à habilitação técnica",
+      "argumento": "O edital invoca a Instrução Normativa SEGES nº 05/2017 como base das exigências de habilitação técnica; solicita-se confirmação sobre a norma efetivamente aplicável e o exato alcance das exigências dela decorrentes."
+    },
+    {
+      "titulo": "Critério de julgamento",
+      "argumento": "A redação do item que trata do critério de julgamento comporta mais de uma interpretação, dificultando a correta formulação das propostas."
+    }
+  ]
+}
+// NOTA: argumento NEUTRO — não afirma (não)vigência da IN 05/2017. O adapter
+// emite apenas pergunta-template ao órgão sobre a norma aplicável.`,
   },
 ];
 

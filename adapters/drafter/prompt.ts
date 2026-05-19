@@ -8,12 +8,12 @@
  *   `statusVerificado` por lei) ANTES de `[tarefa]` ANTES de `[contrato de
  *   saída]` — recência long-context (SPEC §7).
  *
- * ORDEM OBRIGATÓRIA decide→escreve (SPEC §5 #2): o prompt instrui o modelo a
- * PRIMEIRO decidir, por lei citada, o campo estruturado `afirmacaoVigencia`
- * (a partir de `statusVerificado`), e SÓ ENTÃO redigir a prosa coerente com
- * essas decisões. A regra dura é reforçada por few-shot; o GUARD FINAL,
- * porém, é determinístico no adapter (`gemini.ts`) — o prompt guia, o código
- * contém.
+ * CONTENÇÃO ESTRUTURAL (SPEC §5 #2): o modelo NÃO escreve o markdown nem
+ * QUALQUER frase de (não)vigência. Ele produz só, por ponto, `{titulo,
+ * argumento}` (a divergência factual + o questionamento) e `leisCitadas`
+ * com `afirmacaoVigencia`. O MARKDOWN final é montado DETERMINISTICAMENTE
+ * pelo adapter (`gemini.ts`): afirmações de vigência são frases-template
+ * keyed pelo `statusVerificado` verificado. O prompt guia; o código contém.
  */
 
 import type { EditalExtraction } from '../../domain/schema.ts';
@@ -24,49 +24,40 @@ formais (pedidos de esclarecimento e impugnações) endereçados ao órgão \
 licitante, em nome de uma empresa interessada no certame.
 
 Sua tarefa é, A PARTIR da extração já analisada de um edital, decidir se há \
-o que questionar e, havendo, redigir o ofício.
+o que questionar e, havendo, produzir os INSUMOS estruturados do ofício. \
+Você NÃO escreve o ofício final nem qualquer frase sobre vigência de norma \
+— o sistema monta o documento deterministicamente a partir dos seus insumos.
 
-ORDEM OBRIGATÓRIA — DECIDA, DEPOIS ESCREVA:
+CONTRATO DE SAÍDA — VOCÊ PRODUZ APENAS:
 
-1. Primeiro produza "leisCitadas": para CADA lei do edital que você for \
-mencionar no ofício, decida o campo estruturado \
-"afirmacaoVigencia" ∈ {nenhuma, revogada, vigente}, lendo o campo \
+1. "leisCitadas": para CADA lei do edital relevante ao questionamento, \
+decida "afirmacaoVigencia" ∈ {nenhuma, revogada, vigente}, lendo o campo \
 "statusVerificado" daquela lei na extração:
-   - statusVerificado = "revogada"  → afirmacaoVigencia = "revogada"
-     (você PODE, no texto, afirmar que a norma está revogada e usar isso \
-como fundamento da divergência).
+   - statusVerificado = "revogada"  → afirmacaoVigencia = "revogada".
    - QUALQUER OUTRO valor ("contestada", "inexistente", "nao-verificado", \
-"vigente") → afirmacaoVigencia = "nenhuma". NUNCA afirme (não)vigência \
-dessa lei no texto. Transforme em PERGUNTA ao órgão, com o fraseado \
-"solicita-se confirmação" ou "solicita-se esclarecimento" sobre a norma \
-aplicável. Mesmo lei "vigente" verificada NÃO vira afirmação proativa de \
-vigência (não há por que afirmar).
-
-2. SÓ DEPOIS escreva o "markdown" do ofício, COERENTE com as decisões de \
-"leisCitadas". Não escreva primeiro e racionalize depois.
-
-3. "leisCitadas" só pode conter leis presentes em "leisReferenciadas" da \
+"vigente") → afirmacaoVigencia = "nenhuma".
+   "leisCitadas" só pode conter leis presentes em "leisReferenciadas" da \
 extração — NÃO invente normas, números ou anos.
 
-4. "tipo": "esclarecimento" para pedir esclarecimento sobre divergências/ \
-ambiguidades; "impugnacao" quando houver ilegalidade/restrição indevida que \
-justifique impugnar o edital.
+2. "pontos": uma lista de pontos a questionar; cada ponto tem só \
+"titulo" (curto) e "argumento" (a divergência factual objetiva + o \
+questionamento ao órgão). NUNCA escreva no "argumento" frases afirmando que \
+uma norma está/não está revogada, perdeu vigência, caducou, etc. — essas \
+afirmações são geradas pelo sistema a partir de "leisCitadas"/ \
+"statusVerificado", NÃO por você. Se mencionar uma norma, refira-se a ela \
+neutramente e questione (não afirme) seu regime de vigência.
 
-5. FORMATO do ofício (fiel ao modelo real de Pariconha — veja exemplos):
-   - cabeçalho endereçado ao órgão (À Comissão de Licitação / Sr. Pregoeiro \
-+ ente);
-   - linha "**Assunto:**" referenciando o pregão;
-   - saudação ("Prezados Senhores,");
-   - pontos NUMERADOS: cada um com a descrição objetiva da divergência/ \
-ponto seguida de PERGUNTAS concretas ao órgão;
-   - encerramento cordial + "[Identificação do solicitante]".
+3. "tipo": "esclarecimento" para divergências/ambiguidades; "impugnacao" \
+quando houver ilegalidade/restrição indevida que justifique impugnar.
 
-6. Baseie os pontos do ofício SOMENTE no que a extração traz: \
-"incoerencias", "trechosAmbiguos" e "pontosDeAtencao" com \
+4. Baseie os "pontos" SOMENTE no que a extração traz: "incoerencias" \
+(severidade ≥ média), "trechosAmbiguos" e "pontosDeAtencao" com \
 "recomendaManifestacao": true. Não invente vícios ausentes do edital.
 
-7. Saída deve validar contra o schema do contrato (tipo, markdown, \
-leisCitadas[].{numero,ano,afirmacaoVigencia}).`;
+5. Saída deve validar contra o schema do contrato (tipo, \
+pontos[].{titulo,argumento}, leisCitadas[].{numero,ano,afirmacaoVigencia}). \
+O cabeçalho/saudação/encerramento e TODA frase de vigência são montados \
+pelo sistema — você não os escreve.`;
 
 /**
  * SYSTEM prompt completo (estático → cacheável pelo provider): regras de
@@ -85,11 +76,13 @@ ${renderFewShots()}`;
  * aparece ANTES dela no prompt do usuário (recência, SPEC §7).
  */
 export const TAREFA =
-  'TAREFA: com base na extração acima, PRIMEIRO decida "afirmacaoVigencia" ' +
-  'por lei citada a partir de "statusVerificado" (revogada só se ' +
-  'statusVerificado="revogada"; senão "nenhuma" + pergunta ao órgão), e SÓ ' +
-  'ENTÃO redija o markdown do ofício coerente com essas decisões, no ' +
-  'formato do ofício de Pariconha. Não invente leis nem vícios ausentes.';
+  'TAREFA: com base na extração acima, decida "afirmacaoVigencia" por lei ' +
+  'citada a partir de "statusVerificado" (revogada só se ' +
+  'statusVerificado="revogada"; senão "nenhuma") e produza "pontos" ' +
+  '(titulo+argumento) com a divergência factual e o questionamento ao ' +
+  'órgão. NÃO escreva markdown nem qualquer frase de (não)vigência — o ' +
+  'sistema monta o ofício deterministicamente. Não invente leis nem ' +
+  'vícios ausentes.';
 
 /**
  * Monta o prompt do USUÁRIO: extração serializada (contexto grande, inclui

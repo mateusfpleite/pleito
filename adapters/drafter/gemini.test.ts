@@ -5,10 +5,19 @@ import { EditalExtractionSchema } from '../../domain/schema.ts';
 import type { EditalExtraction } from '../../domain/schema.ts';
 
 /**
- * Testes DETERMINÍSTICOS do Drafter (contenção estrutural §5 #2). O
+ * Testes DETERMINÍSTICOS do Drafter (contenção ESTRUTURAL §5 #2). O
  * LanguageModel é mocado — NUNCA chamamos o Gemini real nem testamos "o LLM
  * retornou X" (@superpowers:testing-anti-patterns). As invariantes provadas
- * são propriedades do ADAPTER (guard determinístico), não do modelo:
+ * são propriedades do ADAPTER (montagem determinística), não do modelo.
+ *
+ * REDESIGN (contenção estrutural, não confiar em prosa livre do modelo): o
+ * modelo NÃO escreve mais o markdown. Ele produz, por ponto a questionar,
+ * apenas `{titulo, argumento}` (a divergência factual + o questionamento) e a
+ * lista `leisCitadas` com `afirmacaoVigencia`. O MARKDOWN final é montado
+ * DETERMINISTICAMENTE pelo adapter: afirmações de (não)vigência são SEMPRE
+ * frases-template keyed pelo `statusVerificado` verificado — o modelo nunca
+ * escreve frase de vigência. Logo C1 (vazamento de revogação em prosa livre)
+ * é estruturalmente impossível.
  *
  *  (montagem) o prompt põe a EXTRAÇÃO antes da string de TAREFA (recência
  *      long-context, SPEC §7); few-shot Pariconha vive no SYSTEM (cacheável);
@@ -22,7 +31,15 @@ import type { EditalExtraction } from '../../domain/schema.ts';
  *      manifestação → adapter retorna `null` (gate B não dispara);
  *  (d) `leisCitadas` é sempre subconjunto de `e.leisReferenciadas` (o
  *      adapter descarta qualquer lei inventada pelo modelo);
- *  (e) `tipo` ∈ enum e markdown não-vazio quando não-null.
+ *  (e) `tipo` ∈ enum e markdown não-vazio quando não-null;
+ *  (C1) campos estruturados TODOS corretos mas argumento do ponto contém
+ *      "a IN 05/2017 perdeu vigência" → backstop léxico rebaixa o ponto;
+ *      única frase de vigência permitida = template da 8666 revogada;
+ *  (C2) duas leis mesmo numero/ano (uma revogada, uma contestada) →
+ *      lookup ambíguo NUNCA afirma revogação; `numero:null` idem;
+ *  (I1) incoerência `lei-revogada` com "revogada" na descrição → ofício
+ *      neutro NÃO contém `/revogad/i` (escrubado por categoria);
+ *  (I2) incoerência só `severidade:'baixa'` → `redigir` retorna `null`.
  *
  * O mock implementa só a superfície de `generateObject` que o adapter usa:
  * `doGenerate` devolve o JSON proposto pelo modelo em `content`.
@@ -171,6 +188,11 @@ describe('montarPrompt — ordem extração antes da tarefa (SPEC §7)', () => {
   });
 });
 
+/** Léxico de (não)vigência — qualquer um destes na prosa final sobre uma lei
+ * NÃO verificada-revogada é vazamento catastrófico. */
+const LEXICO_VIGENCIA =
+  /revogad|perdeu vig[êe]ncia|n[ãa]o est[áa] mais em vigor|deixou de viger|sem vig[êe]ncia|caducou/i;
+
 describe('GeminiDrafter — contenção estrutural (model injetado, sem rede)', () => {
   it('(a) lei contestada + fake tenta revogada → adapter FORÇA nenhuma e não afirma revogação', async () => {
     const e = baseExtraction({
@@ -179,13 +201,19 @@ describe('GeminiDrafter — contenção estrutural (model injetado, sem rede)', 
     });
     // O modelo (fake) tenta vazar uma afirmação de revogação de lei NÃO
     // verificada como revogada — exatamente o dano catastrófico que o guard
-    // deve conter.
+    // deve conter. Aqui o vazamento vem no `argumento` do ponto (o modelo não
+    // escreve mais markdown livre).
     const drafter = new GeminiDrafter(
       fakeModel({
         tipo: 'esclarecimento',
-        markdown:
-          '## OFÍCIO DE ESCLARECIMENTO\n\nA Instrução Normativa SEGES nº ' +
-          '05/2017 encontra-se revogada e não pode embasar a habilitação.',
+        pontos: [
+          {
+            titulo: 'Habilitação técnica',
+            argumento:
+              'A Instrução Normativa SEGES nº 05/2017 encontra-se revogada ' +
+              'e não pode embasar a habilitação.',
+          },
+        ],
         leisCitadas: [
           { numero: '5', ano: 2017, afirmacaoVigencia: 'revogada' },
         ],
@@ -204,10 +232,9 @@ describe('GeminiDrafter — contenção estrutural (model injetado, sem rede)', 
       o.leisCitadas.every((l) => l.afirmacaoVigencia !== 'revogada')
     ).toBe(true);
 
-    // A prosa, sobre essa lei, não pode afirmar revogação: o adapter
-    // substitui o markdown do modelo por prosa neutra de QUESTIONAMENTO
-    // quando há divergência guard×modelo (defense in depth na prosa).
-    expect(o.markdown).not.toMatch(/revogad/i);
+    // A prosa final, montada deterministicamente, não pode afirmar
+    // revogação dessa lei: o backstop léxico descarta o argumento vazante.
+    expect(o.markdown).not.toMatch(LEXICO_VIGENCIA);
     expect(o.markdown).toMatch(/solicita-se (confirmação|esclarecimento)/i);
   });
 
@@ -225,9 +252,14 @@ describe('GeminiDrafter — contenção estrutural (model injetado, sem rede)', 
     const drafter = new GeminiDrafter(
       fakeModel({
         tipo: 'esclarecimento',
-        markdown:
-          '## OFÍCIO DE ESCLARECIMENTO\n\nO edital fundamenta-se na Lei nº ' +
-          '8.666/1993, revogada pela Lei nº 14.133/2021.',
+        pontos: [
+          {
+            titulo: 'Fundamento legal do certame',
+            argumento:
+              'O edital indica como base jurídica norma cuja vigência é o ' +
+              'ponto a esclarecer.',
+          },
+        ],
         leisCitadas: [
           { numero: '8666', ano: 1993, afirmacaoVigencia: 'revogada' },
         ],
@@ -238,6 +270,10 @@ describe('GeminiDrafter — contenção estrutural (model injetado, sem rede)', 
     expect(oficio).not.toBeNull();
     const lei = oficio!.leisCitadas.find((l) => l.numero === '8666');
     expect(lei!.afirmacaoVigencia).toBe('revogada');
+    // A frase de revogação É permitida — mas vem do TEMPLATE do adapter
+    // (keyed pelo statusVerificado), não da prosa livre do modelo.
+    expect(oficio!.markdown).toMatch(/encontra-se revogada/i);
+    expect(oficio!.markdown).toMatch(/norma-baseline\.json/);
   });
 
   it('(c) sem incoerências/ambíguos/manifestação → retorna null (gate B não dispara)', async () => {
@@ -245,7 +281,7 @@ describe('GeminiDrafter — contenção estrutural (model injetado, sem rede)', 
     // Mesmo que o modelo proponha um ofício, não há gatilho: adapter nem
     // chama o modelo e devolve null.
     const drafter = new GeminiDrafter(
-      fakeModel({ tipo: 'esclarecimento', markdown: 'x', leisCitadas: [] }) as never
+      fakeModel({ tipo: 'esclarecimento', pontos: [], leisCitadas: [] }) as never
     );
     const oficio = await drafter.redigir(e);
     expect(oficio).toBeNull();
@@ -265,7 +301,9 @@ describe('GeminiDrafter — contenção estrutural (model injetado, sem rede)', 
     const drafter = new GeminiDrafter(
       fakeModel({
         tipo: 'esclarecimento',
-        markdown: '## OFÍCIO DE ESCLARECIMENTO\n\nQuestiona-se a base legal.',
+        pontos: [
+          { titulo: 'Base legal', argumento: 'Questiona-se a base legal.' },
+        ],
         leisCitadas: [
           { numero: '8666', ano: 1993, afirmacaoVigencia: 'revogada' },
           // Lei inventada (não está em leisReferenciadas) — deve ser descartada.
@@ -297,8 +335,12 @@ describe('GeminiDrafter — contenção estrutural (model injetado, sem rede)', 
     const drafter = new GeminiDrafter(
       fakeModel({
         tipo: 'impugnacao',
-        markdown:
-          '## OFÍCIO DE IMPUGNAÇÃO\n\nImpugna-se a vedação a consórcio.',
+        pontos: [
+          {
+            titulo: 'Vedação a consórcio',
+            argumento: 'Impugna-se a vedação a consórcio.',
+          },
+        ],
         leisCitadas: [
           { numero: '5', ano: 2017, afirmacaoVigencia: 'nenhuma' },
         ],
@@ -326,7 +368,12 @@ describe('GeminiDrafter — contenção estrutural (model injetado, sem rede)', 
     const drafter = new GeminiDrafter(
       fakeModel({
         tipo: 'esclarecimento',
-        markdown: '## OFÍCIO DE ESCLARECIMENTO\n\nSolicita-se esclarecimento.',
+        pontos: [
+          {
+            titulo: 'Norma aplicável',
+            argumento: 'Solicita-se esclarecimento.',
+          },
+        ],
         leisCitadas: [
           { numero: '14133', ano: 2021, afirmacaoVigencia: 'vigente' },
         ],
@@ -336,5 +383,209 @@ describe('GeminiDrafter — contenção estrutural (model injetado, sem rede)', 
     // Não há por que afirmar vigência proativamente: guard força 'nenhuma'.
     const lei = oficio!.leisCitadas.find((l) => l.numero === '14133');
     expect(lei!.afirmacaoVigencia).toBe('nenhuma');
+    // E nenhuma frase de vigência vaza para o markdown.
+    expect(oficio!.markdown).not.toMatch(LEXICO_VIGENCIA);
+  });
+});
+
+describe('GeminiDrafter — adversarial (C1/C2/I1/I2): contenção ESTRUTURAL', () => {
+  it('(C1) campos estruturados TODOS corretos mas argumento difama lei contestada em prosa → backstop léxico rebaixa o ponto; só a 8666 (genuinamente revogada) tem frase de vigência', async () => {
+    // 8666/1993 genuinamente revogada; IN 05/2017 contestada (zona-cinzenta).
+    const e = baseExtraction({
+      leisReferenciadas: [leiRevogada, leiContestada],
+      incoerencias: [
+        {
+          tipo: 'lei-revogada',
+          descricao: 'Edital cita norma cujo regime jurídico se questiona.',
+          severidade: 'alta',
+        },
+      ],
+    });
+    // Campos estruturados PERFEITOS — o guard não rebaixa nada. Mas o
+    // argumento do ponto difama a 5/2017 em prosa livre, enquanto cita
+    // legitimamente a 8666 revogada (cenário onde o scan léxico de markdown
+    // livre não consegue desambiguar por-lei).
+    const drafter = new GeminiDrafter(
+      fakeModel({
+        tipo: 'esclarecimento',
+        pontos: [
+          {
+            titulo: 'Regime jurídico',
+            argumento:
+              'A Lei 8.666/93 está revogada; ademais a IN 05/2017 ' +
+              'igualmente perdeu vigência e não pode reger a habilitação.',
+          },
+        ],
+        leisCitadas: [
+          { numero: '8666', ano: 1993, afirmacaoVigencia: 'revogada' },
+          { numero: '5', ano: 2017, afirmacaoVigencia: 'nenhuma' },
+        ],
+      }) as never
+    );
+
+    const oficio = await drafter.redigir(e);
+    expect(oficio).not.toBeNull();
+    const md = oficio!.markdown;
+
+    // Campos estruturados ficam corretos (guard não rebaixou):
+    expect(
+      oficio!.leisCitadas.find((l) => l.numero === '8666')!.afirmacaoVigencia
+    ).toBe('revogada');
+    expect(
+      oficio!.leisCitadas.find((l) => l.numero === '5')!.afirmacaoVigencia
+    ).toBe('nenhuma');
+
+    // O argumento difamatório do modelo NÃO pode aparecer no markdown final
+    // (backstop léxico rebaixa o ponto para fraseado-pergunta neutro).
+    expect(md).not.toContain('perdeu vigência');
+    expect(md).not.toContain('IN 05/2017 igualmente');
+
+    // A ÚNICA frase de (não)vigência permitida no ofício é a TEMPLATE da
+    // 8666 genuinamente revogada (statusVerificado='revogada'). Não pode
+    // haver QUALQUER léxico de revogação associado à 5/2017.
+    const ocorrencias = md.match(/revogad[ao]/gi) ?? [];
+    // Apenas a frase-template da 8666 (1 menção de "revogada").
+    expect(ocorrencias.length).toBeGreaterThanOrEqual(1);
+    expect(md).toMatch(/8\.?666[\s\S]*encontra-se revogada/i);
+    // Nenhuma frase de vigência ligada à 05/2017:
+    expect(md).not.toMatch(/05\/?2017[^.]*?(revogad|perdeu vig|sem vig)/i);
+    expect(md).not.toMatch(/(revogad|perdeu vig|sem vig)[^.]*?05\/?2017/i);
+  });
+
+  it('(C2) duas leis mesmo numero/ano (uma revogada, uma contestada) → lookup ambíguo NUNCA afirma revogação', async () => {
+    const leiDup1 = { ...leiRevogada, descricao: 'Lei X (a)', numero: '777', ano: 2000, statusVerificado: 'revogada' as const };
+    const leiDup2 = { ...leiContestada, descricao: 'Lei X (b)', numero: '777', ano: 2000, statusVerificado: 'contestada' as const };
+    const e = baseExtraction({
+      leisReferenciadas: [leiDup1, leiDup2],
+      pontosDeAtencao: [pontoManifesta],
+    });
+    const drafter = new GeminiDrafter(
+      fakeModel({
+        tipo: 'esclarecimento',
+        pontos: [
+          { titulo: 'Norma', argumento: 'Questiona-se a norma invocada.' },
+        ],
+        // Modelo tenta afirmar revogação da chave ambígua.
+        leisCitadas: [
+          { numero: '777', ano: 2000, afirmacaoVigencia: 'revogada' },
+        ],
+      }) as never
+    );
+
+    const oficio = await drafter.redigir(e);
+    expect(oficio).not.toBeNull();
+    // Chave não-única → não dá pra atribuir com segurança → nenhuma/neutro.
+    const lei = oficio!.leisCitadas.find((l) => l.numero === '777');
+    expect(lei!.afirmacaoVigencia).toBe('nenhuma');
+    expect(oficio!.markdown).not.toMatch(LEXICO_VIGENCIA);
+  });
+
+  it('(C2) numero:null nunca é match confiável → nunca afirma revogação', async () => {
+    const leiSemNumero = {
+      ...leiRevogada,
+      descricao: 'Norma sem número identificável',
+      numero: null,
+      ano: null,
+      statusVerificado: 'revogada' as const,
+    };
+    const e = baseExtraction({
+      leisReferenciadas: [leiSemNumero],
+      pontosDeAtencao: [pontoManifesta],
+    });
+    const drafter = new GeminiDrafter(
+      fakeModel({
+        tipo: 'esclarecimento',
+        pontos: [{ titulo: 'Norma', argumento: 'Questiona-se a norma.' }],
+        leisCitadas: [
+          { numero: null, ano: null, afirmacaoVigencia: 'revogada' },
+        ],
+      }) as never
+    );
+
+    const oficio = await drafter.redigir(e);
+    expect(oficio).not.toBeNull();
+    const lei = oficio!.leisCitadas.find((l) => l.numero === null);
+    expect(lei!.afirmacaoVigencia).toBe('nenhuma');
+    expect(oficio!.markdown).not.toMatch(LEXICO_VIGENCIA);
+  });
+
+  it('(I1) incoerência lei-revogada com "revogada" na descrição + modelo rebaixado → ofício neutro NÃO contém /revogad/i', async () => {
+    // Cenário onde o guard rebaixa (lei contestada, modelo tentou revogada) →
+    // ofício neutro determinístico. A incoerência traz "revogada" na
+    // descrição (texto LLM a montante). O ofício neutro deve ser provadamente
+    // sem léxico de vigência.
+    const e = baseExtraction({
+      leisReferenciadas: [leiContestada],
+      incoerencias: [
+        {
+          tipo: 'lei-revogada',
+          descricao: 'A Lei 8.666/93 foi revogada pela 14.133.',
+          severidade: 'alta',
+        },
+      ],
+      trechosAmbiguos: [
+        {
+          trechoLiteral: 'a norma deixou de viger',
+          porQueAmbiguo: 'A redação sugere que a norma perdeu vigência.',
+          secaoOndeAparece: 'item 7',
+        },
+      ],
+    });
+    const drafter = new GeminiDrafter(
+      fakeModel({
+        tipo: 'esclarecimento',
+        pontos: [{ titulo: 'X', argumento: 'Y' }],
+        // Modelo tenta revogada numa lei contestada → guard rebaixa →
+        // ofício neutro determinístico.
+        leisCitadas: [
+          { numero: '5', ano: 2017, afirmacaoVigencia: 'revogada' },
+        ],
+      }) as never
+    );
+
+    const oficio = await drafter.redigir(e);
+    expect(oficio).not.toBeNull();
+    // Ofício neutro: NENHUM léxico de (não)vigência (escrubado por categoria).
+    expect(oficio!.markdown).not.toMatch(LEXICO_VIGENCIA);
+    expect(oficio!.markdown).not.toMatch(/revogad/i);
+    expect(oficio!.markdown).toMatch(/solicita-se esclarecimento/i);
+  });
+
+  it('(I2) incoerência só severidade:baixa, nada mais → redigir retorna null (gate B não dispara)', async () => {
+    const e = baseExtraction({
+      incoerencias: [
+        {
+          tipo: 'outro',
+          descricao: 'Pequena divergência de formatação.',
+          severidade: 'baixa',
+        },
+      ],
+    });
+    const drafter = new GeminiDrafter(
+      fakeModel({ tipo: 'esclarecimento', pontos: [], leisCitadas: [] }) as never
+    );
+    const oficio = await drafter.redigir(e);
+    expect(oficio).toBeNull();
+  });
+
+  it('(I2) incoerência severidade:media → gate B dispara (não-null)', async () => {
+    const e = baseExtraction({
+      incoerencias: [
+        {
+          tipo: 'valor-divergente',
+          descricao: 'Valor da capa diverge do termo de referência.',
+          severidade: 'media',
+        },
+      ],
+    });
+    const drafter = new GeminiDrafter(
+      fakeModel({
+        tipo: 'esclarecimento',
+        pontos: [{ titulo: 'Valor', argumento: 'Há divergência de valor.' }],
+        leisCitadas: [],
+      }) as never
+    );
+    const oficio = await drafter.redigir(e);
+    expect(oficio).not.toBeNull();
   });
 });
