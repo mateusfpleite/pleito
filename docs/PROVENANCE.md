@@ -1,139 +1,139 @@
-# Pleito — Proveniência & Decisões
+# Pleito — Provenance & Decisions
 
-> Log **append-only** da trilha de evidências e decisões. Estado atual do produto em `SPEC.md`. Aqui fica o *como chegamos lá* e *com base em quê* — material de rigor para o pitch Amber e de continuidade.
+> **Append-only** log of the evidence trail and decisions. The product's current state is in `SPEC.md`. Here lies *how we got there* and *based on what* — rigor material for the Amber pitch and for continuity.
 
-**Iniciado:** 2026-05-13 · **Última entrada:** 2026-05-15
+**Started:** 2026-05-13 · **Last entry:** 2026-05-15
 
 ---
 
-## 1. Origem (2026-05-13)
+## 1. Origin (2026-05-13)
 
-Objetivo: demonstrar engenharia agêntica para candidatura na Amber AI (agentic OS para marcas com supply chain físico; stack Next.js+Supabase+Prisma+Mastra/LangChain). Ideia-semente: fluxo agêntico sobre licitações públicas (PNCP). Pivô para dor real via Stefany (irmã), estruturando a área de licitações da Zelo (serviços funerários, ~todos os municípios do Brasil).
+Objective: demonstrate agentic engineering for an application to Amber AI (agentic OS for brands with a physical supply chain; stack Next.js+Supabase+Prisma+Mastra/LangChain). Seed idea: an agentic flow over public procurement (PNCP). Pivot to real pain via Stefany (sister), structuring Zelo's procurement area (funeral services, ~all municipalities of Brazil).
 
-## 2. Descoberta do problema
+## 2. Problem discovery
 
-Método: pergunta aberta sobre dor, sem apresentar soluções. Áudios da Stefany (trechos canônicos):
+Method: an open question about pain, without presenting solutions. Audio clips from Stefany (canonical excerpts):
 
-> "não sei se tem como automatizar não (...) tem que ler. A lei tem muitas brechas (...) cada município tem uma lei (...) a Zelo tem unidade em quase todos os municípios"
+> "I don't know if there's a way to automate it (...) you have to read it. The law has many loopholes (...) each municipality has its own law (...) Zelo has a unit in almost every municipality"
 
-> "minha dificuldade é questão de lei (...) não tem como eu gravar a lei de cada município (...) [chefe ex-dev] a dificuldade maior seria um software de ajuda financeira (...) processo licitatório não é volume tão grande"
+> "my difficulty is the matter of the law (...) there's no way for me to memorize the law of each municipality (...) [ex-dev boss] the bigger difficulty would be a financial-aid software (...) the procurement process is not such a big volume"
 
-**Reframe:** não automatizar a leitura (insubstituível) — fazer o trabalho *em volta* dela. Dor financeira do chefe → V4. **Princípio metodológico:** especialista de domínio não-técnico → extrair dor, nunca apresentar opções de solução.
+**Reframe:** do not automate the reading (irreplaceable) — do the work *around* it. The boss's financial pain → V4. **Methodological principle:** a non-technical domain expert → extract the pain, never present solution options.
 
-## 3. Editais de referência
+## 3. Reference editais
 
-Coletados: Dom Basílio/BA PE 90065/2025 (baseline, divergência de valor capa×TR), Jaborandi/BA PE 008/2025 (**capa mentirosa** "caminhões pipa", lei revogada anacrônica), Niterói/RJ ION PE 90005/2025 (regime 13.303, valor sigiloso, anexo ausente). Enviados pela Stefany: Mata Grande/AL PE 016/2026 (edital + análise dela) e ofício de esclarecimento de Pariconha/AL (formato real).
+Collected: Dom Basílio/BA PE 90065/2025 (baseline, cover×TR value divergence), Jaborandi/BA PE 008/2025 (**lying cover** "water tankers", anachronistic revogada law), Niterói/RJ ION PE 90005/2025 (regime 13.303, confidential value, missing annex). Sent by Stefany: Mata Grande/AL PE 016/2026 (edital + her analysis) and a clarification ofício from Pariconha/AL (real format).
 
-## 4. Evolução do schema
+## 4. Schema evolution
 
-v0 (hipótese) → v1 (Dom Basílio+Jaborandi: objetoCapa/Corpo, procedência de valor, itens, incoerencias×trechosAmbiguos, habilitação estruturada) → v2 (Niterói: regimeJuridico top-level, anexos.presenteNoArquivo, tipoNorma, regimeExecucao) → v3 (Mata Grande: plataforma, subcontratacao, intervaloMinimoLances, prazoRecursos, informacoesViabilidade, **pontosDeAtencao[]**).
+v0 (hypothesis) → v1 (Dom Basílio+Jaborandi: objetoCapa/Corpo, value provenance, items, incoerencias×trechosAmbiguos, structured habilitação) → v2 (Niterói: regimeJuridico top-level, anexos.presenteNoArquivo, tipoNorma, regimeExecucao) → v3 (Mata Grande: plataforma, subcontratacao, intervaloMinimoLances, prazoRecursos, informacoesViabilidade, **pontosDeAtencao[]**).
 
-## 5. Seleção de modelo
+## 5. Model selection
 
-Benchmark (mai/2026): Gemini 2.5 Flash aprovado (1M context, MMLU-Pro 80.9, $0.30/$2.50). Flash Lite reprovado (bugs structured output). GPT-5.4 mini ok mas 2.5x mais caro. Haiku 4.5 fraco p/ extractor (200k), forte p/ tool use. DeepSeek reprovado (PT-BR jurídico não validado). POC contra os 3 editais: 100% schema válido, 71s médio, $0.056/edital, pegou capa mentirosa + lei revogada + sigiloso + anexo ausente.
+Benchmark (May/2026): Gemini 2.5 Flash approved (1M context, MMLU-Pro 80.9, $0.30/$2.50). Flash Lite rejected (structured-output bugs). GPT-5.4 mini ok but 2.5x more expensive. Haiku 4.5 weak for the extractor (200k), strong for tool use. DeepSeek rejected (PT-BR legal not validated). POC against the 3 editais: 100% schema valid, 71s average, $0.056/edital, caught the lying cover + revogada law + confidential + missing annex.
 
-## 6. Validação da premissa de heterogeneidade
+## 6. Validation of the heterogeneity premise
 
-Pesquisa em 15 municípios: lei funerária municipal existe em 14/15 (competência constitucional, art. 30 V CF + ADI 1.221/RJ); concessões variam de fato (STF ADPF 756/2021 validou rodízio de Curitiba); **exigências sanitárias mais federais do que Stefany supôs** (RDC ANVISA 33/2011, 662/2022, CONAMA 335/2003). Reframe: o moat não é a lei funerária isolada (conteúdo repetitivo) — é o **stack regulatório composto** por município.
+Research across 15 municipalities: a municipal funeral law exists in 14/15 (constitutional competence, art. 30 V CF + ADI 1.221/RJ); concessions do vary in practice (STF ADPF 756/2021 validated Curitiba's rotation); **sanitary requirements are more federal than Stefany supposed** (RDC ANVISA 33/2011, 662/2022, CONAMA 335/2003). Reframe: the moat is not the isolated funeral law (repetitive content) — it is the **composite regulatory stack** per municipality.
 
-## 7. Cenário competitivo
+## 7. Competitive landscape
 
-~20 players brasileiros, todos horizontais, IA fina sobre LLM, pricing R$ 40-2.000/mês. Software funerário (Dream/PROGEM/Unymos): só operacional. Internacional (Govini/GovDash): maduro, horizontal. **White space:** ninguém cura stack regulatório municipal por setor. TAM honesto: ~R$ 7M ARR nicho funerário; R$ 50-100M agregado B2G municipal.
+~20 Brazilian players, all horizontal, thin AI over an LLM, pricing R$ 40-2,000/month. Funeral software (Dream/PROGEM/Unymos): operational only. International (Govini/GovDash): mature, horizontal. **White space:** nobody curates the municipal regulatory stack by sector. Honest TAM: ~R$ 7M ARR funeral niche; R$ 50-100M aggregate municipal B2G.
 
-## 8. Rodada de validação com Stefany (2026-05-14)
+## 8. Validation round with Stefany (2026-05-14)
 
-**Orgânico (WhatsApp, alta confiança):** "elaborasse um esclarecimento para as divergências"; "impugnasse se fosse o caso"; "colocar os pontos de risco". Artefatos reais: análise Mata Grande (formato dela, seção "Pontos de Atenção"), ofício Pariconha.
+**Organic (WhatsApp, high confidence):** "draft a clarification for the divergences"; "challenge it if appropriate"; "list the risk points". Real artifacts: the Mata Grande analysis (her format, "Pontos de Atenção" section), the Pariconha ofício.
 
-**Crítico:** ela usou ChatGPT para expandir a resposta ("joguei no chat aqui pra ele ajudar"). Decomposição por confiança:
-- **Tier 1 (canônico):** esclarecimento, impugnação, pontos de risco, campos do formato dela.
-- **Tier 2 (provável, confirmar):** análise operacional funerária (24h, plantões, base local, cobertura rural), inexequibilidade, classificação fornecimento×serviço, indícios de direcionamento.
-- **Tier 3 (framing LLM, não construir):** "mapa de riscos" como dashboard com taxonomias formais; recurso/diligência não solicitados organicamente.
+**Critical:** she used ChatGPT to expand the response ("I dropped it into the chat here to help"). Decomposition by confidence:
+- **Tier 1 (canonical):** clarification, challenge, risk points, fields of her format.
+- **Tier 2 (probable, confirm):** funeral operational analysis (24h, on-call shifts, local base, rural coverage), unfeasibility, supply×service classification, signs of bid-rigging.
+- **Tier 3 (LLM framing, do not build):** "risk map" as a dashboard with formal taxonomies; appeal/diligence not organically requested.
 
-**Leitura de engajamento:** recorrer ao ChatGPT sinaliza empolgação não-alta. Decisão: não pedir mais feedback (geraria Tier 3); liderar por produto — entregar algo funcional, uso real é o sinal verdadeiro. Plataforma: **app web** (ela é assistente, não dev — CLI descartada).
+**Engagement reading:** resorting to ChatGPT signals non-high enthusiasm. Decision: do not ask for more feedback (it would generate Tier 3); lead by product — deliver something functional, real usage is the true signal. Platform: **web app** (she is an assistant, not a dev — CLI discarded).
 
-## 9. Decisão de arquitetura
+## 9. Architecture decision
 
-Enricher enumerativo de leis **removido do V0** (Stefany não pediu; análise dela não tem resumo de leis). Pipeline vira 3 agentes em pipeline condicional (Extractor → Risk Analyst → Drafter). Tool repropositada: de enumerar leis → fundamentar argumentos do ofício. Posterior reversão parcial (§12) reintroduziu verificação de forma cirúrgica.
+The enumerative law enricher was **removed from V0** (Stefany did not ask for it; her analysis has no law summary). The pipeline becomes 3 agents in a conditional pipeline (Extractor → Risk Analyst → Drafter). The tool was repurposed: from enumerating laws → grounding the ofício's arguments. A later partial reversal (§12) reintroduced verification surgically.
 
-## 10. Estudo de base rate (2026-05-15)
+## 10. Base-rate study (2026-05-15)
 
-24 editais, 13 UFs, schema focado. **38% citam ≥1 norma revogada; 25% caso não-notório; 0 municipal revogada** (refuta hipótese de alucinação municipal — prefeitura cita lei vigente). O perigo real: norma federal infralegal antiga de copy-paste (IN SEGES 05/2017 4×, IN SLTI 01/2010 3×, etc.). Verificação de acurácia (7 casos com gabarito manual): **Gemini puro 4/7 errado, todos falso-positivo de revogação, conf=alta**. Conclusão: comum e inseguro → verificação volta ao V0, mas cirúrgica (só o subconjunto flagrado, federal verificável — não a cauda municipal).
+24 editais, 13 UFs, a focused schema. **38% cite ≥1 revogada norma; 25% a non-notorious case; 0 municipal revogada** (refutes the municipal-hallucination hypothesis — the city hall cites a law that is in force). The real danger: an old federal infralegal norma copy-pasted (IN SEGES 05/2017 4×, IN SLTI 01/2010 3×, etc.). Accuracy verification (7 cases with a manual answer key): **pure Gemini 4/7 wrong, all false-positive of revogação, conf=high**. Conclusion: common and unsafe → verification returns to V0, but surgical (only the flagged subset, federal verifiable — not the municipal tail).
 
-## 11. Spike Norma Verifier v1 (2026-05-15)
+## 11. Norma Verifier v1 spike (2026-05-15)
 
-Gemini 2.5 Flash + Google Search grounding vs 7 casos: 86% status, 100% escopo, pegou os 2 piores (Lei 9.704 inexistente, Lei 6.544 escopo estadual). 1 "erro perigoso": IN SEGES 05/2017 (disse vigente; gabarito dizia revogada).
+Gemini 2.5 Flash + Google Search grounding vs 7 cases: 86% status, 100% scope, caught the 2 worst ones (Law 9.704 nonexistent, Law 6.544 state scope). 1 "dangerous error": IN SEGES 05/2017 (said in force; the answer key said revogada).
 
-## 12. Horda de gap scan + correção crítica (2026-05-15)
+## 12. Gap-scan horde + critical correction (2026-05-15)
 
-4 agentes paralelos (verificar pendentes+auditar; gap scan pregão N/NE/CO; concessão S/SE; credenciamento/leilão).
+4 parallel agents (verify pending+audit; gap scan pregão N/NE/CO; concession S/SE; credentialing/auction).
 
-**Correção crítica:** o gabarito da IN SEGES 05/2017 estava **errado** — herdado da 1ª verificação manual (que se auto-ressalvou "confirmar item 3"). IN 98/2022 NÃO revogou expressamente a 05/2017; vigente, recepção supletiva sob 14.133, alcance controverso. Logo o "erro perigoso" do spike v1 era o **modelo certo, gabarito errado**. Lição: até verificação manual diligente erra na 1ª passada — valida a tabela curada com proveniência e a contenção (status infralegal recepcionado = zona-cinzenta, nunca afirmar binário).
+**Critical correction:** the answer key for IN SEGES 05/2017 was **wrong** — inherited from the 1st manual verification (which self-flagged "confirm item 3"). IN 98/2022 did NOT expressly revoke 05/2017; in force, supplementary reception under 14.133, controversial reach. So the v1 spike's "dangerous error" was the **right model, wrong answer key**. Lesson: even diligent manual verification errs on the 1st pass — it validates the curated table with provenance and the containment (received infralegal status = zona-cinzenta, never assert binary).
 
-**Gaps confirmados** (todos VIGENTES, entram como âncora anti-falso-positivo): regime 14.133 (Dec 11.462/23 SRP, Dec 11.246/22, Dec 11.878/24, Lei 12.846/13, LGPD, LC 147/14, Lei 12.440/11); concessão (Lei 8.987/95, 9.074/95, 11.079/04); assistência social (LOAS 8.742/93, Lei 12.435/11). Fantasma: "Lei 13.144/2021" (como a 9.704). Resultado: `data/norma-baseline.json` v0.2 — 25 entradas sourced, 5 categorias.
+**Confirmed gaps** (all IN FORCE, enter as an anti-false-positive anchor): regime 14.133 (Dec 11.462/23 SRP, Dec 11.246/22, Dec 11.878/24, Law 12.846/13, LGPD, LC 147/14, Law 12.440/11); concession (Law 8.987/95, 9.074/95, 11.079/04); social assistance (LOAS 8.742/93, Law 12.435/11). Phantom: "Law 13.144/2021" (like 9.704). Result: `data/norma-baseline.json` v0.2 — 25 sourced entries, 5 categories.
 
-## 13. Spike Norma Verifier v2 (2026-05-15)
+## 13. Norma Verifier v2 spike (2026-05-15)
 
-Com baseline injetada + gabarito corrigido: **7/7 status, 7/7 escopo, 7/7 via baseline (zero grounding pago), 0 erro perigoso**. IN 05/2017 resolve como `incerto` (zona-cinzenta → vira pergunta). Gate 1 fechado. Gate 2 (deploy/auth): decidido Vercel + auth mínima. Ambos pré-build limpos. Custo do Verifier ≈ zero no conjunto recorrente.
+With the injected baseline + corrected answer key: **7/7 status, 7/7 scope, 7/7 via baseline (zero paid grounding), 0 dangerous error**. IN 05/2017 resolves as `incerto` (zona-cinzenta → becomes a question). Gate 1 closed. Gate 2 (deploy/auth): decided Vercel + minimal auth. Both pre-build clean. Verifier cost ≈ zero on the recurring set.
 
-## 14. Convenção de prompt (2026-05-15)
+## 14. Prompt convention (2026-05-15)
 
-Decidido template padrão dos 4 agentes: System (papel→regras→few-shot, cacheável) + User (contexto grande→tarefa→contrato de saída, recência long-context). Gold examples = artefatos reais validados (3 editais, análise Mata Grande, ofício Pariconha, baseline por categoria), versionados como assets.
+Decided the standard template for the 4 agents: System (role→rules→few-shot, cacheable) + User (large context→task→output contract, long-context recency). Gold examples = validated real artifacts (3 editais, Mata Grande analysis, Pariconha ofício, baseline per category), versioned as assets.
 
-## 15. Decisões arquiteturais — log
+## 15. Architectural decisions — log
 
-| Data | Decisão | Justificativa |
+| Date | Decision | Rationale |
 |---|---|---|
-| 05-13 | Foco compliance (não financeiro) | MVP enxuto, tese vertical AI |
-| 05-14 | Gemini 2.5 Flash | 4 critérios bloqueantes; $0.06/edital |
-| 05-14 | AI SDK puro, sem Mastra V0 | YAGNI até V2 |
-| 05-14 | Hexagonal nos ports | troca de provider 1-liner |
-| 05-14 | Reframe "stack regulatório composto" | validação empírica 15 municípios |
-| 05-14 | Nome "Pleito" | desacoplar do cliente-âncora |
-| 05-15 | Remover enricher enumerativo do V0 | Tier 1: Stefany não pediu |
-| 05-15 | Verifier 3-camadas (baseline→grounding→contenção) | base rate: modelo 57% acurácia, inseguro |
-| 05-15 | `norma-baseline.json` como ativo curado | moat materializado no V0 |
-| 05-15 | Dashboard single-edital + PDF on-demand | UX de triagem + segurança (review antes de export) |
-| 05-15 | Persistir conteúdo, nunca PDF | derivado regenerável grátis |
-| 05-15 | Deploy Vercel + auth mínima | Stefany acessa por URL |
-| 05-15 | Docs por cadência (SPEC vivo / PROVENANCE append-only / pitch) | cadências de atualização distintas |
-| 05-15 | Arquitetura async: Vercel UI + worker container + jobs | plan-review: pipeline 90-160s estoura serverless |
-| 05-15 | `pdftotext`/chromium no Dockerfile do worker (sem Python) | 3 bloqueantes de infra colapsam na decisão async |
-| 05-15 | Gate A roda baseline matcher em TODAS as leis | fechar falso-negativo do extractor; remover sinal "incerto" fantasma |
-| 05-15 | Eval: Tier 0 property-based no V0; acurácia/decisão V1 da telemetria | observabilidade-sobre-eval-a-priori; uso real define o que testar |
-| 05-15 | Auth V0 = segredo env + cookie assinado (single-user) | decidir antes do build (era gate de done vago) |
+| 05-13 | Compliance focus (not financial) | Lean MVP, vertical-AI thesis |
+| 05-14 | Gemini 2.5 Flash | 4 blocking criteria; $0.06/edital |
+| 05-14 | Pure AI SDK, no Mastra V0 | YAGNI until V2 |
+| 05-14 | Hexagonal at the ports | provider swap is a 1-liner |
+| 05-14 | "Composite regulatory stack" reframe | empirical validation across 15 municipalities |
+| 05-14 | Name "Pleito" | decouple from the anchor customer |
+| 05-15 | Remove the enumerative enricher from V0 | Tier 1: Stefany did not ask |
+| 05-15 | 3-layer Verifier (baseline→grounding→containment) | base rate: model 57% accuracy, unsafe |
+| 05-15 | `norma-baseline.json` as a curated asset | moat materialized in V0 |
+| 05-15 | Single-edital dashboard + on-demand PDF | triage UX + safety (review before export) |
+| 05-15 | Persist content, never the PDF | a free regenerable derivative |
+| 05-15 | Deploy Vercel + minimal auth | Stefany accesses by URL |
+| 05-15 | Docs by cadence (living SPEC / append-only PROVENANCE / pitch) | distinct update cadences |
+| 05-15 | Async architecture: Vercel UI + worker container + jobs | plan-review: a 90-160s pipeline blows the serverless limit |
+| 05-15 | `pdftotext`/chromium in the worker's Dockerfile (no Python) | 3 infra blockers collapse under the async decision |
+| 05-15 | Gate A runs the baseline matcher over ALL laws | close the extractor's false-negative; remove the phantom "uncertain" signal |
+| 05-15 | Eval: property-based Tier 0 in V0; accuracy/decision V1 from telemetry | observability-over-a-priori-eval; real usage defines what to test |
+| 05-15 | Auth V0 = env secret + signed cookie (single-user) | decide before the build (it was a vague done gate) |
 
-## 16. Lições metodológicas (transferíveis)
+## 16. Methodological lessons (transferable)
 
-1. Validar premissas empiricamente antes de construir — inclusive o próprio gabarito (IN 05/2017).
-2. Especialista de domínio + LLM = dor real + framing decorativo; decompor por confiança (orgânico × artefato × LLM-expandido).
-3. Engajamento morno → liderar por produto, não pedir mais feedback.
-4. Schema e baseline evoluem contra editais reais, não hipótese.
-5. Defense in depth: nenhuma camada de segurança sozinha basta; verificação difícil até manualmente → curadoria com proveniência + contenção.
-6. Plan-review adversarial antes de executar paga 10x: pegou furos de premissa e infra que custariam caro em build.
-7. Decisões corretas colapsam problemas: a escolha async dissolveu 3 bloqueantes de infra (timeout, pdftotext, chromium) de uma vez — não force solução nova (Python) pra problema que outra decisão já resolve.
-8. Eval honesto é dirigido por consequência de falha e uso real, não pelos artefatos que se acumulou; segurança catastrófica é property-based e embarca antes do 1º uso, acurácia nasce da telemetria.
+1. Validate premises empirically before building — including the answer key itself (IN 05/2017).
+2. Domain expert + LLM = real pain + decorative framing; decompose by confidence (organic × artifact × LLM-expanded).
+3. Lukewarm engagement → lead by product, do not ask for more feedback.
+4. Schema and baseline evolve against real editais, not hypothesis.
+5. Defense in depth: no single security layer is enough; verification hard even manually → curation with provenance + containment.
+6. Adversarial plan-review before executing pays 10x: it caught premise and infra holes that would cost dearly in the build.
+7. Correct decisions collapse problems: the async choice dissolved 3 infra blockers (timeout, pdftotext, chromium) at once — do not force a new solution (Python) for a problem another decision already solves.
+8. Honest eval is driven by failure consequence and real usage, not by the artifacts that accumulated; catastrophic safety is property-based and ships before the 1st use, accuracy is born from telemetry.
 
 ---
 
-## 17. Plan-review adversarial do plano V0 (2026-05-15)
+## 17. Adversarial plan-review of the V0 plan (2026-05-15)
 
-Subagente fresco (skill plan-review) revisou `docs/plans/2026-05-15-pleito-v0.md` contra o código real. Verdict **NEEDS REVISION**, 10 required changes. Bloqueantes:
+A fresh subagent (plan-review skill) reviewed `docs/plans/2026-05-15-pleito-v0.md` against the real code. Verdict **NEEDS REVISION**, 10 required changes. Blockers:
 
-- **Timeout serverless (furo do SPEC §11):** pipeline ~90-160s; Vercel Hobby 10s / Pro 60-300s. Rota síncrona inviável.
-- **`pdftotext` ausente no Vercel (furo SPEC §6/plano):** POC "funcionou" só local.
-- **Playwright/chromium idem** no PDF export.
-- **"Portar sem reescrever" falso:** `extract.ts`/`spike-verifier.ts` são scripts CLI (`main()`, GABARITO hardcoded, `generateText`+regex), sem `montarPrompt`/injeção de model; few-shot do SPEC §7 **não existem no POC**.
-- **Gate A falso-negativo (furo lógico SPEC §5):** dispara só se extractor marcou `revogada=true`; sinal "incerto" não existe no schema.
-- Menores: fixture `fixtures/editais/jaborandi.zip` inexistente; normalização de `numero` não especificada (núcleo do moat); Prisma serverless (pooling/directUrl/generate); tsconfig `include` não cobre `domain/`; auth adiada; `next@latest` sem pin.
+- **Serverless timeout (SPEC §11 hole):** pipeline ~90-160s; Vercel Hobby 10s / Pro 60-300s. A synchronous route is unviable.
+- **`pdftotext` absent on Vercel (SPEC §6/plan hole):** the POC "worked" only locally.
+- **Playwright/chromium likewise** in PDF export.
+- **"Port without rewriting" false:** `extract.ts`/`spike-verifier.ts` are CLI scripts (`main()`, hardcoded GABARITO, `generateText`+regex), with no `montarPrompt`/model injection; the SPEC §7 few-shot examples **do not exist in the POC**.
+- **Gate A false-negative (SPEC §5 logic hole):** triggers only if the extractor flagged `revogada=true`; an "uncertain" signal does not exist in the schema.
+- Minor: the `fixtures/editais/jaborandi.zip` fixture does not exist; `numero` normalization not specified (the core of the moat); serverless Prisma (pooling/directUrl/generate); tsconfig `include` does not cover `domain/`; auth deferred; `next@latest` not pinned.
 
-## 18. Correção de arquitetura (2026-05-15)
+## 18. Architecture correction (2026-05-15)
 
-Os 3 bloqueantes de infra tinham causa raiz comum (constraint serverless Vercel). Decisão async → pipeline sai pro **worker container** controlado: `pdftotext -layout` (validado no POC) e chromium voltam via Dockerfile; sem timeout. **Python não necessário** (só se justificaria por qualidade que o POC já provou suficiente — YAGNI). Vercel fica thin (UI/API/polling/export). Ver SPEC §3/§4/§14.
+The 3 infra blockers had a common root cause (the Vercel serverless constraint). Async decision → the pipeline moves to a controlled **worker container**: `pdftotext -layout` (validated in the POC) and chromium return via the Dockerfile; no timeout. **Python not needed** (it would only be justified by a quality the POC already proved sufficient — YAGNI). Vercel stays thin (UI/API/polling/export). See SPEC §3/§4/§14.
 
-## 19. Fix do Gate A (2026-05-15)
+## 19. Gate A fix (2026-05-15)
 
-Baseline matcher passa a rodar em TODAS as `leisReferenciadas` (lookup local determinístico, custo zero), não só nas flagradas. Pega lei revogada conhecida mesmo com extractor em falso-negativo. Sinal "incerto" (inexistente) removido do design. Ver SPEC §5.
+The baseline matcher now runs over ALL `leisReferenciadas` (deterministic local lookup, zero cost), not just the flagged ones. It catches a known revogada law even with the extractor in a false-negative. The "uncertain" signal (nonexistent) was removed from the design. See SPEC §5.
 
-## 20. Reframe do eval (2026-05-15)
+## 20. Eval reframe (2026-05-15)
 
-Crítica do usuário: o eval proposto era dirigido pelos artefatos acumulados, não pela consequência da falha. Re-derivado por dano: #0 ofício externo falso (catastrófico, irreversível) → #1 omitir/inventar bloqueador (severo, silencioso) → #2 prazo/requisito crítico → #3 ruído → #4 cosmético. Reframe: checks catastróficos são **propriedade estrutural** (generalizam, não dependem de corpus). Pivô final do usuário: **construir + observar uso real**; eval de acurácia/decisão nasce da telemetria (V1), não a-priori. **Tier 0 (contenção/faithfulness, determinístico) embarca no V0** — dano catastrófico não pode "aprender com o uso". Sinal-ouro: diff ofício gerado×exportado. Ver SPEC §11.
+User critique: the proposed eval was driven by the accumulated artifacts, not by the failure's consequence. Re-derived by damage: #0 a false external ofício (catastrophic, irreversible) → #1 omit/invent a blocker (severe, silent) → #2 critical deadline/requirement → #3 noise → #4 cosmetic. Reframe: catastrophic checks are a **structural property** (they generalize, they do not depend on a corpus). The user's final pivot: **build + observe real usage**; accuracy/decision eval is born from telemetry (V1), not a-priori. **Tier 0 (containment/faithfulness, deterministic) ships in V0** — catastrophic damage cannot "learn from usage". Gold signal: the generated×exported ofício diff. See SPEC §11.
