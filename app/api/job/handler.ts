@@ -16,6 +16,39 @@
 import type { JobRepo } from '../../../domain/ports.ts';
 import { empacotarInput } from '../../../infrastructure/input-envelope.ts';
 
+/**
+ * I-1 — Guard de tamanho UPSTREAM (antes de empacotar/persistir).
+ *
+ * O cap anti zip-bomb do Preprocessor (`MAX_DESCOMPRIMIDO_BYTES` = 50 MB)
+ * só roda DENTRO do worker, DEPOIS de o input já ter trafegado no body do
+ * POST e sido persistido em `Job.inputRef`. Sem um teto aqui, um upload
+ * grande: (a) infla ~33 % ao virar base64 no envelope → row gigante; e
+ * (b) na Vercel Hobby o platform corta o body em ~4.5 MB ANTES do nosso
+ * código, gerando um 413 opaco do edge sem Job criado.
+ *
+ * RACIONAL DO NÚMERO (8 MiB pré-base64):
+ * - Editais reais do corpus ficam < ~5 MB (o maior < 5 MB) → 8 MiB cobre
+ *   o pior caso real com folga, sem ser permissivo a abuso.
+ * - 8 MiB de bytes crus → ~10.7 MiB em base64 no `inputRef` (×1.37):
+ *   confortavelmente ABAIXO do cap de descompressão (50 MB), mantendo a
+ *   invariante "teto de upload ≤ cap de descompressão" (este guard nunca
+ *   deixa passar algo que o Preprocessor depois rejeitaria por tamanho).
+ * - TENSÃO DE DEPLOY conhecida: a Vercel Hobby limita o body a ~4.5 MB no
+ *   platform — abaixo destes 8 MiB. Em Hobby, uploads de 4.5–8 MiB são
+ *   barrados pelo edge (413 opaco) ANTES do nosso 413 claro. Aceitável p/
+ *   o corpus (< 5 MB); resolver no deploy (plano Pro / body maior) é
+ *   resíduo documentado no SPEC §14. Mantemos 8 MiB (não 4.5) p/ não
+ *   amarrar a regra de negócio a um limite de plano de hospedagem.
+ */
+export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
+/** Timeout do trigger fetch (M-3): o disparo que acorda o worker
+ * scale-to-zero não pode pendurar o `/api/job` no cold start do
+ * container. 2 s é suficiente p/ o worker ACEITAR a conexão (ele
+ * responde e processa em background); estourar o prazo é tratado como
+ * falha de trigger — engolida, job fica `pending` p/ repesca. */
+const TRIGGER_TIMEOUT_MS = 2000;
+
 export type JobPostDeps = {
   jobRepo: JobRepo;
   workerUrl: string;
@@ -54,6 +87,21 @@ export function criarJobPOST(deps: JobPostDeps) {
       );
     }
 
+    // I-1: barra UPSTREAM — antes de empacotar (base64 +33 %) e de criar
+    // o Job. Nada é persistido nem o worker é acordado se exceder.
+    if (input.bytes.length > MAX_UPLOAD_BYTES) {
+      return Response.json(
+        {
+          erro:
+            `upload grande demais: ${input.bytes.length} bytes ` +
+            `excede o limite de ${MAX_UPLOAD_BYTES} bytes ` +
+            `(~${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))} MiB). ` +
+            `Editais reais ficam bem abaixo disso.`,
+        },
+        { status: 413 }
+      );
+    }
+
     const inputRef = empacotarInput(input.nomeArquivo, input.bytes);
     const job = await deps.jobRepo.criar(inputRef);
 
@@ -64,6 +112,10 @@ export function criarJobPOST(deps: JobPostDeps) {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ jobId: job.id }),
+        // M-3: sem timeout, um worker em cold start penduraria o
+        // /api/job. Estourar o prazo cai no catch abaixo (mesma
+        // resiliência de qualquer falha de trigger — job pending).
+        signal: AbortSignal.timeout(TRIGGER_TIMEOUT_MS),
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

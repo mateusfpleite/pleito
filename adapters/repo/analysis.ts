@@ -71,8 +71,13 @@ export class PrismaAnalysisRepo implements AnalysisRepo {
   async buscarPorJobId(
     jobId: string
   ): Promise<AnaliseRegistro | null> {
+    // M-2: a invariante de produto é 1:1 (1 análise por job), mas
+    // findFirst SEM ordenação é não-determinístico se a invariante for
+    // violada (reprocesso/bug → 2+ linhas). orderBy createdAt desc
+    // torna o resultado robusto: sempre a análise mais recente.
     const row = (await this.prisma.analysis.findFirst({
       where: { jobId },
+      orderBy: { createdAt: 'desc' },
     })) as AnalysisRow | null;
     return row ? paraRegistro(row) : null;
   }

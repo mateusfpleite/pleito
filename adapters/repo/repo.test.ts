@@ -56,16 +56,34 @@ function makeTable<T extends { [k: string]: unknown }>(pk: keyof T) {
     },
     findFirst: async ({
       where,
+      orderBy,
     }: {
       where: Record<string, unknown>;
+      orderBy?: Record<string, 'asc' | 'desc'>;
     }) => {
-      for (const row of rows.values()) {
-        const ok = Object.entries(where).every(
+      let matches = [...rows.values()].filter((row) =>
+        Object.entries(where).every(
           ([k, v]) => (row as Record<string, unknown>)[k] === v
-        );
-        if (ok) return row;
+        )
+      );
+      // Modela `ORDER BY ... LIMIT 1` do Prisma: ordena antes de
+      // pegar o 1º (M-2 — findFirst sem orderBy é não-determinístico).
+      if (orderBy) {
+        const [[campo, dir]] = Object.entries(orderBy);
+        matches = matches.sort((a, b) => {
+          const av = (a as Record<string, unknown>)[campo] as
+            | Date
+            | number
+            | string;
+          const bv = (b as Record<string, unknown>)[campo] as
+            | Date
+            | number
+            | string;
+          const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+          return dir === 'desc' ? -cmp : cmp;
+        });
       }
-      return null;
+      return matches[0] ?? null;
     },
     update: async ({
       where,
@@ -308,6 +326,42 @@ describe('PrismaAnalysisRepo', () => {
     expect(achado!.id).toBe(salvo.id);
     expect(achado!.jobId).toBe('job-77');
     expect(await repo.buscarPorJobId('job-inexistente')).toBeNull();
+  });
+
+  it('buscarPorJobId é determinístico: 2 análises p/ o mesmo job → a mais recente (M-2)', async () => {
+    const prisma = fakePrisma();
+    const repo = new PrismaAnalysisRepo(prisma);
+    // Invariante de produto é 1:1 (1 análise/job), mas se a invariante
+    // for violada (reprocesso/bug), o findFirst SEM orderBy seria
+    // não-determinístico. orderBy createdAt desc garante a mais nova.
+    const antiga = await repo.salvar({
+      jobId: 'job-dup',
+      municipio: 'Antiga',
+      uf: 'AL',
+      extracao: baseExtraction({ municipio: 'Antiga', uf: 'AL' }),
+      oficioGerado: null,
+      oficioExportado: null,
+    });
+    // Força createdAt mais novo na 2ª linha (o fake materializa
+    // createdAt a partir de data.createdAt quando presente).
+    const nova = await prisma.analysis.create({
+      data: {
+        jobId: 'job-dup',
+        municipio: 'Nova',
+        uf: 'AL',
+        extractionJson: baseExtraction({
+          municipio: 'Nova',
+          uf: 'AL',
+        }),
+        oficioGerado: undefined,
+        oficioExportado: null,
+        createdAt: new Date('2026-06-01T00:00:00Z'),
+      },
+    });
+    const achado = await repo.buscarPorJobId('job-dup');
+    expect(achado!.id).toBe((nova as { id: string }).id);
+    expect(achado!.id).not.toBe(antiga.id);
+    expect(achado!.municipio).toBe('Nova');
   });
 });
 
