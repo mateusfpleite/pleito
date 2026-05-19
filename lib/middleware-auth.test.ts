@@ -3,10 +3,10 @@ import { deveBloquear, ehRotaPublica } from './middleware-auth.ts';
 import { assinarSessao } from './sessao.ts';
 
 /**
- * Testes DETERMINÍSTICOS da decisão pura do middleware (SPEC §14).
- * Sem servidor. Provam a matriz: pública sem cookie → libera; protegida
- * sem/cookie inválido → bloqueia (401 p/ /api/*, redirect p/ navegação);
- * protegida com cookie válido → libera; /admin é protegida.
+ * DETERMINISTIC tests of the middleware's pure decision (SPEC §14). No
+ * server. They prove the matrix: public without cookie → allow; protected
+ * without/invalid cookie → block (401 for /api/*, redirect for
+ * navigation); protected with valid cookie → allow; /admin is protected.
  */
 
 const SECRET = 'secret-mid';
@@ -20,7 +20,7 @@ describe('ehRotaPublica', () => {
     expect(ehRotaPublica('/')).toBe(false);
     expect(ehRotaPublica('/admin')).toBe(false);
     expect(ehRotaPublica('/api/job')).toBe(false);
-    // sem match por prefixo: /login/x não é pública
+    // no prefix match: /login/x is not public
     expect(ehRotaPublica('/login/extra')).toBe(false);
   });
 });

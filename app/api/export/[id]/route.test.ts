@@ -9,7 +9,7 @@ import type {
 } from '../../../../domain/ports.ts';
 import type { PdfEngine } from '../../../../adapters/pdf/render.ts';
 
-/** Telemetria fake in-memory — captura os eventos p/ asserção (§11b). */
+/** In-memory fake telemetria — captures events for assertion (§11b). */
 function fakeTelemetry(): TelemetryPort & {
   eventos: Array<{ evento: string; payload: Record<string, unknown> }>;
 } {
@@ -29,10 +29,10 @@ function fakeTelemetry(): TelemetryPort & {
 }
 
 /**
- * Testes DETERMINÍSTICOS de POST /api/export/:jobId. Sem chromium (engine
- * FAKE — o binário é RESÍDUO de runtime do worker, validado em
- * deploy/E2E). Provam a LÓGICA: persistência do texto editado ANTES da
- * render do ofício; relatório como projeção do JSON; 404; contrato HTTP.
+ * DETERMINISTIC tests of POST /api/export/:jobId. No chromium (FAKE engine
+ * — the binary is worker-runtime RESIDUE, validated in deploy/E2E). They
+ * prove the LOGIC: persisting the edited text BEFORE rendering the ofício;
+ * relatório as a projection of the JSON; 404; HTTP contract.
  */
 
 const extracaoMin = EditalExtractionSchema.parse({
@@ -89,17 +89,17 @@ const extracaoMin = EditalExtractionSchema.parse({
 
 const OFICIO_GERADO_JSON: OficioGerado = {
   tipo: 'esclarecimento',
-  // Texto ORIGINAL do Drafter — NÃO deve aparecer no PDF do ofício se a
-  // Stefany editou (a prova central do §9).
+  // ORIGINAL Drafter text — must NOT appear in the ofício PDF if Stefany
+  // edited it (the central proof of §9).
   markdown:
     '# Ofício GERADO pelo robô\n\nTexto automático que será SUBSTITUÍDO.',
   leisCitadas: [],
 };
 
 /**
- * Repo fake que registra o texto persistido e separa o que está
- * GRAVADO vs. o que está no `oficioGerado` (JSON). `registrarOficioExportado`
- * espelha o Prisma real: grava `oficioExportado`+`oficioExportadoEm`.
+ * Fake repo that records the persisted text and separates what is WRITTEN
+ * vs. what is in `oficioGerado` (JSON). `registrarOficioExportado` mirrors
+ * the real Prisma: writes `oficioExportado`+`oficioExportadoEm`.
  */
 function fakeRepo(registro: AnaliseRegistro | null): AnalysisRepo & {
   persistidoOficio: string | null;
@@ -125,7 +125,7 @@ function fakeRepo(registro: AnaliseRegistro | null): AnalysisRepo & {
         oficioExportado: texto,
         oficioExportadoEm: new Date('2026-05-19T12:00:00Z'),
       };
-      // espelha o estado persistido p/ asserção
+      // mirrors the persisted state for assertion
       (this as { persistidoOficio: string | null }).persistidoOficio =
         texto;
       return atual;
@@ -136,7 +136,7 @@ function fakeRepo(registro: AnaliseRegistro | null): AnalysisRepo & {
   };
 }
 
-/** Engine fake: devolve %PDF e registra o HTML recebido. */
+/** Fake engine: returns %PDF and records the received HTML. */
 function fakeEngine(): PdfEngine & { htmlVisto: string[] } {
   const htmlVisto: string[] = [];
   return {
@@ -192,20 +192,21 @@ describe('POST /api/export/:jobId', () => {
     );
 
     expect(res.status).toBe(200);
-    // (1) o texto editado foi PERSISTIDO via repo (oficioExportado).
+    // (1) the edited text was PERSISTED via the repo (oficioExportado).
     expect(repo.persistidoOficio).toBe(TEXTO_EDITADO);
-    // (2) o PDF foi renderizado A PARTIR do texto persistido/editado...
+    // (2) the PDF was rendered FROM the persisted/edited text...
     const html = eng.htmlVisto[0];
     expect(html).toContain('<h1>Ofício EDITADO pela Stefany</h1>');
     expect(html).toContain(
       '<p>Solicita-se esclarecimento sobre a vigência da norma.</p>'
     );
-    // ...e NÃO regenerou do JSON original (oficioGerado.markdown).
+    // ...and did NOT regenerate from the original JSON (oficioGerado.markdown).
     expect(html).not.toContain('Ofício GERADO pelo robô');
     expect(html).not.toContain('Texto automático que será SUBSTITUÍDO');
 
-    // SINAL-OURO (§11b): editou → oficio_diff com sinalOuro=true +
-    // oficio_editado + export. O markdown gerado foi PRESERVADO p/ o diff.
+    // GOLD SIGNAL (§11b): edited → oficio_diff with sinalOuro=true +
+    // oficio_editado + export. The generated markdown was PRESERVED for
+    // the diff.
     const tipos = tele.eventos.map((x) => x.evento);
     expect(tipos).toContain('oficio_diff');
     expect(tipos).toContain('oficio_editado');
@@ -216,7 +217,7 @@ describe('POST /api/export/:jobId', () => {
     expect(
       diffEv.payload.distanciaCaracteres as number
     ).toBeGreaterThan(0);
-    expect(diffEv.payload.exportou).toBe(true); // reserva também presente
+    expect(diffEv.payload.exportou).toBe(true); // fallback also present
   });
 
   it('oficio WITHOUT edit → FALLBACK: oficio_diff sinalOuro=false, no oficio_editado, fallback exportou=true (§11b)', async () => {
@@ -227,8 +228,8 @@ describe('POST /api/export/:jobId', () => {
       pdfEngine: fakeEngine(),
       telemetry: tele,
     });
-    // Exporta EXATAMENTE o markdown gerado (aceitou sem editar) → o
-    // sinal-ouro é NULO; o RESERVA (export-sim) cobre.
+    // Exports EXACTLY the generated markdown (accepted without editing) →
+    // the gold signal is NULL; the FALLBACK (export-yes) covers it.
     const res = await POST(
       req({
         tipo: 'oficio',
@@ -239,13 +240,13 @@ describe('POST /api/export/:jobId', () => {
     expect(res.status).toBe(200);
     const tipos = tele.eventos.map((x) => x.evento);
     expect(tipos).toContain('oficio_diff');
-    // diff vazio: NÃO emite oficio_editado.
+    // empty diff: does NOT emit oficio_editado.
     expect(tipos).not.toContain('oficio_editado');
     const diffEv = tele.eventos.find((x) => x.evento === 'oficio_diff')!;
     expect(diffEv.payload.sinalOuro).toBe(false);
     expect(diffEv.payload.foiEditado).toBe(false);
-    // FALLBACK: o reserva (exportou) é o sinal disponível quando o ouro
-    // é nulo (ela aceitou sem editar).
+    // FALLBACK: the fallback (exportou) is the signal available when the
+    // gold is null (she accepted without editing).
     expect(diffEv.payload.exportou).toBe(true);
     const exportEv = tele.eventos.find((x) => x.evento === 'export')!;
     expect(exportEv.payload.tipo).toBe('oficio');
@@ -281,14 +282,14 @@ describe('POST /api/export/:jobId', () => {
       },
     });
     const res = await POST(req({ tipo: 'relatorio' }), ctx());
-    // O export ainda RETORNA 200 — falha de telemetria só loga.
+    // The export still RETURNS 200 — a telemetria failure only logs.
     expect(res.status).toBe(200);
   });
 
   it('oficio: persists BEFORE rendering (order §9 — no signal loss)', async () => {
-    // Engine que falha: mesmo assim o texto editado deve ter sido
-    // persistido (a persistência é o sinal-ouro §11b, não pode depender
-    // do sucesso da render do PDF derivado).
+    // Failing engine: even so the edited text must have been persisted
+    // (persistence is the gold signal §11b, it cannot depend on the
+    // success of the derived PDF render).
     const repo = fakeRepo(registroBase());
     const POST = criarExportPOST({
       analysisRepo: repo,
@@ -320,7 +321,7 @@ describe('POST /api/export/:jobId', () => {
     expect(res.status).toBe(200);
     expect(eng.htmlVisto[0]).toContain('Principais pontos');
     expect(eng.htmlVisto[0]).toContain('Serviços funerários — Niterói');
-    // Relatório NÃO persiste nada (projeção pura, regenerável).
+    // Relatório does NOT persist anything (pure projection, regenerable).
     expect(repo.persistidoOficio).toBeNull();
   });
 

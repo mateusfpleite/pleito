@@ -10,11 +10,10 @@ afterEach(() => {
 });
 
 /**
- * Testes DETERMINÍSTICOS da assinatura/verificação de sessão (SPEC §14).
- * Sem servidor: lógica pura HMAC (Web Crypto) com `agora` injetado.
- * Provam: round-trip OK; adulteração → inválido; expirado → inválido
- * (flag `expirado`); secret errado → inválido; cookie ausente/malformado
- * → inválido.
+ * DETERMINISTIC tests of session signing/verification (SPEC §14). No
+ * server: pure HMAC logic (Web Crypto) with `agora` injected. They prove:
+ * round-trip OK; tampering → invalid; expired → invalid (`expirado` flag);
+ * wrong secret → invalid; absent/malformed cookie → invalid.
  */
 
 const SECRET = 'segredo-super-secreto-de-teste';
@@ -78,10 +77,10 @@ describe('sessao: assinar → verificar', () => {
   });
 
   it('I1: verificarSessao with empty secret → invalid (explicit fail-closed)', async () => {
-    // O GUARD explícito deve retornar ANTES de qualquer HMAC: prova-se
-    // espionando crypto.subtle.importKey. Se a falha dependesse só do
-    // side-effect do importKey lançar p/ chave vazia, importKey SERIA
-    // chamado — este spy garante que NÃO é (guard vem antes).
+    // The explicit GUARD must return BEFORE any HMAC: proven by spying on
+    // crypto.subtle.importKey. If the failure depended only on the
+    // side-effect of importKey throwing for an empty key, importKey WOULD
+    // be called — this spy guarantees it is NOT (the guard comes first).
     const spy = vi.spyOn(crypto.subtle, 'importKey');
 
     const cookieValido = await assinarSessao(SECRET, { agora: T0 });
@@ -90,25 +89,25 @@ describe('sessao: assinar → verificar', () => {
     expect(await verificarSessao(cookieValido, '', { agora: T0 })).toEqual({
       valido: false,
     });
-    // Caminho que NÃO depende do throw de importKey: o guard explícito
-    // retorna ANTES de chegar a qualquer parsing/HMAC.
+    // Path that does NOT depend on importKey throwing: the explicit guard
+    // returns BEFORE reaching any parsing/HMAC.
     expect(
       await verificarSessao('payload.assinatura', '', { agora: T0 })
     ).toEqual({ valido: false });
-    // secret undefined (env ausente) idem.
+    // secret undefined (env absent) idem.
     expect(
       await verificarSessao(cookieValido, undefined as unknown as string, {
         agora: T0,
       })
     ).toEqual({ valido: false });
 
-    // Prova do guard explícito: HMAC nunca foi invocado p/ secret vazio.
+    // Proof of the explicit guard: HMAC was never invoked for an empty secret.
     expect(spy).not.toHaveBeenCalled();
   });
 
   it('I1: assinarSessao with empty secret THROWS (does not emit an insecure cookie)', async () => {
-    // Deve lançar pelo GUARD explícito — ANTES de tocar importKey
-    // (não confiar no DataError incidental da Web Crypto).
+    // Must throw via the explicit GUARD — BEFORE touching importKey
+    // (do not rely on Web Crypto's incidental DataError).
     const spy = vi.spyOn(crypto.subtle, 'importKey');
     await expect(assinarSessao('', { agora: T0 })).rejects.toThrow(
       /APP_SECRET|secret/i

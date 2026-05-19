@@ -11,15 +11,17 @@ import {
 import type { TelemetryPort } from '../domain/ports.ts';
 
 /**
- * Testes DETERMINÍSTICOS da telemetria de aplicação. NÃO tocam Postgres
- * nem LLM (testing-anti-patterns) — `TelemetryPort` fake in-memory e um
- * que LANÇA. Invariantes:
- *  (a) registrarSeguro grava no fake e devolve true;
- *  (b) registrarSeguro com adapter que LANÇA → NÃO propaga (devolve false,
- *      pipeline seguiria) — telemetria não-bloqueante;
- *  (c) hashInput é estável e distingue inputs diferentes (re-upload);
- *  (d) payload do sinal-ouro carrega o RESERVA quando diff vazio;
- *  (e) payload de grounding marca estimativa e soma tokens.
+ * DETERMINISTIC tests of the application telemetria. They do NOT touch
+ * Postgres or LLM (testing-anti-patterns) — an in-memory fake
+ * `TelemetryPort` and one that THROWS. Invariants:
+ *  (a) registrarSeguro writes to the fake and returns true;
+ *  (b) registrarSeguro with an adapter that THROWS → does NOT propagate
+ *      (returns false, the pipeline would continue) — non-blocking
+ *      telemetria;
+ *  (c) hashInput is stable and distinguishes different inputs (re-upload);
+ *  (d) the gold-signal payload carries the FALLBACK when the diff is
+ *      empty;
+ *  (e) the grounding payload marks an estimate and sums tokens.
  */
 
 function fakeTelemetry() {
@@ -63,7 +65,7 @@ describe('registrarSeguro — NON-blocking telemetry (§11b)', () => {
         return [];
       },
     };
-    // Não deve REJEITAR — a invariante crítica do §11b.
+    // Must NOT REJECT — the critical invariant of §11b.
     const ok = await registrarSeguro(port, 'a-1', EVENTO.export, {});
     expect(ok).toBe(false);
     expect(spy).toHaveBeenCalledOnce();
@@ -88,7 +90,7 @@ describe('payloads — gold-signal + fallback + grounding', () => {
     const p = payloadOficioDiff(diffVazio, true);
     expect(p.sinalOuro).toBe(false);
     expect(p.foiEditado).toBe(false);
-    // Reserva: o sinal disponível quando o ouro é nulo.
+    // Fallback: the signal available when the gold is null.
     expect(p.exportou).toBe(true);
 
     const diffReal = calcularDiffOficio('a\nb', 'a\nB');
@@ -105,7 +107,7 @@ describe('payloads — gold-signal + fallback + grounding', () => {
       totalTokens: undefined,
     });
     expect(p.lei).toBe('8666/1993');
-    expect(p.totalTokens).toBe(150); // soma quando totalTokens ausente
+    expect(p.totalTokens).toBe(150); // sum when totalTokens absent
     expect(p.estimativa).toBe(true);
   });
 

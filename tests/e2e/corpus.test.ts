@@ -1,41 +1,44 @@
 /**
  * ============================================================================
- * E2E DETERMINÍSTICO sobre o corpus-ouro (Phase 17.1)
+ * DETERMINISTIC E2E over the gold corpus (Phase 17.1)
  * ============================================================================
  *
- * ESCOPO HONESTO: o E2E COMPLETO (pipeline real ponta-a-ponta via worker
- * com Gemini 2.5 Flash + Postgres + claim atômico + dashboard) é RESÍDUO
- * DE DEPLOY — exige infra que NÃO existe neste ambiente (sem Postgres real,
- * sem chromium no DEV, chamadas Gemini reais custam/dependem de rede). Os
- * critérios "Done V0" que dependem de LLM/DB reais ficam como CHECKLIST no
- * runbook `docs/DEPLOY.md` (Phase 17.2), validados em PRODUÇÃO via
- * telemetria (SPEC §11b/§11c) — NÃO como teste que falha aqui.
+ * HONEST SCOPE: the FULL E2E (real end-to-end pipeline via the worker with
+ * Gemini 2.5 Flash + Postgres + atomic claim + dashboard) is DEPLOY
+ * RESIDUE — it requires infra that does NOT exist in this environment (no
+ * real Postgres, no chromium in DEV, real Gemini calls cost/depend on the
+ * network). The "Done V0" criteria that depend on real LLM/DB stay as a
+ * CHECKLIST in the runbook `docs/DEPLOY.md` (Phase 17.2), validated in
+ * PRODUCTION via telemetria (SPEC §11b/§11c) — NOT as a test that fails
+ * here.
  *
- * Esta suíte valida as INVARIANTES DETERMINÍSTICAS que o corpus-ouro
- * (`fixtures/gold/{dombasilio,jaborandi,niteroi}.json` — extrações já
- * feitas pelo POC) deve satisfazer SEM LLM e SEM DB:
+ * This suite validates the DETERMINISTIC INVARIANTS that the gold corpus
+ * (`fixtures/gold/{dombasilio,jaborandi,niteroi}.json` — extractions
+ * already produced by the POC) must satisfy WITHOUT an LLM and WITHOUT a
+ * DB:
  *
- *   1. Cada gold reconstrói (mesma normalização que o `application/`) e
- *      PARSEIA contra `EditalExtractionSchema` (schema 100% válido — Done V0).
- *   2. `matchNorma` + Gate A sobre as leis de cada gold: leis revogadas
- *      notórias detectadas (8666/1993, 10520/2002 no Jaborandi); Gate A
- *      dispara o Verifier onde há risco.
- *   3. Achados-armadilha registrados na própria extração do POC: Jaborandi
- *      tem `incoerencia` objeto-divergente (capa mentirosa); Niterói está
- *      sob regime 13.303 com anexo ausente; Dom Basílio tem
- *      valor-divergente severidade alta.
- *   4. `checarContencao` com `oficio:null` sobre cada gold → 0 violações
- *      (consistência baseline; sem ofício, só a checagem 3 é relevante).
+ *   1. Each gold reconstructs (same normalization as `application/`) and
+ *      PARSES against `EditalExtractionSchema` (schema 100% valid — Done
+ *      V0).
+ *   2. `matchNorma` + Gate A over each gold's leis: notorious revoked leis
+ *      detected (8666/1993, 10520/2002 in Jaborandi); Gate A fires the
+ *      Verifier where there is risk.
+ *   3. Trap findings recorded in the POC extraction itself: Jaborandi has
+ *      an objeto-divergente `incoerencia` (lying cover); Niterói is under
+ *      regime 13.303 with a missing annex; Dom Basílio has a
+ *      valor-divergente high severidade.
+ *   4. `checarContencao` with `oficio:null` over each gold → 0 violations
+ *      (baseline consistency; with no ofício, only check 3 is relevant).
  *
- * O Gate Tier 0 sobre o corpus completo (incl. auto-teste sintético) é
- * coberto por `pnpm eval:tier0` (`eval/run-tier0.ts`) — referenciado aqui,
- * não reimplementado.
+ * The Tier 0 Gate over the full corpus (incl. the synthetic auto-test) is
+ * covered by `pnpm eval:tier0` (`eval/run-tier0.ts`) — referenced here,
+ * not reimplemented.
  *
- * A QUALIDADE da extração LLM (acurácia capa-mentirosa/valor/sigiloso) NÃO
- * é testada aqui — testar "o LLM retornou X" é anti-pattern
- * (@superpowers:testing-anti-patterns); valida-se em produção via
- * telemetria (SPEC §11c). Aqui só asseguramos as propriedades estruturais
- * determinísticas do corpus congelado.
+ * The QUALITY of the LLM extraction (lying-cover/valor/sigiloso accuracy)
+ * is NOT tested here — testing "the LLM returned X" is an anti-pattern
+ * (@superpowers:testing-anti-patterns); it is validated in production via
+ * telemetria (SPEC §11c). Here we only assure the deterministic structural
+ * properties of the frozen corpus.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -52,7 +55,7 @@ const GOLD_DIR = fileURLToPath(
   new URL('../../fixtures/gold', import.meta.url)
 );
 
-/** Carrega + reconstrói + parseia um gold do POC (mesma via do runner). */
+/** Loads + reconstructs + parses a POC gold (same path as the runner). */
 function carregarGold(nome: string): EditalExtraction {
   const raw = JSON.parse(
     readFileSync(`${GOLD_DIR}/${nome}.json`, 'utf-8')
@@ -67,9 +70,9 @@ function carregarGold(nome: string): EditalExtraction {
 }
 
 /**
- * GATE A (espelha `application/analyze-edital.ts`): dispara se QUALQUER lei
- * tem `revogada=true` OU casa baseline numa categoria de risco (status
- * esperado ≠ null e ≠ 'vigente').
+ * GATE A (mirrors `application/analyze-edital.ts`): fires if ANY lei has
+ * `revogada=true` OR matches the baseline in a risk category (expected
+ * status ≠ null and ≠ 'vigente').
  */
 function gateADispara(extracao: EditalExtraction): boolean {
   return extracao.leisReferenciadas.some((lei) => {
@@ -93,7 +96,7 @@ describe('deterministic E2E — gold corpus (Phase 17.1)', () => {
     for (const nome of GOLDS) {
       it(`${nome} reconstructs and parses (schema v3)`, () => {
         const extracao = carregarGold(nome);
-        // Re-parse defensivo: o objeto reconstruído é estritamente válido.
+        // Defensive re-parse: the reconstructed object is strictly valid.
         expect(() =>
           EditalExtractionSchema.parse(extracao)
         ).not.toThrow();
@@ -126,7 +129,7 @@ describe('deterministic E2E — gold corpus (Phase 17.1)', () => {
         expect(hit, `${lei.numero}/${lei.ano} casa baseline`).toBeTruthy();
         expect(hit!.categoria).toBe('revogada-notoria');
         expect(categoriaParaStatus(hit!.categoria)).toBe('revogada');
-        // O POC já marcou estas como revogada=true (palpite do extractor).
+        // The POC already marked these as revogada=true (extractor guess).
         expect(lei.revogada).toBe(true);
       }
     });
@@ -164,7 +167,7 @@ describe('deterministic E2E — gold corpus (Phase 17.1)', () => {
         'Jaborandi deve registrar incoerência objeto-divergente (capa vs corpo)'
       ).toBeTruthy();
       expect(objetoDivergente!.severidade).toBe('alta');
-      // O extractor do POC também marcou explicitamente uma lei revogada.
+      // The POC extractor also explicitly flagged a revoked lei.
       expect(
         j.incoerencias.some((i) => i.tipo === 'lei-revogada')
       ).toBe(true);
@@ -209,23 +212,24 @@ describe('deterministic E2E — gold corpus (Phase 17.1)', () => {
   });
 
   /**
-   * Done V0 verificável offline já coberto:
-   *  - schema 100% válido → (1) acima + `domain/schema.test.ts`
-   *  - lei-revogada / anexo-ausente / capa-mentirosa registrados → (3)
-   *  - Gate Tier 0 = 0 violações → `pnpm eval:tier0` (eval/run-tier0.ts,
-   *    incl. auto-teste sintético `synthetic-verificado.json`)
-   *  - contenção estrutural → eval/tier0.test.ts + (4) acima
+   * Offline-verifiable Done V0 already covered:
+   *  - schema 100% valid → (1) above + `domain/schema.test.ts`
+   *  - lei-revogada / missing-annex / lying-cover recorded → (3)
+   *  - Tier 0 Gate = 0 violations → `pnpm eval:tier0` (eval/run-tier0.ts,
+   *    incl. synthetic auto-test `synthetic-verificado.json`)
+   *  - structural containment → eval/tier0.test.ts + (4) above
    *
-   * Done V0 que SÓ fecha pós-deploy (checklist em docs/DEPLOY.md):
-   *  - 3 ref + Mata Grande via worker REAL sem erro (Gemini+Postgres)
-   *  - pipeline completo no worker sem timeout (<90s)
-   *  - dashboard + ofício editável + PDF on-demand e2e (chromium real)
-   *  - telemetria gravando em Postgres real
-   *  - deploy acessível à Stefany
+   * Done V0 that ONLY closes post-deploy (checklist in docs/DEPLOY.md):
+   *  - 3 ref + Mata Grande via the REAL worker without error
+   *    (Gemini+Postgres)
+   *  - full pipeline in the worker without timeout (<90s)
+   *  - dashboard + editable ofício + on-demand PDF e2e (real chromium)
+   *  - telemetria writing to real Postgres
+   *  - deploy accessible to Stefany
    */
   it('reference: pnpm eval:tier0 covers the Tier 0 Gate over the full corpus', () => {
-    // Marcador documental — o gate duro roda em `pnpm eval:tier0`
-    // (eval/run-tier0.ts), não reimplementado aqui. Ver docs/DEPLOY.md.
+    // Documentary marker — the hard gate runs in `pnpm eval:tier0`
+    // (eval/run-tier0.ts), not reimplemented here. See docs/DEPLOY.md.
     expect(true).toBe(true);
   });
 });

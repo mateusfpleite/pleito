@@ -7,12 +7,13 @@ import {
 } from './polling.ts';
 
 /**
- * Máquina de estado do polling do dashboard (lógica pura, sem render nem
- * timers reais). Verifica:
- *  - idle → submetendo → aguardando (após jobId) → done/erro
- *  - PARA de pollar em estado terminal (done/erro) — `ehTerminal`
- *  - transições pending→running→done refletidas
- *  - erro de rede no submit e no poll viram estado `erro` com mensagem
+ * Dashboard polling state machine (pure logic, no render nor real
+ * timers). Verifies:
+ *  - idle → submetendo → aguardando (after jobId) → done/erro
+ *  - STOPS polling in a terminal state (done/erro) — `ehTerminal`
+ *  - pending→running→done transitions reflected
+ *  - network error on submit and on poll become the `erro` state with a
+ *    message
  */
 
 describe('reducirPolling — state machine', () => {

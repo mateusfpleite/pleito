@@ -8,10 +8,11 @@ import type {
 } from '../../../../domain/ports.ts';
 
 /**
- * Testes DETERMINÍSTICOS de POST /api/feedback/:jobId — feedback explícito
- * mínimo (§11b). Sem servidor/Postgres (testing-anti-patterns). Provam:
- * 👍/👎 → telemetria `feedback`; texto opcional; 404 sem análise;
- * validação do booleano; NÃO-bloqueante (telemetria que lança ≠ 5xx).
+ * DETERMINISTIC tests of POST /api/feedback/:jobId — minimal explicit
+ * feedback (§11b). No server/Postgres (testing-anti-patterns). They
+ * prove: 👍/👎 → `feedback` telemetria; optional text; 404 without an
+ * analysis; boolean validation; NON-blocking (telemetria that throws ≠
+ * 5xx).
  */
 
 const extracao = EditalExtractionSchema.parse({

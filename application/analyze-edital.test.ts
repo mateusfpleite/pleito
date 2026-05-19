@@ -21,25 +21,29 @@ import type {
 } from '../domain/ports.ts';
 
 /**
- * Testes DETERMINÍSTICOS do workflow `analyzeEdital`. TODOS os ports são
- * MOCKADOS (@superpowers:testing-anti-patterns): aqui se prova ORQUESTRAÇÃO
- * (recomposição, Gate A, Gate B, Tier 0 fatal, propagação de falha) — nunca
- * adapters/LLM. As invariantes:
+ * DETERMINISTIC tests of the `analyzeEdital` workflow. ALL ports are
+ * MOCKED (@superpowers:testing-anti-patterns): here we prove ORCHESTRATION
+ * (recomposition, Gate A, Gate B, fatal Tier 0, failure propagation) —
+ * never adapters/LLM. The invariants:
  *
- *  (a) recomposição: ExtractorOutput SEM pontosDeAtencao vira EditalExtraction
- *      válido (schema) com pontosDeAtencao:[] e `fonte` = a do Preprocessor
- *      (não a que o extractor mock devolveu — carry-forward Phase 5 Minor #2);
- *  (b) Gate A NÃO dispara: nenhuma lei em categoria de risco e nenhum
- *      revogada=true → verifier NÃO chamado;
- *  (c) Gate A dispara por matchNorma mesmo com extractor revogada=false (lei
- *      conhecida revogada, 8.666/1993) → verifier chamado (fecha falso-neg.);
- *  (d) Gate B NÃO dispara: sem incoerência≥média/ambíguo/recomendaManif. →
- *      drafter NÃO chamado, retorna oficio:null;
- *  (e) Gate B dispara só por pontoDeAtencao.recomendaManifestacao → drafter
- *      chamado;
- *  (f) Tier 0 viola (drafter mock devolve ofício afirmando revogação de lei
- *      cujo statusVerificado≠revogada) → analyzeEdital LANÇA (não retorna);
- *  (g) falha de adapter (extractor lança) → propaga (rejeita), não silencia.
+ *  (a) recomposition: an ExtractorOutput WITHOUT pontosDeAtencao becomes a
+ *      valid EditalExtraction (schema) with pontosDeAtencao:[] and `fonte`
+ *      = the Preprocessor's (not the one the extractor mock returned —
+ *      carry-forward Phase 5 Minor #2);
+ *  (b) Gate A does NOT fire: no lei in a risk category and no
+ *      revogada=true → verifier NOT called;
+ *  (c) Gate A fires via matchNorma even with extractor revogada=false
+ *      (known revoked lei, 8.666/1993) → verifier called (closes the
+ *      false-neg.);
+ *  (d) Gate B does NOT fire: no incoerência≥media/ambiguous/recomendaManif.
+ *      → drafter NOT called, returns oficio:null;
+ *  (e) Gate B fires only via pontoDeAtencao.recomendaManifestacao →
+ *      drafter called;
+ *  (f) Tier 0 is violated (drafter mock returns an ofício asserting
+ *      revocation of a lei whose statusVerificado≠revogada) → analyzeEdital
+ *      THROWS (does not return);
+ *  (g) adapter failure (extractor throws) → propagates (rejects), does not
+ *      silence.
  */
 
 const ARQUIVO: ArquivoEntrada = {
@@ -48,7 +52,7 @@ const ARQUIVO: ArquivoEntrada = {
   url: 'https://exemplo/edital.pdf',
 };
 
-/** FonteMeta confiável que o Preprocessor observa (distinta da do modelo). */
+/** Trusted FonteMeta the Preprocessor observes (distinct from the model's). */
 const FONTE_PREPROCESSOR: FonteMeta = {
   nomeArquivo: 'edital.pdf',
   pdfNativo: true,
@@ -75,9 +79,9 @@ function lei(
 }
 
 /**
- * ExtractorOutput base válido (SEM pontosDeAtencao — schema do extractor).
- * O `fonte` aqui é DELIBERADAMENTE "errado" (mentira do modelo): o workflow
- * deve sobrescrevê-lo pela FonteMeta confiável do Preprocessor.
+ * Valid base ExtractorOutput (WITHOUT pontosDeAtencao — the extractor's
+ * schema). The `fonte` here is DELIBERATELY "wrong" (model lie): the
+ * workflow must overwrite it with the Preprocessor's trusted FonteMeta.
  */
 function baseExtractorOutput(
   over: Partial<ExtractorOutput> = {}
@@ -134,7 +138,7 @@ function baseExtractorOutput(
     intervaloMinimoLances: null,
     prazoRecursosDiasUteis: null,
     informacoesViabilidade: null,
-    // MENTIRA do modelo: paginas/url divergem da FonteMeta do Preprocessor.
+    // Model LIE: paginas/url diverge from the Preprocessor's FonteMeta.
     fonte: { pdfNativo: false, ocr: true, paginas: 1, url: null },
     ...over,
   });
@@ -152,9 +156,9 @@ type Mocks = {
 function makeMocks(opts: {
   extractorOutput?: ExtractorOutput;
   extrairImpl?: () => Promise<ExtractorOutput>;
-  /** pontosDeAtencao injetados pelo Risk Analyst mock. */
+  /** pontosDeAtencao injected by the Risk Analyst mock. */
   pontosDeAtencao?: EditalExtraction['pontosDeAtencao'];
-  /** mutação extra aplicada pelo verifier mock (ex.: statusVerificado). */
+  /** extra mutation applied by the verifier mock (e.g. statusVerificado). */
   verifierMutate?: (e: EditalExtraction) => EditalExtraction;
   oficio?: OficioGerado | null;
 }): Mocks {
@@ -168,8 +172,9 @@ function makeMocks(opts: {
     opts.extrairImpl ??
       (async () => opts.extractorOutput ?? baseExtractorOutput())
   );
-  // Verifier mock: por padrão devolve a extração intacta (só Gate A decide
-  // se é chamado); pode mutar statusVerificado quando o teste pede.
+  // Verifier mock: by default returns the extraction intact (only Gate A
+  // decides whether it is called); may mutate statusVerificado when the
+  // test asks.
   const verificar = vi.fn(async (e: EditalExtraction) =>
     opts.verifierMutate ? opts.verifierMutate(e) : e
   );
@@ -191,8 +196,9 @@ function makeMocks(opts: {
 
 describe('analyzeEdital — recomposition (a)', () => {
   it('builds a valid EditalExtraction with pontosDeAtencao:[] and Preprocessor fonte', async () => {
-    // Captura o objeto que chega ao Risk Analyst para inspecionar a
-    // recomposição (revogada=true só p/ não importar se Gate A dispara).
+    // Captures the object that reaches the Risk Analyst to inspect the
+    // recomposition (revogada=true just so it does not matter whether
+    // Gate A fires).
     const out = makeMocks({
       extractorOutput: baseExtractorOutput({
         leisReferenciadas: [lei({ numero: '999', ano: 2030, revogada: true })],
@@ -208,10 +214,10 @@ describe('analyzeEdital — recomposition (a)', () => {
 
     expect(recibidoPeloRisk).not.toBeNull();
     const recomposto = recibidoPeloRisk as unknown as EditalExtraction;
-    // Recomposto satisfaz o EditalExtractionSchema (regressão obrigatória).
+    // The recomposed object satisfies EditalExtractionSchema (mandatory regression).
     expect(() => EditalExtractionSchema.parse(recomposto)).not.toThrow();
     expect(recomposto.pontosDeAtencao).toEqual([]);
-    // fonte = a do Preprocessor (não a mentira do modelo: paginas 42 vs 1).
+    // fonte = the Preprocessor's (not the model lie: paginas 42 vs 1).
     expect(recomposto.fonte).toEqual({
       pdfNativo: true,
       ocr: false,
@@ -247,7 +253,7 @@ describe('analyzeEdital — Gate A (b,c)', () => {
           }),
         ],
       }),
-      // verifier devolve statusVerificado coerente p/ não acionar Tier 0.
+      // verifier returns a consistent statusVerificado so Tier 0 is not triggered.
       verifierMutate: (e) => ({
         ...e,
         leisReferenciadas: e.leisReferenciadas.map((l) => ({
@@ -321,7 +327,7 @@ describe('analyzeEdital — Tier 0 fatal (f)', () => {
           recomendaManifestacao: true,
         },
       ],
-      // verifier devolve a lei como NÃO revogada (nao-verificado default).
+      // verifier returns the lei as NOT revoked (nao-verificado default).
       oficio: {
         tipo: 'impugnacao',
         markdown: 'A norma foi revogada.',
@@ -346,7 +352,7 @@ describe('analyzeEdital — failure propagation (g)', () => {
     await expect(analyzeEdital(ARQUIVO, m.deps)).rejects.toThrow(
       /Gemini extractor 503/
     );
-    // pipeline a jusante NÃO roda após a falha.
+    // the downstream pipeline does NOT run after the failure.
     expect(m.verificar).not.toHaveBeenCalled();
     expect(m.analisar).not.toHaveBeenCalled();
     expect(m.redigir).not.toHaveBeenCalled();

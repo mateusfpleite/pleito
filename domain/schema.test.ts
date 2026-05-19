@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { EditalExtractionSchema } from './schema.ts';
 
-// Objeto v3 mínimo porém completo (campos novos da v3 incluídos).
+// Minimal yet complete v3 object (new v3 fields included).
 const validV3 = () => ({
   municipio: 'Niterói',
   uf: 'RJ',
@@ -58,7 +58,7 @@ const validV3 = () => ({
       ano: 2016,
       contextoNoEdital: 'Regime jurídico aplicável.',
       revogada: false,
-      // statusVerificado tem default 'nao-verificado' — omitido de propósito
+      // statusVerificado has default 'nao-verificado' — omitted on purpose
       fonteVerificacao: null,
     },
   ],

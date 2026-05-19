@@ -5,32 +5,35 @@ import { EditalExtractionSchema } from '../../domain/schema.ts';
 import type { EditalExtraction } from '../../domain/schema.ts';
 
 /**
- * Testes ADVERSARIAIS DETERMINÍSTICOS do Drafter (contenção ESTRUTURAL REAL,
- * SPEC §5 #2). O LanguageModel é mocado — NUNCA chamamos o Gemini real nem
- * testamos "o LLM retornou X" (@superpowers:testing-anti-patterns). As
- * invariantes provadas são propriedades do ADAPTER.
+ * DETERMINISTIC ADVERSARIAL tests of the Drafter (REAL STRUCTURAL
+ * containment, SPEC §5 #2). The LanguageModel is mocked — we NEVER call the
+ * real Gemini nor test "the LLM returned X"
+ * (@superpowers:testing-anti-patterns). The proven invariants are
+ * properties of the ADAPTER.
  *
- * CONTRATO NOVO (ZERO prosa livre do modelo no ofício externo):
- *   O modelo emite SOMENTE decisões estruturadas:
+ * NEW CONTRACT (ZERO free model prose in the external ofício):
+ *   The model emits ONLY structured decisions:
  *     - `tipo` ∈ {esclarecimento, impugnacao};
- *     - `selecoes[]`: cada uma referencia um achado JÁ EXISTENTE na extração
- *       por `{fonte∈{incoerencia,trechoAmbiguo,pontoDeAtencao}, indice}` —
- *       i.e. o modelo escolhe O QUE levantar e a ORDEM, não REDIGE;
- *     - `leisCitadas[]` com `afirmacaoVigencia` (já estrutural).
- *   NÃO HÁ MAIS campo de texto livre (`pontos[].argumento`/`titulo`). O corpo
- *   do ofício é montado 100% por TEMPLATES determinísticos keyed pelo TIPO
- *   estruturado do achado. Por isso "ab-rogada"/"não subsiste"/etc. são
- *   ESTRUTURALMENTE IMPOSSÍVEIS de aparecer — não há canal por onde o modelo
- *   escreva esse texto, não é "filtrado".
+ *     - `selecoes[]`: each one references a finding ALREADY PRESENT in the
+ *       extraction via `{fonte∈{incoerencia,trechoAmbiguo,pontoDeAtencao},
+ *       indice}` — i.e. the model chooses WHAT to raise and the ORDER, it
+ *       does not WRITE;
+ *     - `leisCitadas[]` with `afirmacaoVigencia` (already structural).
+ *   There is NO MORE free-text field (`pontos[].argumento`/`titulo`). The
+ *   ofício body is assembled 100% by deterministic TEMPLATES keyed by the
+ *   finding's structured TIPO. That is why "ab-rogada"/"não subsiste"/etc.
+ *   are STRUCTURALLY IMPOSSIBLE to appear — there is no channel through
+ *   which the model writes that text, it is not "filtered".
  *
- * O backstop léxico (LEXICO_VIGENCIA) é TRIPWIRE defensivo: se disparar, é
- * bug estrutural. A garantia é a AUSÊNCIA de prosa livre, não o regex.
+ * The lexical backstop (LEXICO_VIGENCIA) is a defensive TRIPWIRE: if it
+ * fires, it is a structural bug. The guarantee is the ABSENCE of free
+ * prose, not the regex.
  *
- * O mock implementa só a superfície de `generateObject` que o adapter usa:
- * `doGenerate` devolve o JSON proposto pelo modelo em `content`.
+ * The mock implements only the `generateObject` surface the adapter uses:
+ * `doGenerate` returns the JSON proposed by the model in `content`.
  */
 
-/** Extração base válida; cada teste injeta leis/incoerências/pontos. */
+/** Valid base extraction; each test injects leis/incoerências/pontos. */
 function baseExtraction(
   overrides: Partial<EditalExtraction> = {}
 ): EditalExtraction {
@@ -92,7 +95,7 @@ function baseExtraction(
   });
 }
 
-/** Lei revogada e verificada. */
+/** Revoked and verified lei. */
 const leiRevogada = {
   descricao: 'Lei nº 8.666/1993',
   escopo: 'federal' as const,
@@ -105,7 +108,7 @@ const leiRevogada = {
   fonteVerificacao: 'norma-baseline.json',
 };
 
-/** Lei em zona-cinzenta (contestada): NÃO pode virar afirmação no ofício. */
+/** Lei in zona-cinzenta (contested): MUST NOT become an assertion in the ofício. */
 const leiContestada = {
   descricao: 'Instrução Normativa SEGES nº 05/2017',
   escopo: 'federal' as const,
@@ -118,7 +121,7 @@ const leiContestada = {
   fonteVerificacao: 'norma-baseline.json',
 };
 
-/** Um ponto que recomenda manifestação → gate B dispara. */
+/** A ponto that recommends manifestation → gate B fires. */
 const pontoManifesta = {
   descricao: 'Vedação à participação em consórcio sem justificativa técnica.',
   categoria: 'competitivo' as const,
@@ -127,8 +130,8 @@ const pontoManifesta = {
 };
 
 /**
- * LanguageModelV2 fake mínimo. Devolve `payload` (serializado) como texto;
- * `generateObject` (modo JSON) faz parse + valida contra o schema.
+ * Minimal fake LanguageModelV2. Returns `payload` (serialized) as text;
+ * `generateObject` (JSON mode) parses + validates against the schema.
  */
 function fakeModel(payload: unknown) {
   return {
@@ -170,14 +173,14 @@ describe('montarPrompt — extraction before task order (SPEC §7)', () => {
   it('the SYSTEM teaches that the model does NOT write (only selects findings)', () => {
     expect(SYSTEM_PROMPT).toMatch(/afirmacaoVigencia/);
     expect(SYSTEM_PROMPT).toMatch(/selecoes/);
-    // O contrato proíbe explicitamente texto livre.
+    // The contract explicitly forbids free text.
     expect(SYSTEM_PROMPT).toMatch(/N[ÃA]O escreve|n[ãa]o redige|sem prosa/i);
   });
 });
 
 /**
- * Tripwire léxico (NÃO é a garantia; se disparar é bug estrutural). Inclui as
- * paráfrases que vazaram em produção e mais.
+ * Lexical tripwire (NOT the guarantee; if it fires it is a structural bug).
+ * Includes the paraphrases that leaked in production and more.
  */
 const LEXICO_VIGENCIA =
   /revogad|ab-?rogad|derrogad|revogou-se|perdeu vig[êe]ncia|n[ãa]o subsiste|superad|exaurid|deixou de produzir efeitos|n[ãa]o vige|sem efic[áa]cia|n[ãa]o est[áa] (mais )?em vigor|deixou de viger|sem vig[êe]ncia|caducou/i;
@@ -239,9 +242,9 @@ describe('GeminiDrafter — REAL structural containment (injected model, no netw
     const lei = oficio!.leisCitadas.find((l) => l.numero === '8666');
     expect(lei!.afirmacaoVigencia).toBe('revogada');
     expect(oficio!.markdown).toMatch(/encontra-se revogada/i);
-    // C1 3ª: a frase de proveniência é FIXA e determinística. O campo
-    // `fonteVerificacao` (z.string() livre) NUNCA é interpolado verbatim —
-    // nem mesmo o literal 'norma-baseline.json' do fixture.
+    // C1 3rd: the provenance phrase is FIXED and deterministic. The
+    // `fonteVerificacao` field (free z.string()) is NEVER interpolated
+    // verbatim — not even the fixture's literal 'norma-baseline.json'.
     expect(oficio!.markdown).not.toContain('norma-baseline.json');
     expect(oficio!.markdown).toMatch(
       /conforme verificação de vigência registrada na análise/i
@@ -249,8 +252,8 @@ describe('GeminiDrafter — REAL structural containment (injected model, no netw
   });
 
   it('(b-host) baseline-revoked law with fonteVerificacao = official URL → cites only the HOST (non-LLM scalar), never prose', async () => {
-    // Caminho baseline-hit: 8666/1993 casa `matchNorma` (revogada-notoria) e
-    // a fonteVerificacao é a URL curada real → cita só o domínio.
+    // Baseline-hit path: 8666/1993 matches `matchNorma` (revogada-notoria)
+    // and fonteVerificacao is the real curated URL → cites only the domain.
     const leiComUrl = {
       ...leiRevogada,
       fonteVerificacao:
@@ -279,7 +282,7 @@ describe('GeminiDrafter — REAL structural containment (injected model, no netw
     expect(oficio).not.toBeNull();
     const md = oficio!.markdown;
     expect(md).toMatch(/encontra-se revogada/i);
-    // Só o host, não a URL/path completa (escalar não-LLM derivado de curado).
+    // Only the host, not the full URL/path (non-LLM scalar derived from curated).
     expect(md).toContain('www.planalto.gov.br');
     expect(md).not.toContain('/ccivil_03/');
     expect(md).not.toContain('l8666cons.htm');
@@ -385,12 +388,13 @@ describe('GeminiDrafter — REAL structural containment (injected model, no netw
 
 describe('GeminiDrafter — ADVERSARIAL: free prose structurally impossible', () => {
   /**
-   * O modelo TENTA injetar afirmação de revogação sobre lei `contestada`
-   * (afirmacaoVigencia corretamente `nenhuma`) por TODO campo que ele
-   * controla. Como NÃO existe mais campo de texto livre, e o corpo é 100%
-   * templated, NENHUMA dessas strings pode aparecer — não é "filtrada",
-   * é estruturalmente impossível. Cobre as 6 paráfrases que vazaram em
-   * produção + mais (várias o regex anterior NÃO pegava).
+   * The model TRIES to inject a revocation assertion about a `contested`
+   * lei (afirmacaoVigencia correctly `nenhuma`) through EVERY field it
+   * controls. Since there is NO free-text field anymore, and the body is
+   * 100% templated, NONE of these strings can appear — it is not
+   * "filtered", it is structurally impossible. Covers the 6 paraphrases
+   * that leaked in production + more (several the previous regex did NOT
+   * catch).
    */
   const PARAFRASES_ATAQUE = [
     'a IN 05/2017 foi ab-rogada e não subsiste no ordenamento',
@@ -405,8 +409,8 @@ describe('GeminiDrafter — ADVERSARIAL: free prose structurally impossible', ()
     it(`does not leak attack via ANY model field: "${ataque.slice(0, 38)}…"`, async () => {
       const e = baseExtraction({
         leisReferenciadas: [leiContestada],
-        // Achado estruturado existe; o modelo o seleciona legitimamente,
-        // mas tenta contrabandear prosa de revogação por toda parte.
+        // The structured finding exists; the model selects it legitimately,
+        // but tries to smuggle revocation prose everywhere.
         trechosAmbiguos: [
           {
             trechoLiteral: 'critério de julgamento',
@@ -417,9 +421,9 @@ describe('GeminiDrafter — ADVERSARIAL: free prose structurally impossible', ()
       });
       const drafter = new GeminiDrafter(
         fakeModel({
-          // Campos extras que o modelo "controla" e pode tentar usar:
+          // Extra fields the model "controls" and might try to use:
           tipo: 'esclarecimento',
-          // tenta injetar via campos textuais legados, caso existam:
+          // tries to inject via legacy text fields, if they exist:
           pontos: [{ titulo: ataque, argumento: ataque }],
           titulo: ataque,
           argumento: ataque,
@@ -437,15 +441,15 @@ describe('GeminiDrafter — ADVERSARIAL: free prose structurally impossible', ()
       const oficio = await drafter.redigir(e);
       expect(oficio).not.toBeNull();
       const md = oficio!.markdown;
-      // 1. A string de ataque literal NÃO aparece (não há canal por onde
-      //    o modelo escreva texto livre no documento).
+      // 1. The literal attack string does NOT appear (there is no channel
+      //    through which the model writes free text into the document).
       expect(md).not.toContain(ataque);
       expect(md).not.toContain('05/2017');
       expect(md).not.toContain('IN 05');
-      // 2. Nenhum léxico de (não)vigência (tripwire — não deveria nem ser
-      //    necessário, pois não há prosa livre).
+      // 2. No (non-)validity lexicon (tripwire — should not even be
+      //    necessary, since there is no free prose).
       expect(md).not.toMatch(LEXICO_VIGENCIA);
-      // 3. A lei contestada permanece nenhuma.
+      // 3. The contested lei stays nenhuma.
       expect(
         oficio!.leisCitadas.every((l) => l.afirmacaoVigencia !== 'revogada')
       ).toBe(true);
@@ -453,9 +457,9 @@ describe('GeminiDrafter — ADVERSARIAL: free prose structurally impossible', ()
   }
 
   it('(C1-recurring) model selects lei-revogada inconsistency from a contested law + tries prose → templated body does not assert revocation', async () => {
-    // IN 05/2017 contestada; incoerência tipo lei-revogada cuja DESCRIÇÃO
-    // (texto LLM a montante) diz "foi ab-rogada e não subsiste". O template
-    // por TIPO da incoerência NUNCA interpola a descricao livre.
+    // IN 05/2017 contested; lei-revogada-type incoerência whose DESCRIPTION
+    // (upstream LLM text) says "foi ab-rogada e não subsiste". The template
+    // keyed by the incoerência TIPO NEVER interpolates the free descricao.
     const e = baseExtraction({
       leisReferenciadas: [leiContestada],
       incoerencias: [
@@ -483,8 +487,8 @@ describe('GeminiDrafter — ADVERSARIAL: free prose structurally impossible', ()
     expect(md).not.toContain('ab-rogada');
     expect(md).not.toContain('não subsiste');
     expect(md).not.toMatch(LEXICO_VIGENCIA);
-    // O ponto de incoerência lei-revogada (sem lei verificada revogada)
-    // vira pergunta neutra.
+    // The lei-revogada incoerência point (without a verified revoked lei)
+    // becomes a neutral question.
     expect(md).toMatch(/solicita-se (confirmação|esclarecimento)/i);
   });
 
@@ -523,7 +527,7 @@ describe('GeminiDrafter — ADVERSARIAL: free prose structurally impossible', ()
     ).toBe('nenhuma');
     expect(md).not.toContain('perdeu vigência');
     expect(md).toMatch(/8\.?666[\s\S]*encontra-se revogada/i);
-    // Nenhuma frase de vigência ligada à 05/2017.
+    // No validity phrase tied to 05/2017.
     expect(md).not.toMatch(/05\/?2017[^.]*?(revogad|perdeu vig|sem vig)/i);
     expect(md).not.toMatch(/(revogad|perdeu vig|sem vig)[^.]*?05\/?2017/i);
   });
@@ -698,24 +702,25 @@ describe('GeminiDrafter — ADVERSARIAL: free prose structurally impossible', ()
 });
 
 /**
- * TDD ADVERSARIAL DE AUSÊNCIA ESTRUTURAL (C1 3ª review).
+ * ADVERSARIAL TDD FOR STRUCTURAL ABSENCE (C1 3rd review).
  *
- * Diagnóstico: o canal do MODELO está fechado (schema strip). Mas restam
- * canais de STRING LIVRE DE LLM A MONTANTE da extração (campos `z.string()`
- * livres do extractor / verifier) que eram interpolados verbatim no ofício
- * externo, guardados só pelo TRIPWIRE léxico — que a SPEC PROÍBE como
- * garantia. Estes testes injetam prosa de status SEM léxico que o tripwire
- * pega (o tripwire fica silencioso) e asseveram AUSÊNCIA ESTRUTURAL: a
- * string injetada NÃO aparece no `oficio.markdown` (toContain === false) e o
- * ofício continua válido. Provam a regressão (RED) e travam o fix (GREEN).
+ * Diagnosis: the MODEL channel is closed (schema strip). But there remain
+ * FREE LLM STRING channels UPSTREAM of the extraction (free `z.string()`
+ * fields from the extractor / verifier) that were interpolated verbatim
+ * into the external ofício, guarded only by the lexical TRIPWIRE — which
+ * the SPEC FORBIDS as a guarantee. These tests inject status prose WITHOUT
+ * lexicon that the tripwire catches (the tripwire stays silent) and assert
+ * STRUCTURAL ABSENCE: the injected string does NOT appear in
+ * `oficio.markdown` (toContain === false) and the ofício stays valid. They
+ * prove the regression (RED) and lock the fix (GREEN).
  *
- * Princípio (invariante exaustivo): todo caractere de `oficio.markdown` é
- * (a) literal de template, (b) enum restrito, (c) escalar não-LLM, ou (d)
- * frase-template determinística de vigência. NENHUMA string de texto livre
- * de LLM — do modelo do Drafter OU de campo `z.string()` livre da extração.
+ * Principle (exhaustive invariant): every character of `oficio.markdown` is
+ * (a) a template literal, (b) a restricted enum, (c) a non-LLM scalar, or
+ * (d) a deterministic validity template phrase. NO free LLM text string —
+ * from the Drafter model OR from a free `z.string()` extraction field.
  *
- * Prosa de status SEM léxico que o regex de tripwire captura. Verificado:
- * `LEXICO_VIGENCIA.test(x) === false` para cada uma (asseverado abaixo).
+ * Status prose WITHOUT lexicon that the tripwire regex captures. Verified:
+ * `LEXICO_VIGENCIA.test(x) === false` for each one (asserted below).
  */
 const PROSA_STATUS_SEM_LEXICO = [
   'tacitamente afastada pelo novo marco legal',
@@ -731,7 +736,7 @@ describe('GeminiDrafter — STRUCTURAL ABSENCE: zero upstream free LLM string', 
     }
   });
 
-  // --- Canal 1: trechoAmbiguo.secaoOndeAparece (z.string() livre do extractor) ---
+  // --- Channel 1: trechoAmbiguo.secaoOndeAparece (free extractor z.string()) ---
   for (const isca of PROSA_STATUS_SEM_LEXICO) {
     it(`secaoOndeAparece does not leak status prose (no lexicon): "${isca.slice(0, 32)}…"`, async () => {
       const e = baseExtraction({
@@ -740,7 +745,7 @@ describe('GeminiDrafter — STRUCTURAL ABSENCE: zero upstream free LLM string', 
           {
             trechoLiteral: 'critério de julgamento',
             porQueAmbiguo: 'redação dúbia',
-            // Campo z.string() LIVRE do extractor — prosa de status injetada.
+            // FREE extractor z.string() field — injected status prose.
             secaoOndeAparece: `Item 5 — a IN 05/2017 ${isca}`,
           },
         ],
@@ -758,11 +763,11 @@ describe('GeminiDrafter — STRUCTURAL ABSENCE: zero upstream free LLM string', 
       const oficio = await drafter.redigir(e);
       expect(oficio).not.toBeNull();
       const md = oficio!.markdown;
-      // AUSÊNCIA ESTRUTURAL: a prosa livre injetada não está no documento.
+      // STRUCTURAL ABSENCE: the injected free prose is not in the document.
       expect(md).not.toContain(isca);
       expect(md).not.toContain('IN 05/2017');
       expect(md).not.toContain('05/2017');
-      // Ofício continua válido (corpo templated, fecho presente).
+      // Ofício stays valid (templated body, closing present).
       expect(md.trim().length).toBeGreaterThan(0);
       expect(md).toMatch(/solicita-se esclarecimento/i);
       expect(
@@ -791,19 +796,20 @@ describe('GeminiDrafter — STRUCTURAL ABSENCE: zero upstream free LLM string', 
     );
     const oficio = await drafter.redigir(e);
     expect(oficio).not.toBeNull();
-    // Nenhum caractere de prosa livre do extractor entra — nem nome de seção.
+    // No free extractor prose character enters — not even a section name.
     expect(oficio!.markdown).not.toContain('XYZZY');
     expect(oficio!.markdown).not.toContain('CLÁUSULA SÉTIMA');
-    // Em vez disso, referência por ÍNDICE não-LLM ("ponto nº 1 da análise").
+    // Instead, a non-LLM INDEX reference ("ponto nº 1 da análise").
     expect(oficio!.markdown).toMatch(/ponto n[º°]\s*1\b/i);
   });
 
-  // --- Canal 2: fonteVerificacao de GROUNDING (VerdictSchema.fonte z.string() do verifier) ---
+  // --- Channel 2: GROUNDING fonteVerificacao (verifier VerdictSchema.fonte z.string()) ---
   /**
-   * Lei de CAUDA (não está em `data/norma-baseline.json`) com
-   * `statusVerificado:'revogada'` vindo de GROUNDING — sua `fonteVerificacao`
-   * é a string LIVRE `VerdictSchema.fonte` do LLM verifier. `matchNorma` não
-   * a resolve (não-baseline) → `fonteBaseline=false` → NUNCA citável.
+   * TAIL lei (not in `data/norma-baseline.json`) with
+   * `statusVerificado:'revogada'` coming from GROUNDING — its
+   * `fonteVerificacao` is the LLM verifier's FREE `VerdictSchema.fonte`
+   * string. `matchNorma` does not resolve it (non-baseline) →
+   * `fonteBaseline=false` → NEVER citable.
    */
   const leiCaudaGroundingRevogada = {
     descricao: 'Decreto Municipal nº 4.412/2017 (cauda obscura)',
@@ -845,13 +851,13 @@ describe('GeminiDrafter — STRUCTURAL ABSENCE: zero upstream free LLM string', 
     const oficio = await drafter.redigir(e);
     expect(oficio).not.toBeNull();
     const md = oficio!.markdown;
-    // A frase-template de revogação É emitida (lei revogada verificada)…
+    // The revocation template phrase IS emitted (verified revoked lei)…
     expect(md).toMatch(/encontra-se revogada/i);
-    // …mas a string de grounding livre do LLM NÃO é interpolada.
+    // …but the LLM's free grounding string is NOT interpolated.
     expect(md).not.toContain(grounding);
     expect(md).not.toContain('não auditada');
     expect(md).not.toContain('tacitamente afastada');
-    // Proveniência fixa, sem embutir a string.
+    // Fixed provenance, without embedding the string.
     expect(md).toMatch(
       /conforme verificação de vigência registrada na análise/i
     );
@@ -889,8 +895,8 @@ describe('GeminiDrafter — STRUCTURAL ABSENCE: zero upstream free LLM string', 
   });
 
   it('grounding fonteVerificacao that LOOKS like a URL but with non-official host → does not cite (non-baseline + allowlist)', async () => {
-    // Mesmo URL bem-formada: se a lei é cauda (não-baseline) NUNCA cita;
-    // e o host teria de passar a allowlist oficial de qualquer forma.
+    // Even a well-formed URL: if the lei is tail (non-baseline) it NEVER
+    // cites; and the host would have to pass the official allowlist anyway.
     const e = baseExtraction({
       leisReferenciadas: [
         {

@@ -3,11 +3,11 @@ import { criarLoginPOST } from './handler.ts';
 import { verificarSessao, NOME_COOKIE_SESSAO } from '../../../lib/sessao.ts';
 
 /**
- * Testes DETERMINÍSTICOS de POST /api/login (SPEC §14). Sem servidor.
- * Provam: senha correta → 200 + Set-Cookie de sessão ASSINADO (verifica
- * via verificarSessao); senha errada/ausente → 401 SEM Set-Cookie;
- * comparação correta de senha (timing-safe testado por correção, não
- * por tempo); body inválido → 400.
+ * DETERMINISTIC tests of POST /api/login (SPEC §14). No server. They
+ * prove: correct password → 200 + a SIGNED session Set-Cookie (verified
+ * via verificarSessao); wrong/absent password → 401 WITHOUT Set-Cookie;
+ * correct password comparison (timing-safe tested by correctness, not by
+ * timing); invalid body → 400.
  */
 
 const SECRET = 'minha-senha-de-teste-123';
@@ -33,10 +33,10 @@ describe('POST /api/login', () => {
     expect(sc).toContain('HttpOnly');
     expect(sc).toContain('SameSite=Lax');
     expect(sc).toContain('Path=/');
-    // dev → sem Secure
+    // dev → no Secure
     expect(sc).not.toContain('Secure');
 
-    // O valor do cookie é uma sessão HMAC válida contra o secret.
+    // The cookie value is a valid HMAC session against the secret.
     const m = /pleito_sessao=([^;]+)/.exec(sc as string);
     expect(m).toBeTruthy();
     const r = await verificarSessao((m as RegExpExecArray)[1], SECRET);

@@ -6,14 +6,14 @@ import { Preprocessor, MAX_DESCOMPRIMIDO_BYTES } from './preprocessor.ts';
 import type { ArquivoEntrada } from '../../domain/ports.ts';
 
 /**
- * Preprocessor contra fixtures REAIS (determinístico — nada mocado).
- * (a) .txt direto → texto preserva o conteúdo do edital;
- * (b) .zip (fixtures/editais/jaborandi.zip, criado na Task 3.1) →
- *     descompacta e extrai o txt embutido (>1000 chars);
- * (c) entrada vazia → fonte.ocr = true (sinaliza necessidade de OCR).
+ * Preprocessor against REAL fixtures (deterministic — nothing mocked).
+ * (a) direct .txt → the text preserves the edital content;
+ * (b) .zip (fixtures/editais/jaborandi.zip, created in Task 3.1) →
+ *     decompresses and extracts the embedded txt (>1000 chars);
+ * (c) empty input → fonte.ocr = true (signals the need for OCR).
  *
- * Detecção de formato por magic bytes: PK→zip, %PDF→pdf, \x1f\x8b→gz,
- * senão texto plano (UTF-8).
+ * Format detection by magic bytes: PK→zip, %PDF→pdf, \x1f\x8b→gz,
+ * otherwise plain text (UTF-8).
  */
 
 function arquivo(
@@ -71,10 +71,10 @@ describe('Preprocessor', () => {
   });
 
   /**
-   * CARRY-FORWARD Phase 3+4 — proteção zip-bomb. O cap de tamanho
-   * descomprimido evita OOM com entrada maliciosa. Rejeita ANTES de
-   * materializar o conteúdo; o job vira `erro` (o worker captura) com
-   * mensagem clara — nunca derruba o processo.
+   * CARRY-FORWARD Phase 3+4 — zip-bomb protection. The decompressed-size
+   * cap avoids OOM with malicious input. Rejects BEFORE materializing the
+   * content; the job becomes `erro` (the worker catches it) with a clear
+   * message — it never brings down the process.
    */
   it('plain text above the decompressed cap: rejects (no OOM)', async () => {
     const grande = new Uint8Array(MAX_DESCOMPRIMIDO_BYTES + 1024);
@@ -85,10 +85,10 @@ describe('Preprocessor', () => {
   });
 
   it('gzip that decompresses above the cap: rejects (zip-bomb)', async () => {
-    // Payload comprimido minúsculo, descomprimido >> cap (bomba clássica).
+    // Tiny compressed payload, decompressed >> cap (classic bomb).
     const enorme = Buffer.alloc(MAX_DESCOMPRIMIDO_BYTES + 4096, 0x41);
     const bomba = gzipSync(enorme);
-    expect(bomba.length).toBeLessThan(100_000); // de fato uma bomba
+    expect(bomba.length).toBeLessThan(100_000); // indeed a bomb
     await expect(
       pre.preprocessar(
         arquivo('bomba.gz', new Uint8Array(bomba))
@@ -97,13 +97,13 @@ describe('Preprocessor', () => {
   });
 
   it('zip with entry uncompressedSize above the cap: rejects', async () => {
-    // ZIP mínimo: 1 entry deflate; uncompressedSize DECLARADO > cap mas
-    // payload comprimido minúsculo. O Preprocessor rejeita pelo header,
-    // sem inflar (rejeita antes de processar — não OOM).
+    // Minimal ZIP: 1 deflate entry; DECLARED uncompressedSize > cap but
+    // tiny compressed payload. The Preprocessor rejects from the header,
+    // without inflating (rejects before processing — no OOM).
     const conteudo = Buffer.alloc(64, 0x41);
     const comprimido = deflateRawSync(conteudo);
     const nome = Buffer.from('bomb.txt', 'ascii');
-    const crc = 0; // não validado pelo unzipper p/ o teste do header
+    const crc = 0; // not validated by the unzipper for the header test
     const tamanhoMentira = MAX_DESCOMPRIMIDO_BYTES + 999_999;
 
     const lfh = Buffer.alloc(30 + nome.length);
@@ -115,7 +115,7 @@ describe('Preprocessor', () => {
     lfh.writeUInt16LE(0, 12); // date
     lfh.writeUInt32LE(crc, 14);
     lfh.writeUInt32LE(comprimido.length, 18);
-    lfh.writeUInt32LE(tamanhoMentira >>> 0, 22); // uncompressed (mentira)
+    lfh.writeUInt32LE(tamanhoMentira >>> 0, 22); // uncompressed (lie)
     lfh.writeUInt16LE(nome.length, 26);
     lfh.writeUInt16LE(0, 28);
     nome.copy(lfh, 30);
@@ -137,7 +137,7 @@ describe('Preprocessor', () => {
     cdh.writeUInt16LE(0, 34);
     cdh.writeUInt16LE(0, 36);
     cdh.writeUInt32LE(0, 38);
-    cdh.writeUInt32LE(0, 42); // offset do LFH
+    cdh.writeUInt32LE(0, 42); // LFH offset
     nome.copy(cdh, 46);
 
     const offsetCd = lfh.length + comprimido.length;

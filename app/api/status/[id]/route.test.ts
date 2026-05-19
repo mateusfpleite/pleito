@@ -9,8 +9,8 @@ import type {
 } from '../../../../domain/ports.ts';
 
 /**
- * Testes DETERMINÍSTICOS de /api/status/:id — reflete o estado do Job e,
- * quando `done`, devolve a análise persistida. Sem servidor/Postgres.
+ * DETERMINISTIC tests of /api/status/:id — reflects the Job state and,
+ * when `done`, returns the persisted analysis. No server/Postgres.
  */
 
 function jobs(...js: Job[]): JobRepo {

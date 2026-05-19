@@ -15,10 +15,11 @@ import { PrismaTelemetry } from '../adapters/repo/telemetry.ts';
 import type { PrismaClientLike } from '../adapters/repo/client.ts';
 
 /**
- * Testes DETERMINÍSTICOS da composição (wiring) — não tocam Gemini nem
- * Postgres (testing-anti-patterns: provar a montagem, não o engine). Um
- * `LanguageModel` fake é injetado para que os adapters Gemini não tentem
- * resolver API key/env; um `PrismaClientLike` fake substitui o banco.
+ * DETERMINISTIC tests of the composition (wiring) — they do not touch
+ * Gemini or Postgres (testing-anti-patterns: prove the assembly, not the
+ * engine). A fake `LanguageModel` is injected so the Gemini adapters do
+ * not try to resolve an API key/env; a fake `PrismaClientLike` replaces
+ * the database.
  */
 
 const fakeModel = { id: 'fake' } as never;

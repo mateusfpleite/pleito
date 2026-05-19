@@ -3,10 +3,10 @@ import { criarJobPOST, MAX_UPLOAD_BYTES } from './handler.ts';
 import type { Job, JobRepo } from '../../../domain/ports.ts';
 
 /**
- * Testes DETERMINÍSTICOS da rota /api/job — lógica isolada, sem servidor
- * Next nem Postgres nem worker real (testing-anti-patterns: provar o
- * comportamento da rota, não a infra). `fetch` do trigger é MOCKADO; o
- * `JobRepo` é um fake in-memory.
+ * DETERMINISTIC tests of the /api/job route — isolated logic, no Next
+ * server, no Postgres, no real worker (testing-anti-patterns: prove the
+ * route's behavior, not the infra). The trigger `fetch` is MOCKED; the
+ * `JobRepo` is an in-memory fake.
  */
 
 function fakeJobRepo(): JobRepo & { jobs: Job[] } {
@@ -90,8 +90,8 @@ describe('POST /api/job', () => {
     });
     await POST(reqComTexto('CONTEÚDO DO EDITAL XYZ'));
 
-    // O worker reconstrói ArquivoEntrada do inputRef (envelope JSON
-    // base64) — round-trip do conteúdo sem blob externo.
+    // The worker reconstructs ArquivoEntrada from the inputRef (base64
+    // JSON envelope) — round-trip of the content without an external blob.
     const env = JSON.parse(repo.jobs[0].inputRef) as {
       nomeArquivo: string;
       contentBase64: string;
@@ -113,8 +113,9 @@ describe('POST /api/job', () => {
     });
 
     const res = await POST(reqComTexto('edital'));
-    // O job foi criado e a resposta é OK mesmo com trigger falho:
-    // a repesca do worker (claimNext no próximo wake) pega o pending.
+    // The job was created and the response is OK even with a failed
+    // trigger: the worker's re-pickup (claimNext on the next wake) picks
+    // up the pending one.
     expect(res.status).toBe(202);
     const body = (await res.json()) as { jobId: string };
     expect(body.jobId).toBe('job-1');
@@ -132,8 +133,8 @@ describe('POST /api/job', () => {
       fetchImpl: fetchSpy,
     });
 
-    // 1 byte acima do teto de upload (pré-base64) — barrado UPSTREAM,
-    // antes de empacotar/persistir (não infla o body nem a row).
+    // 1 byte above the upload ceiling (pre-base64) — barred UPSTREAM,
+    // before packing/persisting (does not inflate the body or the row).
     const grande = 'x'.repeat(MAX_UPLOAD_BYTES + 1);
     const fd = new FormData();
     fd.set(
@@ -179,8 +180,9 @@ describe('POST /api/job', () => {
 
   it('slow trigger does NOT hold the response: 202 returns and job stays pending', async () => {
     const repo = fakeJobRepo();
-    // Simula worker em cold start: o fetch pendura até o AbortSignal
-    // do handler abortar (timeout). O handler engole e responde 202.
+    // Simulates a worker in cold start: the fetch hangs until the
+    // handler's AbortSignal aborts (timeout). The handler swallows it and
+    // responds 202.
     const fetchSpy = vi.fn(
       (_url: RequestInfo | URL, init?: RequestInit) =>
         new Promise<Response>((_resolve, reject) => {
@@ -205,7 +207,7 @@ describe('POST /api/job', () => {
     const body = (await res.json()) as { jobId: string };
     expect(body.jobId).toBe('job-1');
     expect(repo.jobs[0].status).toBe('pending');
-    // O handler PASSA um AbortSignal ao fetch (timeout do trigger).
+    // The handler PASSES an AbortSignal to fetch (trigger timeout).
     const [, init] = fetchSpy.mock.calls[0];
     expect(init?.signal).toBeInstanceOf(AbortSignal);
   });

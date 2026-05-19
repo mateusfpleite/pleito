@@ -2,20 +2,21 @@ import { describe, it, expect } from 'vitest';
 import { normalizarNumero } from './norma-id.ts';
 
 /**
- * Normalização canônica do número de norma. Design VALIDADO no spike
- * (`src/spike-matcher.ts`): aplicada nos DOIS lados (extractor e baseline),
- * fecha o falso-negativo 23/37 → 0/37. Os casos abaixo usam o formato REAL
- * que o extractor produz (`output/*.json`: "14133" só-dígitos) E o formato
- * da baseline (`data/norma-baseline.json`: "8.666" com ponto).
+ * Canonical normalization of the norm number. Design VALIDATED in the
+ * spike (`src/spike-matcher.ts`): applied on BOTH sides (extractor and
+ * baseline), it closes the false negative 23/37 → 0/37. The cases below
+ * use the REAL format the extractor produces (`output/*.json`: "14133"
+ * digits-only) AND the baseline format (`data/norma-baseline.json`:
+ * "8.666" with a dot).
  */
 describe('normalizarNumero', () => {
   it('keeps a digits-only number from the extractor unchanged', () => {
-    // formato REAL do extractor (output/dombasilio.json)
+    // REAL extractor format (output/dombasilio.json)
     expect(normalizarNumero('14133')).toBe('14133');
   });
 
   it('strips the thousands separator (baseline format)', () => {
-    // formato REAL da baseline (data/norma-baseline.json)
+    // REAL baseline format (data/norma-baseline.json)
     expect(normalizarNumero('8.666')).toBe('8666');
   });
 
@@ -24,7 +25,7 @@ describe('normalizarNumero', () => {
   });
 
   it('strips leading zeros', () => {
-    // formato REAL do baserate (output/baserate-result.json: "01", "05")
+    // REAL baserate format (output/baserate-result.json: "01", "05")
     expect(normalizarNumero('05')).toBe('5');
   });
 
@@ -41,8 +42,9 @@ describe('normalizarNumero', () => {
   });
 
   it('keeps the digits when the number is only zero (does not become an empty string)', () => {
-    // comportamento EXATO do spike validado: se strip de zeros zera tudo,
-    // devolve os dígitos crus (não '' ) para não perder o "0".
+    // EXACT behavior of the validated spike: if stripping zeros zeroes
+    // everything, it returns the raw digits (not '') so as not to lose
+    // the "0".
     expect(normalizarNumero('0')).toBe('0');
     expect(normalizarNumero('00')).toBe('00');
   });
@@ -53,7 +55,7 @@ describe('normalizarNumero', () => {
   });
 
   it('null/undefined → empty (extractor may emit numero:null)', () => {
-    // output/dombasilio.json tem leis com numero:null (Constituição)
+    // output/dombasilio.json has leis with numero:null (Constituição)
     expect(normalizarNumero(null as unknown as string)).toBe('');
     expect(normalizarNumero(undefined as unknown as string)).toBe('');
   });

@@ -5,23 +5,26 @@ import { EditalExtractionSchema } from '../../domain/schema.ts';
 import type { EditalExtraction } from '../../domain/schema.ts';
 
 /**
- * Testes DETERMINÍSTICOS do Norma Verifier. Mock LanguageModel + fake
- * NormaCache in-memory — NUNCA chamamos Gemini real nem testamos "o LLM
- * retornou X" (@superpowers:testing-anti-patterns). As invariantes provadas:
+ * DETERMINISTIC tests of the Norma Verifier. Mock LanguageModel + fake
+ * in-memory NormaCache — we NEVER call the real Gemini nor test "the LLM
+ * returned X" (@superpowers:testing-anti-patterns). The proven invariants:
  *
- *  (a) lei que casa baseline (8666/1993) → statusVerificado='revogada' e o
- *      model fake NÃO é chamado (spy=0 → precedência baseline sem grounding);
+ *  (a) lei that matches baseline (8666/1993) → statusVerificado='revogada'
+ *      and the fake model is NOT called (spy=0 → baseline precedence
+ *      without grounding);
  *  (b) zona-cinzenta (IN 5/2017) → statusVerificado='contestada';
  *  (c) citacao-suspeita (9704/1995) → statusVerificado='inexistente';
- *  (d) lei fora da baseline → grounding chamado (spy>0), cache populado;
- *  (e) 2ª chamada da mesma lei fora-baseline → vem do cache (spy NÃO sobe).
+ *  (d) lei outside the baseline → grounding called (spy>0), cache
+ *      populated;
+ *  (e) 2nd call of the same outside-baseline lei → comes from the cache
+ *      (spy does NOT rise).
  *
- * O mock implementa só a superfície de `generateText`+`Output.object` que o
- * adapter usa: `doGenerate` devolve JSON do verdict em `content`. Conta
- * chamadas (`calls`) para provar precedência/cache com contadores reais.
+ * The mock implements only the `generateText`+`Output.object` surface the
+ * adapter uses: `doGenerate` returns the verdict JSON in `content`. It
+ * counts calls (`calls`) to prove precedence/cache with real counters.
  */
 
-/** Extração base válida; cada teste injeta `leisReferenciadas`. */
+/** Valid base extraction; each test injects `leisReferenciadas`. */
 function baseExtraction(
   leis: EditalExtraction['leisReferenciadas']
 ): EditalExtraction {
@@ -99,7 +102,7 @@ function lei(
   };
 }
 
-/** Fake NormaCache in-memory (o adapter Supabase real vem na Phase 11). */
+/** Fake in-memory NormaCache (the real Supabase adapter arrives in Phase 11). */
 function fakeCache(): NormaCache & { store: Map<string, NormaCacheEntry> } {
   const store = new Map<string, NormaCacheEntry>();
   return {
@@ -114,8 +117,8 @@ function fakeCache(): NormaCache & { store: Map<string, NormaCacheEntry> } {
 }
 
 /**
- * LanguageModelV2 fake. `verdict` é o objeto que o grounding "retornaria";
- * `calls` conta cada `doGenerate` (spy real p/ provar precedência/cache).
+ * Fake LanguageModelV2. `verdict` is the object grounding "would return";
+ * `calls` counts each `doGenerate` (real spy to prove precedence/cache).
  */
 function spyModel(verdict: { status: string; fonte: string }) {
   const state = { calls: 0 };
@@ -155,7 +158,7 @@ describe('GeminiNormaVerifier — baseline precedence (zero cost, no grounding)'
 
     expect(r.leisReferenciadas[0].statusVerificado).toBe('revogada');
     expect(r.leisReferenciadas[0].fonteVerificacao).toContain('planalto');
-    // Precedência provada: hit baseline NÃO aciona grounding.
+    // Precedence proven: a baseline hit does NOT trigger grounding.
     expect(state.calls).toBe(0);
   });
 
@@ -205,12 +208,12 @@ describe('GeminiNormaVerifier — grounding on the tail (baseline miss) + cache'
     ]);
     const r = await verifier.verificar(e);
 
-    expect(state.calls).toBe(1); // grounding acionado (miss baseline)
+    expect(state.calls).toBe(1); // grounding triggered (baseline miss)
     expect(r.leisReferenciadas[0].statusVerificado).toBe('revogada');
     expect(r.leisReferenciadas[0].fonteVerificacao).toBe(
       'https://planalto.gov.br/exemplo'
     );
-    // Cache populado com chave estável numero|ano|escopo.
+    // Cache populated with the stable key numero|ano|escopo.
     const cached = await cache.obter('9999|1999|municipal');
     expect(cached).not.toBeNull();
     expect(cached?.status).toBe('revogada');
@@ -233,7 +236,7 @@ describe('GeminiNormaVerifier — grounding on the tail (baseline miss) + cache'
     expect(state.calls).toBe(1);
 
     const r2 = await verifier.verificar(mk());
-    // Cache hit: grounding NÃO chamado de novo (contador estável).
+    // Cache hit: grounding NOT called again (stable counter).
     expect(state.calls).toBe(1);
     expect(r2.leisReferenciadas[0].statusVerificado).toBe('revogada');
     expect(r2.leisReferenciadas[0].fonteVerificacao).toBe(
@@ -258,11 +261,11 @@ describe('GeminiNormaVerifier — grounding on the tail (baseline miss) + cache'
 });
 
 /**
- * SPEC §11b — custo de grounding logado POR CHAMADA (não só agregado).
- * Prova-se com o sink injetado + spy real de chamadas: cada chamada de
- * grounding gera EXATAMENTE 1 evento de custo; hit de baseline/cache gera
- * ZERO. (testing-anti-patterns: model fake + telemetry fake — provamos a
- * instrumentação determinística, não o LLM.)
+ * SPEC §11b — grounding cost logged PER CALL (not just aggregated).
+ * Proven with the injected sink + real call spy: each grounding call
+ * generates EXACTLY 1 cost event; a baseline/cache hit generates ZERO.
+ * (testing-anti-patterns: fake model + fake telemetry — we prove the
+ * deterministic instrumentation, not the LLM.)
  */
 describe('GeminiNormaVerifier — grounding cost PER call (§11b)', () => {
   it('each grounding call → exactly 1 cost event', async () => {
@@ -286,21 +289,21 @@ describe('GeminiNormaVerifier — grounding cost PER call (§11b)', () => {
         })
     );
 
-    // 2 leis fora-baseline distintas → 2 chamadas de grounding.
+    // 2 distinct outside-baseline leis → 2 grounding calls.
     const e = baseExtraction([
       lei({ numero: '7777', ano: 2001, escopo: 'municipal', tipoNorma: 'lei' }),
       lei({ numero: '8888', ano: 2002, escopo: 'estadual', tipoNorma: 'lei' }),
     ]);
     await verifier.verificar(e);
 
-    expect(state.calls).toBe(2); // 2 groundings reais
-    // 1 evento de custo POR chamada — não agregado num só.
+    expect(state.calls).toBe(2); // 2 real groundings
+    // 1 cost event PER call — not aggregated into one.
     expect(eventos).toHaveLength(2);
     expect(eventos.map((x) => x.lei).sort()).toEqual([
       '7777/2001',
       '8888/2002',
     ]);
-    // O uso da chamada é repassado (do `usage` do generateText fake).
+    // The call's usage is forwarded (from the fake generateText `usage`).
     expect(eventos[0].inputTokens).toBe(1);
     expect(eventos[0].totalTokens).toBe(2);
   });
@@ -313,7 +316,7 @@ describe('GeminiNormaVerifier — grounding cost PER call (§11b)', () => {
       model as never,
       () => eventos.push(1)
     );
-    // 8666/1993 casa baseline → precedência, sem grounding.
+    // 8666/1993 matches baseline → precedence, no grounding.
     await verifier.verificar(
       baseExtraction([
         lei({ numero: '8666', ano: 1993, escopo: 'federal', tipoNorma: 'lei' }),
@@ -339,8 +342,8 @@ describe('GeminiNormaVerifier — grounding cost PER call (§11b)', () => {
       baseExtraction([
         lei({ numero: '6543', ano: 2010, escopo: 'municipal', tipoNorma: 'lei' }),
       ]);
-    await verifier.verificar(mk()); // grounding real → 1 evento
-    await verifier.verificar(mk()); // cache hit → NENHUM evento novo
+    await verifier.verificar(mk()); // real grounding → 1 event
+    await verifier.verificar(mk()); // cache hit → NO new event
     expect(eventos).toHaveLength(1);
   });
 });

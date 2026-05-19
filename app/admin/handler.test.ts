@@ -10,9 +10,9 @@ import type {
 } from '../../domain/ports.ts';
 
 /**
- * Testes DETERMINÍSTICOS da superfície /admin (§11b). Fakes in-memory —
- * sem Postgres. Provam: sinal-ouro (diff) por linha; feedback resolvido;
- * fallback (exportou) quando diff vazio; re-upload por hash repetido.
+ * DETERMINISTIC tests of the /admin surface (§11b). In-memory fakes — no
+ * Postgres. They prove: gold signal (diff) per line; resolved feedback;
+ * fallback (exportou) when the diff is empty; re-upload via repeated hash.
  */
 
 const extracao = EditalExtractionSchema.parse({
@@ -150,16 +150,16 @@ describe('listarAdmin — internal review (§11b)', () => {
     const r = reg({
       id: 'a-2',
       jobId: 'job-2',
-      oficioExportado: oficio.markdown, // exportou SEM editar
+      oficioExportado: oficio.markdown, // exported WITHOUT editing
       oficioExportadoEm: new Date('2026-05-19T11:00:00Z'),
     });
     const linhas = await listarAdmin({
       analysisRepo: repo([r]),
       telemetry: tele([ev('a-2', 'export', { tipo: 'oficio' })]),
     });
-    expect(linhas[0].oficioFoiEditado).toBe(false); // ouro nulo
+    expect(linhas[0].oficioFoiEditado).toBe(false); // gold null
     expect(linhas[0].diffDistancia).toBe(0);
-    expect(linhas[0].exportouOficio).toBe(true); // reserva
+    expect(linhas[0].exportouOficio).toBe(true); // fallback
     expect(linhas[0].feedback).toBeNull();
   });
 

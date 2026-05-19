@@ -5,30 +5,32 @@ import type { EditalExtraction } from '../domain/schema.ts';
 import type { OficioGerado } from '../domain/ports.ts';
 
 /**
- * Testes DETERMINÍSTICOS do Gate Tier 0 (SPEC §11a, contenção §5 #2).
+ * DETERMINISTIC tests of the Tier 0 Gate (SPEC §11a, containment §5 #2).
  *
- * Property-based / estrutural — SEM LLM, SEM corpus-match. As invariantes
- * provadas são propriedades do confronto `afirmacaoVigencia` (campo
- * estruturado do Drafter) × `statusVerificado` (campo do Norma Verifier) ×
- * `matchNorma` (baseline curado), não "o LLM retornou X"
+ * Property-based / structural — NO LLM, NO corpus-match. The proven
+ * invariants are properties of the confrontation `afirmacaoVigencia`
+ * (structured Drafter field) × `statusVerificado` (Norma Verifier field) ×
+ * `matchNorma` (curated baseline), not "the LLM returned X"
  * (@superpowers:testing-anti-patterns).
  *
- * A contenção PRIMÁRIA é a montagem determinística no Drafter (Phase 8);
- * este Tier 0 é backstop estrutural redundante, mas é GATE DURO = 0
- * violações.
+ * PRIMARY containment is the deterministic assembly in the Drafter (Phase
+ * 8); this Tier 0 is a redundant structural backstop, but it is a HARD
+ * GATE = 0 violations.
  *
- *  (a) análise limpa (ofício coerente / ofício null) → violacoes:[];
- *  (b) leisCitadas afirmacaoVigencia='revogada' mas statusVerificado da
- *      leisReferenciadas correspondente é 'contestada' → afirmacao-indevida;
- *  (c) markdown "a norma perdeu vigência" sem respaldo estruturado →
+ *  (a) clean analysis (coherent ofício / null ofício) → violacoes:[];
+ *  (b) leisCitadas afirmacaoVigencia='revogada' but the corresponding
+ *      leisReferenciadas statusVerificado is 'contestada' →
+ *      afirmacao-indevida;
+ *  (c) markdown "a norma perdeu vigência" without structured backing →
  *      lexico-inconsistente;
- *  (d) 5 paráfrases de revogação sem respaldo → todas pegas pelo backstop;
- *  (e) baseline-divergente: extração com lei zona-cinzenta mas
+ *  (d) 5 revocation paraphrases without backing → all caught by the
+ *      backstop;
+ *  (e) baseline-divergente: extraction with a zona-cinzenta lei but
  *      statusVerificado='revogada' → baseline-divergente;
- *  (f) afirmacaoVigencia='vigente' no ofício → violação.
+ *  (f) afirmacaoVigencia='vigente' in the ofício → violation.
  */
 
-/** Extração mínima válida (schema v3) — sem leis, sem nada a questionar. */
+/** Minimal valid extraction (schema v3) — no leis, nothing to question. */
 function extracaoBase(
   over: Partial<EditalExtraction> = {}
 ): EditalExtraction {
@@ -87,7 +89,7 @@ function extracaoBase(
   return EditalExtractionSchema.parse(base);
 }
 
-/** Lei referenciada com status verificado custom. */
+/** Referenced lei with a custom verified status. */
 function leiRef(
   numero: string | null,
   ano: number | null,
@@ -146,14 +148,15 @@ describe('checarContencao — structural Tier 0', () => {
   });
 
   it('(b) afirmacaoVigencia=revogada but statusVerificado=contestada → afirmacao-indevida', () => {
-    // Lei municipal fictícia (NÃO está no baseline curado) — isola o
-    // confronto afirmacaoVigencia×statusVerificado sem ruído de baseline.
+    // Fictitious municipal lei (NOT in the curated baseline) — isolates
+    // the afirmacaoVigencia×statusVerificado confrontation without baseline
+    // noise.
     const extracao = extracaoBase({
       leisReferenciadas: [
         leiRef('4321', 2015, 'contestada', { escopo: 'municipal' }),
       ],
     });
-    // Markdown neutro (sem léxico) p/ isolar a checagem 1 do backstop léxico.
+    // Neutral markdown (no lexicon) to isolate check 1 from the lexical backstop.
     const oficio: OficioGerado = {
       tipo: 'esclarecimento',
       markdown: 'Solicita-se esclarecimento sobre a norma nº 4321/2015.',
@@ -225,9 +228,10 @@ describe('checarContencao — structural Tier 0', () => {
   });
 
   it('(e) baseline-divergente: zona-cinzenta law but statusVerificado=revogada', () => {
-    // Única entrada zona-cinzenta do baseline curado: IN SEGES nº 05/2017
-    // (numero "5", ano 2017, federal, instrucao-normativa). Esperado pela
-    // categoria: 'contestada'. Marcar 'revogada' = binarização indevida.
+    // The only zona-cinzenta entry in the curated baseline: IN SEGES nº
+    // 05/2017 (numero "5", ano 2017, federal, instrucao-normativa).
+    // Expected by the category: 'contestada'. Marking 'revogada' = improper
+    // binarization.
     const extracao = extracaoBase({
       leisReferenciadas: [
         leiRef('5', 2017, 'revogada', {
@@ -284,9 +288,9 @@ describe('checarContencao — structural Tier 0', () => {
   });
 
   it('gold-like: extraction without statusVerificado (nao-verificado) + oficio null → []', () => {
-    // Gold fixtures são extrações cruas (statusVerificado default
-    // nao-verificado). Não deve haver baseline-divergente: nao-verificado
-    // não é divergência, é "ainda não verificado".
+    // Gold fixtures are raw extractions (statusVerificado default
+    // nao-verificado). There must be no baseline-divergente: nao-verificado
+    // is not a divergence, it is "not verified yet".
     const extracao = extracaoBase({
       leisReferenciadas: [
         leiRef('8666', 1993, 'nao-verificado'),

@@ -6,18 +6,20 @@ import { ExtractorOutputSchema } from '../../domain/schema.ts';
 import type { FonteMeta } from '../../domain/schema.ts';
 
 /**
- * Testes DETERMINÍSTICOS do Extractor (LanguageModel mocado — NUNCA
- * chamamos o Gemini real nem testamos "o LLM retornou X";
- * @superpowers:testing-anti-patterns). Cobrem três invariantes:
+ * DETERMINISTIC tests of the Extractor (LanguageModel mocked — we NEVER
+ * call the real Gemini nor test "the LLM returned X";
+ * @superpowers:testing-anti-patterns). They cover three invariants:
  *
- *  (a) `montarPrompt` põe o texto do DOCUMENTO antes da string de TAREFA
- *      (recência long-context, SPEC §7) — assert por índice;
- *  (b) model fake devolvendo objeto válido → adapter retorna o parseado;
- *  (c) model fake devolvendo objeto que viola o schema → adapter rejeita.
+ *  (a) `montarPrompt` places the DOCUMENT text before the TASK string
+ *      (long-context recency, SPEC §7) — asserted by index;
+ *  (b) fake model returning a valid object → adapter returns the parsed
+ *      result;
+ *  (c) fake model returning an object that violates the schema → adapter
+ *      rejects.
  *
- * O mock implementa só a superfície de `generateObject` que o adapter usa:
- * `doGenerate` retornando JSON em `content`. Não dependemos de internals do
- * AI SDK além do contrato público de LanguageModelV2.
+ * The mock implements only the `generateObject` surface the adapter uses:
+ * `doGenerate` returning JSON in `content`. We do not depend on AI SDK
+ * internals beyond the public LanguageModelV2 contract.
  */
 
 const fonte: FonteMeta = {
@@ -28,7 +30,7 @@ const fonte: FonteMeta = {
   url: null,
 };
 
-/** Extração mínima válida contra ExtractorOutputSchema (sem pontosDeAtencao). */
+/** Minimal extraction valid against ExtractorOutputSchema (no pontosDeAtencao). */
 const objetoValido = {
   municipio: 'Jaborandi',
   uf: 'BA',
@@ -92,8 +94,8 @@ const objetoValido = {
 };
 
 /**
- * LanguageModelV2 fake mínimo. Devolve `payload` (serializado) como texto;
- * `generateObject` (modo JSON) faz o parse + valida contra o schema.
+ * Minimal fake LanguageModelV2. Returns `payload` (serialized) as text;
+ * `generateObject` (JSON mode) parses + validates against the schema.
  */
 function fakeModel(payload: unknown) {
   return {
@@ -130,7 +132,7 @@ describe('montarPrompt — document before task order (SPEC §7)', () => {
 
   it('few-shot stays in the static system prompt (cacheable), not in the user', () => {
     const prompt = montarPrompt('qualquer texto');
-    // Os exemplos few-shot vivem no SYSTEM (estático), não no prompt do user.
+    // The few-shot examples live in the SYSTEM (static), not in the user prompt.
     expect(SYSTEM_PROMPT).toContain('EXEMPLO');
     expect(prompt).not.toContain('EXEMPLO');
   });
@@ -143,14 +145,14 @@ describe('GeminiExtractor — parse/validation (injected model, no network)', ()
 
     expect(r.municipio).toBe('Jaborandi');
     expect(r.uf).toBe('BA');
-    // statusVerificado preenchido pelo default do Zod (extractor não emite).
+    // statusVerificado filled by the Zod default (the extractor does not emit it).
     expect(r.leisReferenciadas[0].statusVerificado).toBe('nao-verificado');
-    // Carry-forward: o output do extractor NÃO tem pontosDeAtencao.
+    // Carry-forward: the extractor output does NOT have pontosDeAtencao.
     expect('pontosDeAtencao' in r).toBe(false);
   });
 
   it('(c) model returning an off-schema object → rejects (throw)', async () => {
-    const invalido = { ...objetoValido, uf: 'BAHIA' }; // uf deve ter length 2
+    const invalido = { ...objetoValido, uf: 'BAHIA' }; // uf must have length 2
     const extractor = new GeminiExtractor(fakeModel(invalido) as never);
 
     await expect(

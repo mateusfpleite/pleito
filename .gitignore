@@ -15,7 +15,6 @@ docs/*.pdf
 
 # Documentos privados de terceiros (não publicar)
 docs/inputs/
-scripts/protected-hashes.txt
 docs/pitch-stefany.md
 docs/plans/2026-05-19-en-structure-ptbr-product-migration.md
 docs/plans/2026-05-19-en-structure-ptbr-product-design.md

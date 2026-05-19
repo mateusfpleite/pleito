@@ -7,9 +7,9 @@ import type {
 } from '../../../../../domain/ports.ts';
 
 /**
- * Testes DETERMINÍSTICOS do endpoint promote-to-corpus em 1 passo
- * (§11b). Escritor injetado (sem fs real). Provam: 201 + nome do
- * arquivo + escreveu em fixtures/gold/; 404 se análise inexistente.
+ * DETERMINISTIC tests of the 1-step promote-to-corpus endpoint (§11b).
+ * Injected writer (no real fs). They prove: 201 + file name + wrote to
+ * fixtures/gold/; 404 if the analysis does not exist.
  */
 
 const extracao = EditalExtractionSchema.parse({

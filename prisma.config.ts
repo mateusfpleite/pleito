@@ -1,26 +1,26 @@
 /**
- * Configuração Prisma 7 (substitui `url`/`directUrl` no schema.prisma, que
- * o Prisma 7 removeu do bloco `datasource`).
+ * Prisma 7 configuration (replaces `url`/`directUrl` in schema.prisma, which
+ * Prisma 7 removed from the `datasource` block).
  *
  * Serverless-safe (SPEC §14):
  *   - DATABASE_URL → pooled (Supabase pgBouncer,
- *     `?pgbouncer=true&connection_limit=1`), usado pelas rotas Vercel.
- *   - DIRECT_URL   → conexão direta para `prisma migrate` (pgBouncer não
- *     suporta DDL transacional).
+ *     `?pgbouncer=true&connection_limit=1`), used by the Vercel routes.
+ *   - DIRECT_URL   → direct connection for `prisma migrate` (pgBouncer does
+ *     not support transactional DDL).
  *
- * `defineConfig` carrega na inicialização da CLI mesmo em comandos que NÃO
- * conectam ao banco (`prisma generate`). Como o ambiente do POC não tem
- * Postgres (`DATABASE_URL`/`DIRECT_URL` ausentes — RESÍDUO de deploy),
- * usamos um placeholder inerte que mantém o codegen offline funcionando.
- * Comandos reais de migração (`prisma migrate deploy`) FALHAM cedo e
- * explicitamente se as URLs reais não estiverem presentes — o placeholder
- * não conecta a lugar nenhum (host inexistente).
+ * `defineConfig` loads at CLI startup even for commands that do NOT connect
+ * to the database (`prisma generate`). Since the POC environment has no
+ * Postgres (`DATABASE_URL`/`DIRECT_URL` absent — deploy RESIDUE), we use an
+ * inert placeholder that keeps offline codegen working. Real migration
+ * commands (`prisma migrate deploy`) FAIL early and explicitly if the real
+ * URLs are not present — the placeholder connects nowhere (nonexistent
+ * host).
  */
 import { defineConfig } from 'prisma/config';
 
-// RESÍDUO de deploy: definir DATABASE_URL (pooled) e DIRECT_URL (direta)
-// no ambiente Vercel/worker. Sem elas, só `prisma generate` funciona;
-// `prisma migrate` deve falhar — o placeholder garante isso.
+// Deploy RESIDUE: set DATABASE_URL (pooled) and DIRECT_URL (direct) in the
+// Vercel/worker environment. Without them, only `prisma generate` works;
+// `prisma migrate` must fail — the placeholder guarantees that.
 const PLACEHOLDER =
   'postgresql://placeholder:placeholder@residuo-de-deploy.invalid:5432/placeholder';
 

@@ -12,14 +12,14 @@ import type {
 } from '../domain/ports.ts';
 
 /**
- * Testes DETERMINÍSTICOS do promote-to-corpus (§11b). Sem fs real: o
- * escritor é injetado (captura caminho+conteúdo). Provas:
- *  - escreve em `fixtures/gold/` (versionado, NÃO `output/`);
- *  - nome do arquivo derivado de município/uf (slug seguro);
- *  - o JSON escrito PARSEIA contra EditalExtractionSchema (é fixture
- *    válida de Tier 0 — o runner safeParse-aria com sucesso);
- *  - `_proveniencia` presente (auditoria) e NÃO quebra o parse;
- *  - análise inexistente → lança.
+ * DETERMINISTIC tests of promote-to-corpus (§11b). No real fs: the writer
+ * is injected (captures path+content). Proofs:
+ *  - writes to `fixtures/gold/` (versioned, NOT `output/`);
+ *  - file name derived from município/uf (safe slug);
+ *  - the written JSON PARSES against EditalExtractionSchema (it is a valid
+ *    Tier 0 fixture — the runner would safeParse it successfully);
+ *  - `_proveniencia` present (audit) and does NOT break the parse;
+ *  - nonexistent analysis → throws.
  */
 
 const extracao = EditalExtractionSchema.parse({
@@ -125,7 +125,7 @@ describe('promoverParaCorpus — 1 step to fixtures/gold (§11b)', () => {
       agora: () => new Date('2026-05-19T12:00:00Z'),
     });
 
-    // Caminho: VERSIONADO em fixtures/gold/ (não output/, que é gitignored).
+    // Path: VERSIONED in fixtures/gold/ (not output/, which is gitignored).
     expect(res.caminho.startsWith(GOLD_DIR)).toBe(true);
     expect(res.caminho).toContain('/fixtures/gold/');
     expect(res.caminho).not.toContain('/output/');
@@ -137,14 +137,14 @@ describe('promoverParaCorpus — 1 step to fixtures/gold (§11b)', () => {
       string,
       unknown
     >;
-    // É uma fixture VÁLIDA de Tier 0: parseia contra o schema (chave
-    // `_proveniencia` é stripada pelo Zod → não quebra o safeParse do
-    // runner).
+    // It is a VALID Tier 0 fixture: parses against the schema (the
+    // `_proveniencia` key is stripped by Zod → does not break the
+    // runner's safeParse).
     const ok = EditalExtractionSchema.safeParse(parsed);
     expect(ok.success).toBe(true);
     expect(ok.success && ok.data.municipio).toBe('São José dos Campos');
 
-    // Proveniência presente p/ auditoria.
+    // Provenance present for audit.
     const prov = parsed._proveniencia as Record<string, unknown>;
     expect(prov.analysisId).toBe('a-99');
     expect(prov.jobId).toBe('job-99');

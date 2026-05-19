@@ -7,10 +7,11 @@ import {
 } from './oficio-edicao.ts';
 
 /**
- * Estado da edição human-in-the-loop do ofício (SPEC §8). Phase 13 só
- * entrega a textarea EDITÁVEL + estado local controlado; o export é
- * Phase 14. Testa: estado controlado (texto muda), detecção de
- * "foi editado" (sinal de diff p/ §11b futuro) e reverter ao gerado.
+ * Human-in-the-loop ofício editing state (SPEC §8). Phase 13 only
+ * delivers the EDITABLE textarea + controlled local state; the export is
+ * Phase 14. Tests: controlled state (text changes), "was edited"
+ * detection (diff signal for future §11b) and reverting to the generated
+ * one.
  */
 
 describe('ofício editing — controlled textarea', () => {

@@ -12,10 +12,10 @@ import type {
 import type { AnalyzeResult } from '../application/analyze-edital.ts';
 
 /**
- * Testes DETERMINÍSTICOS do laço de processamento do worker — sem Postgres,
- * sem Gemini, sem servidor HTTP (testing-anti-patterns: provar o
- * comportamento do worker, não a infra). `claimNext` (in-memory) modela o
- * claim atômico; `analyzeEdital` é injetado como fake.
+ * DETERMINISTIC tests of the worker processing loop — no Postgres, no
+ * Gemini, no HTTP server (testing-anti-patterns: prove the worker's
+ * behavior, not the infra). `claimNext` (in-memory) models the atomic
+ * claim; `analyzeEdital` is injected as a fake.
  */
 
 const extracao = EditalExtractionSchema.parse({
@@ -97,7 +97,7 @@ function fakeJobRepo(): JobRepo & {
         .filter((j) => j.status === 'pending')
         .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
       if (!p) return null;
-      p.status = 'running'; // atômico no fake (1 thread JS)
+      p.status = 'running'; // atomic in the fake (1 JS thread)
       return { ...p };
     },
     async marcarConcluido(id) {
@@ -195,7 +195,7 @@ describe('drenarFila (worker loop)', () => {
 
     expect(jobRepo.jobs[0].status).toBe('erro');
     expect(jobRepo.jobs[0].erro).toMatch(/Tier 0/);
-    expect(analysisRepo.saved).toHaveLength(0); // sem doc parcial
+    expect(analysisRepo.saved).toHaveLength(0); // no partial doc
   });
 
   it('an error in one job does NOT break the loop: the next one is processed', async () => {
@@ -226,12 +226,13 @@ describe('drenarFila (worker loop)', () => {
 });
 
 /**
- * SPEC §11b (Phase 15) — observabilidade do worker. Telemetria fake
- * in-memory; sem Postgres/LLM (testing-anti-patterns). Invariantes:
- *  - 1 evento `grounding_custo` POR chamada de grounding (NÃO só
- *    agregado), atribuído ao analysisId real (após o save);
- *  - `analise_concluida` com latência (relógio injetado) + agregado;
- *  - telemetria NÃO-bloqueante: adapter que LANÇA não derruba o job.
+ * SPEC §11b (Phase 15) — worker observability. Fake in-memory telemetria;
+ * no Postgres/LLM (testing-anti-patterns). Invariants:
+ *  - 1 `grounding_custo` event PER grounding call (NOT just aggregated),
+ *    attributed to the real analysisId (after the save);
+ *  - `analise_concluida` with latency (injected clock) + aggregate;
+ *  - NON-blocking telemetria: an adapter that THROWS does not bring down
+ *    the job.
  */
 function fakeTelemetry(): TelemetryPort & {
   eventos: Array<{
@@ -265,8 +266,8 @@ describe('drenarFila — observability telemetry (§11b)', () => {
     const tele = fakeTelemetry();
     jobRepo.add(empacotarInput('e.txt', new TextEncoder().encode('E')));
 
-    // O `analyze` fake simula 2 chamadas de grounding via o sink que
-    // `drenarFila` injeta — exatamente como o Verifier real faria.
+    // The fake `analyze` simulates 2 grounding calls via the sink that
+    // `drenarFila` injects — exactly as the real Verifier would.
     const analyze = vi.fn(
       async (
         _input,
@@ -293,7 +294,7 @@ describe('drenarFila — observability telemetry (§11b)', () => {
       }
     );
 
-    // Relógio injetado: 1ª leitura=1000, 2ª=1000+90000 → latência 90s.
+    // Injected clock: 1st reading=1000, 2nd=1000+90000 → 90s latency.
     const leituras = [1000, 91_000];
     let i = 0;
     await drenarFila({
@@ -308,14 +309,14 @@ describe('drenarFila — observability telemetry (§11b)', () => {
     const custos = tele.eventos.filter(
       (e) => e.evento === 'grounding_custo'
     );
-    // 1 evento POR chamada (não agregado num só) — a prova central §11b.
+    // 1 event PER call (not aggregated into one) — the central proof §11b.
     expect(custos).toHaveLength(2);
     expect(custos.every((c) => c.analysisId === analysisId)).toBe(true);
     expect(custos.map((c) => c.payload.lei).sort()).toEqual([
       '1234/2001',
       '5678/2002',
     ]);
-    // 2ª chamada sem totalTokens → soma input+output (80+10=90).
+    // 2nd call without totalTokens → sums input+output (80+10=90).
     const c2 = custos.find((c) => c.payload.lei === '5678/2002')!;
     expect(c2.payload.totalTokens).toBe(90);
     expect(c2.payload.estimativa).toBe(true);
@@ -369,7 +370,7 @@ describe('drenarFila — observability telemetry (§11b)', () => {
       telemetry: tele,
       agora: () => 0,
     });
-    // O job CONCLUIU mesmo com a telemetria falhando.
+    // The job COMPLETED even with the telemetria failing.
     expect(jobRepo.jobs[0].status).toBe('done');
     expect(analysisRepo.saved).toHaveLength(1);
   });

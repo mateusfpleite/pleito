@@ -2,14 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { calcularDiffOficio } from './oficio-diff.ts';
 
 /**
- * Testes DETERMINÍSTICOS do diff sinal-ouro (SPEC §11b). Cálculo puro —
- * sem LLM/rede (testing-anti-patterns: prova-se a métrica, não um modelo).
- * Invariantes:
- *  (a) gerado === exportado → foiEditado=false (sinal-ouro NULO);
- *  (b) exportado=null (não exportou) → foiEditado=false (cai no reserva);
- *  (c) edição real → foiEditado=true, distância>0, linhas contadas;
- *  (d) linha adicionada/removida contadas via LCS;
- *  (e) CRLF normalizado (não conta como edição falsa).
+ * DETERMINISTIC tests of the gold-signal diff (SPEC §11b). Pure
+ * computation — no LLM/network (testing-anti-patterns: the metric is
+ * proven, not a model). Invariants:
+ *  (a) gerado === exportado → foiEditado=false (gold signal NULL);
+ *  (b) exportado=null (did not export) → foiEditado=false (falls to the
+ *      fallback);
+ *  (c) real edit → foiEditado=true, distance>0, lines counted;
+ *  (d) added/removed line counted via LCS;
+ *  (e) CRLF normalized (does not count as a false edit).
  */
 
 describe('calcularDiffOficio — gold-signal + empty-signal fallback', () => {
@@ -39,7 +40,7 @@ describe('calcularDiffOficio — gold-signal + empty-signal fallback', () => {
     const d = calcularDiffOficio(g, e);
     expect(d.foiEditado).toBe(true);
     expect(d.distanciaCaracteres).toBeGreaterThan(0);
-    // 1 linha trocada → 1 adicionada + 1 removida (LCS preserva as iguais).
+    // 1 line changed → 1 added + 1 removed (LCS preserves the equal ones).
     expect(d.linhasAdicionadas).toBe(1);
     expect(d.linhasRemovidas).toBe(1);
   });

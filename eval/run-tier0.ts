@@ -1,42 +1,43 @@
 /**
- * Runner do Gate Tier 0 (SPEC §11a) — `pnpm eval:tier0`.
+ * Tier 0 Gate runner (SPEC §11a) — `pnpm eval:tier0`.
  *
- * Carrega o corpus de regressão versionado (`fixtures/gold/*.json`). Esses
- * arquivos são EXTRAÇÕES cruas do POC (sem ofício, `statusVerificado` no
- * default `nao-verificado` após o parse do schema). Para o gate de fixtures:
+ * Loads the versioned regression corpus (`fixtures/gold/*.json`). These
+ * files are raw POC EXTRACTIONS (no ofício, `statusVerificado` at its
+ * `nao-verificado` default after schema parse). For the fixture gate:
  *
- *   - roda `checarContencao` com `oficio:null` (não deve haver violação
- *     trivial — sem ofício, só a checagem de baseline-consistência roda).
+ *   - runs `checarContencao` with `oficio:null` (there must be no trivial
+ *     violation — with no ofício, only the baseline-consistency check runs).
  *
- * HONESTIDADE (resíduo de cobertura, agora fechado): no corpus gold do POC
- * TODAS as leis ficam `statusVerificado='nao-verificado'` na reconstrução
- * (o POC não passou pelo Norma Verifier). A checagem 3
- * (`baseline-divergente`) IGNORA `nao-verificado` por design — logo ela é
- * INERTE no corpus gold. Sem mais nada, o gold validaria apenas as
- * checagens 1/2/4 + parse de schema, NÃO a consistência baseline.
+ * HONESTY (coverage residue, now closed): in the POC gold corpus ALL leis
+ * stay `statusVerificado='nao-verificado'` after reconstruction (the POC
+ * never went through the Norma Verifier). Check 3 (`baseline-divergente`)
+ * IGNORES `nao-verificado` by design — so it is INERT on the gold corpus.
+ * With nothing else, the gold would validate only checks 1/2/4 + schema
+ * parse, NOT baseline consistency.
  *
- * Para EXERCITAR de fato a checagem 3, há a fixture sintética versionada
- * `synthetic-verificado.json`: ≥1 lei com `statusVerificado` POPULADO e
- * DIVERGENTE da baseline curada (8666/1993 = `revogada-notoria` → esperado
- * `revogada`, fixada como `vigente`). O runner a trata em modo AUTO-TESTE:
- * ela DEVE produzir a violação `baseline-divergente` esperada; se NÃO
- * produzir, a própria checagem 3 está quebrada → gate falha. Assim a
- * ausência de violação no resto do gold é prova real (a checagem funciona,
- * só não dispara onde não deve), não cobertura morta.
+ * To actually EXERCISE check 3, there is the versioned synthetic fixture
+ * `synthetic-verificado.json`: ≥1 lei with `statusVerificado` POPULATED and
+ * DIVERGENT from the curated baseline (8666/1993 = `revogada-notoria` →
+ * expected `revogada`, pinned as `vigente`). The runner treats it in
+ * AUTO-TEST mode: it MUST produce the expected `baseline-divergente`
+ * violation; if it does NOT, check 3 itself is broken → gate fails. So the
+ * absence of a violation in the rest of the gold is real proof (the check
+ * works, it just does not fire where it should not), not dead coverage.
  *
- * Arquivos que NÃO são extração de edital (ex.: `baserate-result.json` —
- * saída do spike-matcher) são ignorados via parse seguro do schema.
+ * Files that are NOT an edital extraction (e.g. `baserate-result.json` —
+ * spike-matcher output) are ignored via safe schema parse.
  *
- * NORMALIZAÇÃO: os gold são do POC (pré schema v3) — não trazem
- * `pontosDeAtencao`, `statusVerificado` nem `fonteVerificacao`. Reconstrói-se
- * o `EditalExtraction` completo do MESMO modo que o `application/`:
- * `pontosDeAtencao: []` (placeholder; é do Risk Analyst) e, por lei,
- * `fonteVerificacao: null` ausente → null. `statusVerificado` ausente já é
- * suprido pelo `.default('nao-verificado')` do schema (não verificado ≠
- * divergência — a checagem baseline o ignora).
+ * NORMALIZATION: the gold files are from the POC (pre schema v3) — they
+ * carry neither `pontosDeAtencao`, `statusVerificado` nor
+ * `fonteVerificacao`. The complete `EditalExtraction` is reconstructed the
+ * SAME way `application/` does: `pontosDeAtencao: []` (placeholder; it
+ * belongs to the Risk Analyst) and, per lei, absent `fonteVerificacao:
+ * null` → null. An absent `statusVerificado` is already supplied by the
+ * schema's `.default('nao-verificado')` (not-verified ≠ divergence — the
+ * baseline check ignores it).
  *
- * Sai com código ≠0 se QUALQUER violação for encontrada (gate duro).
- * Determinístico, sem LLM, sem rede.
+ * Exits with a non-zero code if ANY violation is found (hard gate).
+ * Deterministic, no LLM, no network.
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
@@ -52,9 +53,9 @@ function main(): void {
     .filter((f) => f.endsWith('.json'))
     .sort();
 
-  // Fixtures de AUTO-TESTE: NÃO são corpus "0 violações". Devem produzir uma
-  // violação ESPERADA — exercitam de fato a checagem indicada (senão a
-  // própria checagem está quebrada → gate falha). Ver header (honestidade).
+  // AUTO-TEST fixtures: NOT part of the "0 violations" corpus. They must
+  // produce an EXPECTED violation — actually exercising the indicated check
+  // (otherwise the check itself is broken → gate fails). See header (honesty).
   const AUTO_TESTE: Record<string, Violacao['tipo']> = {
     'synthetic-verificado.json': 'baseline-divergente',
   };
@@ -70,8 +71,8 @@ function main(): void {
       readFileSync(`${GOLD_DIR}/${nome}`, 'utf-8')
     ) as unknown;
 
-    // Parse seguro: arquivos que não são extração de edital (baserate) são
-    // ignorados — não são corpus de regressão do Tier 0.
+    // Safe parse: files that are not an edital extraction (baserate) are
+    // ignored — they are not part of the Tier 0 regression corpus.
     const parsed = EditalExtractionSchema.safeParse(normalizarGold(raw));
     if (!parsed.success) {
       ignorados.push(nome);
@@ -84,7 +85,7 @@ function main(): void {
 
     const esperada = AUTO_TESTE[nome];
     if (esperada) {
-      // Modo auto-teste: a violação esperada DEVE estar presente.
+      // Auto-test mode: the expected violation MUST be present.
       const pegou = violacoes.some((v) => v.tipo === esperada);
       if (pegou) {
         autoTestesOk += 1;
@@ -101,7 +102,7 @@ function main(): void {
             `${JSON.stringify(violacoes.map((v) => v.tipo))}`
         );
       }
-      continue; // fixture de auto-teste não conta no corpus "0 violações".
+      continue; // an auto-test fixture does not count in the "0 violations" corpus.
     }
 
     if (violacoes.length > 0) {

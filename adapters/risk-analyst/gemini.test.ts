@@ -5,28 +5,31 @@ import { EditalExtractionSchema } from '../../domain/schema.ts';
 import type { EditalExtraction } from '../../domain/schema.ts';
 
 /**
- * Testes DETERMINÍSTICOS do Risk Analyst. LanguageModel mocado — NUNCA
- * chamamos o Gemini real nem testamos "o LLM retornou X"
- * (@superpowers:testing-anti-patterns). Invariantes provadas:
+ * DETERMINISTIC tests of the Risk Analyst. LanguageModel mocked — we NEVER
+ * call the real Gemini nor test "the LLM returned X"
+ * (@superpowers:testing-anti-patterns). Proven invariants:
  *
- *  (montagem) o prompt põe a EXTRAÇÃO antes da string de TAREFA (recência
- *      long-context, SPEC §7); few-shot vive no SYSTEM (cacheável), não no
- *      prompt do usuário;
- *  (a) model fake com pontos válidos → adapter retorna EditalExtraction com
- *      `pontosDeAtencao` preenchido e válido contra EditalExtractionSchema;
- *  (b) model fake com `categoria` fora do enum → adapter rejeita (throw);
- *  (c) severidade/categoria/recomendaManifestacao do fake são PRESERVADAS no
- *      output (o adapter não pós-processa silenciosamente, confia+revalida);
- *  (d) campos não-pontosDeAtencao da extração de entrada NÃO são mutados,
- *      incluindo `statusVerificado` das leis (o Risk Analyst consome, não
- *      reescreve, o status verificado).
+ *  (assembly) the prompt places the EXTRACTION before the TASK string
+ *      (long-context recency, SPEC §7); few-shot lives in the SYSTEM
+ *      (cacheable), not in the user prompt;
+ *  (a) fake model with valid points → adapter returns an EditalExtraction
+ *      with `pontosDeAtencao` filled and valid against
+ *      EditalExtractionSchema;
+ *  (b) fake model with `categoria` outside the enum → adapter rejects
+ *      (throw);
+ *  (c) the fake's severidade/categoria/recomendaManifestacao are PRESERVED
+ *      in the output (the adapter does not silently post-process, it
+ *      trusts+revalidates);
+ *  (d) non-pontosDeAtencao fields of the input extraction are NOT mutated,
+ *      including the leis' `statusVerificado` (the Risk Analyst consumes,
+ *      it does not rewrite, the verified status).
  *
- * O mock implementa só a superfície de `generateObject` que o adapter usa:
- * `doGenerate` devolve JSON em `content`. `generateObject` (modo JSON) faz o
- * parse + valida contra o schema do array de pontos.
+ * The mock implements only the `generateObject` surface the adapter uses:
+ * `doGenerate` returns JSON in `content`. `generateObject` (JSON mode)
+ * parses + validates against the points-array schema.
  */
 
-/** Extração base válida; cada teste injeta `pontosDeAtencao`/`leisReferenciadas`. */
+/** Valid base extraction; each test injects `pontosDeAtencao`/`leisReferenciadas`. */
 function baseExtraction(
   overrides: Partial<EditalExtraction> = {}
 ): EditalExtraction {
@@ -123,8 +126,8 @@ const pontosValidos = [
 ];
 
 /**
- * LanguageModelV2 fake mínimo. Devolve `payload` (serializado) como texto;
- * `generateObject` (modo JSON) faz parse + valida contra o schema.
+ * Minimal fake LanguageModelV2. Returns `payload` (serialized) as text;
+ * `generateObject` (JSON mode) parses + validates against the schema.
  */
 function fakeModel(payload: unknown) {
   return {
@@ -181,7 +184,7 @@ describe('GeminiRiskAnalyst — parse/validation (injected model, no network)', 
     const r = await analyst.analisar(baseExtraction());
 
     expect(r.pontosDeAtencao).toHaveLength(3);
-    // O resultado inteiro continua válido contra o schema completo.
+    // The whole result stays valid against the complete schema.
     expect(() => EditalExtractionSchema.parse(r)).not.toThrow();
   });
 
@@ -189,7 +192,7 @@ describe('GeminiRiskAnalyst — parse/validation (injected model, no network)', 
     const pontoInvalido = [
       {
         descricao: 'Categoria inexistente.',
-        categoria: 'ambiental', // fora de {financeiro,operacional,juridico,competitivo}
+        categoria: 'ambiental', // outside {financeiro,operacional,juridico,competitivo}
         severidade: 'alta',
         recomendaManifestacao: true,
       },
@@ -225,17 +228,17 @@ describe('GeminiRiskAnalyst — parse/validation (injected model, no network)', 
     );
     const r = await analyst.analisar(entrada);
 
-    // Tudo exceto pontosDeAtencao igual ao snapshot da entrada.
+    // Everything except pontosDeAtencao equals the input snapshot.
     const semPontos = JSON.parse(JSON.stringify({ ...r, pontosDeAtencao: undefined }));
     expect(semPontos).toEqual(snapshot);
 
-    // Em específico: statusVerificado das leis preservado (consumido, não reescrito).
+    // Specifically: the leis' statusVerificado preserved (consumed, not rewritten).
     expect(r.leisReferenciadas[0].statusVerificado).toBe('vigente');
     expect(r.leisReferenciadas[0].fonteVerificacao).toBe(
       'https://www.planalto.gov.br'
     );
 
-    // O objeto de entrada não foi mutado in-place.
+    // The input object was not mutated in-place.
     expect(entrada.pontosDeAtencao).toEqual([]);
   });
 });

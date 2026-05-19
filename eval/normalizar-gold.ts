@@ -1,27 +1,28 @@
 /**
- * Reconstrução do corpus gold do POC (pré schema v3) para o
- * `EditalExtraction` completo — fonte ÚNICA, compartilhada pelo runner do
- * Gate Tier 0 (`run-tier0.ts`) e pela suíte E2E (`tests/e2e/corpus.test.ts`).
+ * Reconstruction of the POC gold corpus (pre schema v3) into the complete
+ * `EditalExtraction` — SINGLE source, shared by the Tier 0 Gate runner
+ * (`run-tier0.ts`) and the E2E suite (`tests/e2e/corpus.test.ts`).
  *
- * Os arquivos `fixtures/gold/{dombasilio,jaborandi,niteroi}.json` são
- * EXTRAÇÕES cruas do POC: não trazem `pontosDeAtencao` (campo do Risk
- * Analyst), nem os campos v3 (`plataforma`, `subcontratacaoPermitida`,
+ * The files `fixtures/gold/{dombasilio,jaborandi,niteroi}.json` are raw POC
+ * EXTRACTIONS: they carry neither `pontosDeAtencao` (a Risk Analyst field),
+ * nor the v3 fields (`plataforma`, `subcontratacaoPermitida`,
  * `intervaloMinimoLances`, `prazoRecursosDiasUteis`,
- * `informacoesViabilidade`), nem `fonteVerificacao` por lei. Reconstrói-se
- * o objeto do MESMO modo que o `application/` (recompor): `pontosDeAtencao:
- * []` (placeholder; é do Risk Analyst), campos v3 ausentes → null
- * (`.nullable()` no schema), `fonteVerificacao` ausente → null.
- * `statusVerificado` ausente é suprido pelo `.default('nao-verificado')`
- * do schema.
+ * `informacoesViabilidade`), nor per-lei `fonteVerificacao`. The object is
+ * reconstructed the SAME way `application/` does (recompose):
+ * `pontosDeAtencao: []` (placeholder; it belongs to the Risk Analyst),
+ * absent v3 fields → null (`.nullable()` in the schema), absent
+ * `fonteVerificacao` → null. An absent `statusVerificado` is supplied by
+ * the schema's `.default('nao-verificado')`.
  *
- * Centralizar aqui garante que o E2E valide EXATAMENTE a mesma invariante
- * de reconstrução que o gate de produção — sem cópia divergível.
+ * Centralizing here guarantees that E2E validates EXACTLY the same
+ * reconstruction invariant as the production gate — with no divergeable
+ * copy.
  */
 
 /**
- * Não-objeto / sem `leisReferenciadas` (ex.: `baserate-result.json`) passa
- * direto → o `safeParse` do caller falha → fixture ignorada (não é
- * extração de edital).
+ * A non-object / one without `leisReferenciadas` (e.g.
+ * `baserate-result.json`) passes through → the caller's `safeParse` fails →
+ * fixture ignored (it is not an edital extraction).
  */
 export function normalizarGold(raw: unknown): unknown {
   if (typeof raw !== 'object' || raw === null) return raw;

@@ -8,9 +8,9 @@ import {
 } from './format.ts';
 
 /**
- * Mapeadores PUROS de apresentação (sem render). O que importa testar
- * (Phase 13): statusVerificado→badge (a Stefany precisa ver de relance
- * quais normas foram confirmadas) e severidade→cor (destaque de risco).
+ * PURE presentation mappers (no render). What matters to test (Phase 13):
+ * statusVerificado→badge (Stefany needs to see at a glance which norms
+ * were confirmed) and severidade→color (risk highlight).
  */
 
 describe('badgeStatusVerificado — makes norm confirmation visible', () => {

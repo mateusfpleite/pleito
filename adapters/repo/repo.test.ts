@@ -9,22 +9,23 @@ import type { EditalExtraction } from '../../domain/schema.ts';
 import type { OficioGerado } from '../../domain/ports.ts';
 
 /**
- * Testes DETERMINÍSTICOS dos repos Prisma. NÃO usam Postgres nem
- * `prisma migrate` (não há banco no ambiente do POC — RESÍDUO de deploy
- * documentado em client.ts). Em vez de acoplar a infra externa
- * (@superpowers:testing-anti-patterns), provamos o que é nosso: o
- * MAPEAMENTO domínio↔persistência e o round-trip lógico, contra um fake
- * in-memory de `PrismaClientLike`.
+ * DETERMINISTIC tests of the Prisma repos. They do NOT use Postgres nor
+ * `prisma migrate` (there is no database in the POC environment — deploy
+ * RESIDUE documented in client.ts). Instead of coupling to the external
+ * infra (@superpowers:testing-anti-patterns), we prove what is ours: the
+ * domain↔persistence MAPPING and the logical round-trip, against an
+ * in-memory fake of `PrismaClientLike`.
  *
- * DECISÃO mock vs sqlite: mock estrutural do client gerado. Motivo (como
- * pedido pelo plano): evita divergência de dialeto Postgres↔SQLite, não
- * exige migration real, e isola exatamente a lógica que escrevemos
- * (serialização Json, defaults, null→'' do `fonte`, status enum). O fake
- * implementa SÓ a superfície (`create`/`findUnique`/`update`/`upsert`)
- * que os repos chamam, com semântica de tabela real (PK única, upsert).
+ * DECISION mock vs sqlite: a structural mock of the generated client.
+ * Reason (as requested by the plan): avoids Postgres↔SQLite dialect
+ * divergence, requires no real migration, and isolates exactly the logic we
+ * wrote (Json serialization, defaults, `fonte` null→'', status enum). The
+ * fake implements ONLY the surface
+ * (`create`/`findUnique`/`update`/`upsert`) the repos call, with real table
+ * semantics (unique PK, upsert).
  */
 
-/** Tabela in-memory genérica chaveada por PK string. */
+/** Generic in-memory table keyed by a string PK. */
 function makeTable<T extends { [k: string]: unknown }>(pk: keyof T) {
   const rows = new Map<string, T>();
   let seq = 0;
@@ -36,7 +37,7 @@ function makeTable<T extends { [k: string]: unknown }>(pk: keyof T) {
       const row = {
         ...data,
         [pk]: id,
-        // defaults do schema (@default(now())) materializados pelo "banco"
+        // schema defaults (@default(now())) materialized by the "database"
         createdAt: data.createdAt ?? new Date('2026-05-19T00:00:00Z'),
       } as unknown as T;
       if (rows.has(id)) {
@@ -66,8 +67,8 @@ function makeTable<T extends { [k: string]: unknown }>(pk: keyof T) {
           ([k, v]) => (row as Record<string, unknown>)[k] === v
         )
       );
-      // Modela `ORDER BY ... LIMIT 1` do Prisma: ordena antes de
-      // pegar o 1º (M-2 — findFirst sem orderBy é não-determinístico).
+      // Models Prisma's `ORDER BY ... LIMIT 1`: sorts before taking
+      // the 1st (M-2 — findFirst without orderBy is non-deterministic).
       if (orderBy) {
         const [[campo, dir]] = Object.entries(orderBy);
         matches = matches.sort((a, b) => {
@@ -98,7 +99,7 @@ function makeTable<T extends { [k: string]: unknown }>(pk: keyof T) {
         if (!where) return true;
         return Object.entries(where).every(([k, v]) => {
           const cell = (row as Record<string, unknown>)[k];
-          // Suporta o operador `{ in: [...] }` (telemetria por análises).
+          // Supports the `{ in: [...] }` operator (telemetria per analyses).
           if (
             v &&
             typeof v === 'object' &&
@@ -172,20 +173,20 @@ type JobRowShape = {
 };
 
 /**
- * Fake de `$queryRaw` que MODELA a semântica de `FOR UPDATE SKIP LOCKED`
- * sem Postgres real (RESÍDUO de banco — testing-anti-patterns: provar a
- * INVARIANTE, não o engine). O claim atômico é a única operação que o
- * `claimNext` executa via SQL cru; o fake:
+ * `$queryRaw` fake that MODELS the semantics of `FOR UPDATE SKIP LOCKED`
+ * without real Postgres (database RESIDUE — testing-anti-patterns: prove
+ * the INVARIANT, not the engine). The atomic claim is the only operation
+ * `claimNext` executes via raw SQL; the fake:
  *
- *  1. registra o SQL recebido (texto do template) p/ o teste assertir que
- *     ele contém literalmente `FOR UPDATE SKIP LOCKED` + `RETURNING` — a
- *     cláusula que entrega a garantia no Postgres real;
- *  2. executa o claim de forma ATÔMICA e SERIALIZADA sobre a tabela
- *     in-memory: seleciona o `pending` mais antigo, flipa para `running`
- *     no MESMO passo síncrono e o retorna. Como a transição pending→running
- *     é indivisível, dois `claimNext()` interleaved NUNCA observam a mesma
- *     linha pending — exatamente o que SKIP LOCKED garante (o 2º "pula" a
- *     linha já travada/claimed).
+ *  1. records the received SQL (template text) so the test can assert it
+ *     literally contains `FOR UPDATE SKIP LOCKED` + `RETURNING` — the
+ *     clause that delivers the guarantee on real Postgres;
+ *  2. performs the claim ATOMICALLY and SERIALIZED over the in-memory
+ *     table: selects the oldest `pending`, flips it to `running` in the
+ *     SAME synchronous step and returns it. Since the pending→running
+ *     transition is indivisible, two interleaved `claimNext()` NEVER
+ *     observe the same pending row — exactly what SKIP LOCKED guarantees
+ *     (the 2nd "skips" the already-locked/claimed row).
  */
 function makeQueryRaw(jobRows: Map<string, JobRowShape>) {
   const sqlVisto: string[] = [];
@@ -200,8 +201,8 @@ function makeQueryRaw(jobRows: Map<string, JobRowShape>) {
 
     if (!/jobs/i.test(sql)) return [];
 
-    // Claim atômico serializado: pega o pending mais antigo e o flipa
-    // para running indivisivelmente (modela FOR UPDATE SKIP LOCKED).
+    // Serialized atomic claim: takes the oldest pending and flips it
+    // to running indivisibly (models FOR UPDATE SKIP LOCKED).
     const pendentes = [...jobRows.values()]
       .filter((r) => r.status === 'pending')
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
@@ -327,7 +328,7 @@ describe('PrismaAnalysisRepo', () => {
     const buscado = await repo.buscarPorId(salvo.id);
     expect(buscado).not.toBeNull();
     expect(buscado).toEqual(salvo);
-    // O JSON da extração sobrevive ao round-trip sem perda (SPEC §9).
+    // The extraction JSON survives the round-trip losslessly (SPEC §9).
     expect(buscado!.extracao).toEqual(extracao);
     expect(buscado!.oficioGerado).toEqual(oficio);
     expect(buscado!.jobId).toBe('job-1');
@@ -376,9 +377,9 @@ describe('PrismaAnalysisRepo', () => {
   it('buscarPorJobId is deterministic: 2 analyses for the same job → the most recent (M-2)', async () => {
     const prisma = fakePrisma();
     const repo = new PrismaAnalysisRepo(prisma);
-    // Invariante de produto é 1:1 (1 análise/job), mas se a invariante
-    // for violada (reprocesso/bug), o findFirst SEM orderBy seria
-    // não-determinístico. orderBy createdAt desc garante a mais nova.
+    // The product invariant is 1:1 (1 analysis/job), but if the invariant
+    // is violated (reprocessing/bug), findFirst WITHOUT orderBy would be
+    // non-deterministic. orderBy createdAt desc guarantees the newest one.
     const antiga = await repo.salvar({
       jobId: 'job-dup',
       municipio: 'Antiga',
@@ -388,8 +389,8 @@ describe('PrismaAnalysisRepo', () => {
       oficioExportado: null,
       oficioExportadoEm: null,
     });
-    // Força createdAt mais novo na 2ª linha (o fake materializa
-    // createdAt a partir de data.createdAt quando presente).
+    // Forces a newer createdAt on the 2nd row (the fake materializes
+    // createdAt from data.createdAt when present).
     const nova = await prisma.analysis.create({
       data: {
         jobId: 'job-dup',
@@ -435,7 +436,7 @@ describe('PrismaAnalysisRepo', () => {
     });
     const lista = await repo.listarRecentes();
     expect(lista).toHaveLength(2);
-    expect(lista[0].municipio).toBe('Nova'); // desc por createdAt
+    expect(lista[0].municipio).toBe('Nova'); // desc by createdAt
     expect(lista[1].municipio).toBe('Antiga');
     const limitada = await repo.listarRecentes(1);
     expect(limitada).toHaveLength(1);
@@ -461,12 +462,12 @@ describe('PrismaAnalysisRepo', () => {
       salvo.id,
       texto
     );
-    // O texto editado fica PERSISTIDO; o JSON gerado é preservado p/ diff.
+    // The edited text is PERSISTED; the generated JSON is preserved for diff.
     expect(atualizado.oficioExportado).toBe(texto);
     expect(atualizado.oficioExportadoEm).toBeInstanceOf(Date);
     expect(atualizado.oficioGerado).toEqual(oficio);
 
-    // Round-trip: a leitura subsequente devolve o texto persistido.
+    // Round-trip: the subsequent read returns the persisted text.
     const relido = await repo.buscarPorId(salvo.id);
     expect(relido!.oficioExportado).toBe(texto);
     expect(relido!.oficioExportadoEm).toBeInstanceOf(Date);
@@ -536,7 +537,7 @@ describe('PrismaJobRepo (basic CRUD — atomic claim is Phase 12)', () => {
     )
       .join('\n')
       .toUpperCase();
-    // A cláusula que entrega a garantia de concorrência no Postgres real.
+    // The clause that delivers the concurrency guarantee on real Postgres.
     expect(sql).toMatch(/FOR UPDATE\s+SKIP LOCKED/);
     expect(sql).toContain('RETURNING');
     expect(sql).toMatch(/SET\s+STATUS\s*=\s*'RUNNING'/);
@@ -545,11 +546,11 @@ describe('PrismaJobRepo (basic CRUD — atomic claim is Phase 12)', () => {
   });
 
   /**
-   * INVARIANTE CENTRAL (#3 lock): dois workers concorrentes NUNCA pegam o
-   * mesmo job. Provado de forma determinística e honesta: dois `claimNext()`
-   * disparados juntos (Promise.all) sobre 2 jobs pending devem pegar jobs
-   * DIFERENTES; com 1 job pending, um pega o job e o outro pega `null`
-   * (skip — não rouba o já claimed).
+   * CENTRAL INVARIANT (#3 lock): two concurrent workers NEVER take the same
+   * job. Proven deterministically and honestly: two `claimNext()` fired
+   * together (Promise.all) over 2 pending jobs must take DIFFERENT jobs;
+   * with 1 pending job, one takes the job and the other gets `null` (skip
+   * — it does not steal the already-claimed one).
    */
   it('claimNext: 2 simultaneous claims take DIFFERENT jobs', async () => {
     const prisma = fakePrisma();
@@ -564,7 +565,7 @@ describe('PrismaJobRepo (basic CRUD — atomic claim is Phase 12)', () => {
 
     expect(c1).not.toBeNull();
     expect(c2).not.toBeNull();
-    // A invariante: jamais o mesmo id para dois claims.
+    // The invariant: never the same id for two claims.
     expect(c1!.id).not.toBe(c2!.id);
     const ids = new Set([c1!.id, c2!.id]);
     expect(ids).toEqual(new Set([a.id, b.id]));
@@ -604,7 +605,7 @@ describe('PrismaJobRepo (basic CRUD — atomic claim is Phase 12)', () => {
       j = await repo.claimNext();
     }
     expect(claimados).toHaveLength(3);
-    expect(new Set(claimados).size).toBe(3); // nunca repetiu
+    expect(new Set(claimados).size).toBe(3); // never repeated
   });
 });
 
@@ -645,7 +646,7 @@ describe('PrismaNormaCache (get/set + reuse)', () => {
     const got = await cache.obter('lei:14133:2021');
     expect(got!.status).toBe('vigente');
     expect(got!.fonte).toBe('grounding');
-    // upsert: uma única linha para a chave (não inseriu duplicata).
+    // upsert: a single row for the key (did not insert a duplicate).
     expect(
       (prisma.normaCache as unknown as { rows: Map<string, unknown> })
         .rows.size
@@ -655,7 +656,7 @@ describe('PrismaNormaCache (get/set + reuse)', () => {
   it('null fonte column maps to empty string in the domain', async () => {
     const prisma = fakePrisma();
     const cache = new PrismaNormaCache(prisma);
-    // Simula linha legada com fonte NULL inserida fora do adapter.
+    // Simulates a legacy row with NULL fonte inserted outside the adapter.
     (
       prisma.normaCache as unknown as {
         rows: Map<string, unknown>;
