@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const EditalExtractionSchema = z.object({
-  // Identificação
+  // Identification
   municipio: z.string(),
   uf: z.string().length(2),
   ente: z.object({
@@ -36,7 +36,7 @@ export const EditalExtractionSchema = z.object({
   dataSessao: z.string().nullable(),
   uasg: z.string().nullable(),
 
-  // Regime jurídico (top-level)
+  // Legal regime (top-level)
   regimeJuridico: z.enum([
     'lei-14133',
     'lei-13303',
@@ -47,7 +47,7 @@ export const EditalExtractionSchema = z.object({
     'outro',
   ]),
 
-  // Objeto (com captura de divergência capa vs corpo)
+  // Object (with capture of cover vs body divergence)
   objetoCorpo: z.string(),
   objetoCapa: z.string().nullable(),
   objetoSummary: z.string(),
@@ -70,7 +70,7 @@ export const EditalExtractionSchema = z.object({
   ),
   secretariaDemandante: z.string().nullable(),
 
-  // Valor & julgamento
+  // Value & judgment
   valor: z.object({
     estimado: z.number().nullable(),
     sigiloso: z.boolean(),
@@ -116,7 +116,7 @@ export const EditalExtractionSchema = z.object({
     })
     .nullable(),
 
-  // Habilitação estruturada
+  // Structured qualification
   habilitacao: z.object({
     juridica: z.array(
       z.object({
@@ -148,7 +148,7 @@ export const EditalExtractionSchema = z.object({
     ),
   }),
 
-  // Exigências regulatórias setoriais
+  // Sector-specific regulatory requirements
   exigenciasRegulatorias: z.object({
     licencaSanitaria: z.boolean(),
     alvaraFuncionamento: z.boolean(),
@@ -157,7 +157,7 @@ export const EditalExtractionSchema = z.object({
     outros: z.array(z.string()),
   }),
 
-  // Itens funerários
+  // Funeral items
   itensLicitados: z.array(
     z.object({
       numero: z.string(),
@@ -191,7 +191,7 @@ export const EditalExtractionSchema = z.object({
     })
   ),
 
-  // Leis referenciadas
+  // Referenced laws
   leisReferenciadas: z.array(
     z.object({
       descricao: z.string(),
@@ -218,8 +218,8 @@ export const EditalExtractionSchema = z.object({
       ano: z.number().nullable(),
       contextoNoEdital: z.string(),
       revogada: z.boolean(),
-      // v3: status pós-verificação (Norma Verifier). Default = não-verificado;
-      // o extractor não preenche — só a flag `revogada` (palpite provisório).
+      // v3: post-verification status (Norma Verifier). Default = nao-verificado;
+      // the extractor does not fill it — only the `revogada` flag (provisional guess).
       statusVerificado: z
         .enum([
           'vigente',
@@ -233,7 +233,7 @@ export const EditalExtractionSchema = z.object({
     })
   ),
 
-  // Anexos
+  // Annexes
   anexos: z.array(
     z.object({
       numero: z.string(),
@@ -254,7 +254,7 @@ export const EditalExtractionSchema = z.object({
     })
   ),
 
-  // Achados para revisão humana
+  // Findings for human review
   incoerencias: z.array(
     z.object({
       tipo: z.enum([
@@ -276,14 +276,14 @@ export const EditalExtractionSchema = z.object({
     })
   ),
 
-  // --- Campos v3 (SPEC §6) ---
+  // --- v3 fields (SPEC §6) ---
   plataforma: z.string().nullable(),
   subcontratacaoPermitida: z.boolean().nullable(),
   intervaloMinimoLances: z.number().nullable(),
   prazoRecursosDiasUteis: z.number().nullable(),
   informacoesViabilidade: z.string().nullable(),
 
-  // Pontos de atenção (Risk Analyst) — severidade dirige UI/Gate B
+  // Points of attention (Risk Analyst) — severity drives UI/Gate B
   pontosDeAtencao: z.array(
     z.object({
       descricao: z.string(),
@@ -298,7 +298,7 @@ export const EditalExtractionSchema = z.object({
     })
   ),
 
-  // Metadata da fonte
+  // Source metadata
   fonte: z.object({
     pdfNativo: z.boolean(),
     ocr: z.boolean(),
@@ -310,17 +310,18 @@ export const EditalExtractionSchema = z.object({
 export type EditalExtraction = z.infer<typeof EditalExtractionSchema>;
 
 /**
- * Schema do **output do Extractor** (pipeline step 2). Omite
- * `pontosDeAtencao`: esse campo é responsabilidade do **Risk Analyst**
- * (step 5 — SPEC §4), não do Extractor. Forçar o Gemini a preenchê-lo no
- * `generateObject` da extração faria o modelo fabricar pontos de atenção
- * (dado inventado no meio do pipeline). O `application/` recompõe o
- * `EditalExtraction` completo adicionando `pontosDeAtencao: []` (placeholder
- * explícito), que o Risk Analyst preenche a jusante.
+ * Schema of the **Extractor output** (pipeline step 2). Omits
+ * `pontosDeAtencao`: that field is the **Risk Analyst**'s responsibility
+ * (step 5 — SPEC §4), not the Extractor's. Forcing Gemini to fill it in
+ * the extraction's `generateObject` would make the model fabricate points
+ * of attention (data invented in the middle of the pipeline). The
+ * `application/` reassembles the full `EditalExtraction` by adding
+ * `pontosDeAtencao: []` (explicit placeholder), which the Risk Analyst
+ * fills downstream.
  *
- * `leisReferenciadas[].statusVerificado` tem `.default('nao-verificado')`,
- * então o Zod o preenche no parse mesmo o extractor não o emitindo
- * (responsabilidade do Norma Verifier, step 4).
+ * `leisReferenciadas[].statusVerificado` has `.default('nao-verificado')`,
+ * so Zod fills it at parse time even though the extractor does not emit it
+ * (the Norma Verifier's responsibility, step 4).
  */
 export const ExtractorOutputSchema = EditalExtractionSchema.omit({
   pontosDeAtencao: true,
@@ -329,9 +330,10 @@ export const ExtractorOutputSchema = EditalExtractionSchema.omit({
 export type ExtractorOutput = z.infer<typeof ExtractorOutputSchema>;
 
 /**
- * Metadados da fonte do edital, propagados pelo Preprocessor para o Extractor
- * (origem do arquivo, OCR aplicado, paginação). Distinto do `fonte` do schema,
- * que é o que o LLM declara — `FonteMeta` é o que o pipeline observa.
+ * Edital source metadata, propagated by the Preprocessor to the Extractor
+ * (file origin, OCR applied, pagination). Distinct from the schema's
+ * `fonte`, which is what the LLM declares — `FonteMeta` is what the
+ * pipeline observes.
  */
 export type FonteMeta = {
   nomeArquivo: string;
