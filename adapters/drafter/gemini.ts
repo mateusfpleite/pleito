@@ -6,8 +6,15 @@
  * uma afirmação de revogação NÃO verificada vazar, o dano à credibilidade é
  * irreversível (SPEC §5).
  *
- * CONTENÇÃO ESTRUTURAL REAL — princípio: ZERO prosa livre do modelo no
- * ofício externo (SPEC §5 #2):
+ * CONTENÇÃO ESTRUTURAL REAL — princípio: ZERO string de texto livre de LLM
+ * no ofício externo (SPEC §5 #2). "De LLM" = do modelo do Drafter OU de
+ * qualquer campo `z.string()` livre produzido a montante pelo extractor /
+ * pelo verifier (`fonteVerificacao` de grounding). O canal do MODELO já
+ * estava fechado (schema strip); a 3ª review fechou os canais A MONTANTE
+ * (`trechosAmbiguos[].secaoOndeAparece`, `fonteVerificacao` de grounding)
+ * que vazavam verbatim, guardados só pelo tripwire léxico — que a SPEC
+ * PROÍBE como garantia. A contenção é o INVARIANTE EXAUSTIVO do ponto 2,
+ * não whack-a-mole de canal:
  *
  *   1. O modelo do Drafter NÃO escreve NENHUM texto que entre no documento.
  *      Ele emite SOMENTE decisões estruturadas:
@@ -27,14 +34,25 @@
  *          revogação se a lei tem match ÚNICO + statusVerificado='revogada';
  *          senão pergunta neutra);
  *        - trechoAmbiguo → template "ponto que demanda esclarecimento"
- *          referenciando `secaoOndeAparece` (campo estruturado curto);
+ *          referenciado por ÍNDICE não-LLM ("ponto nº N da análise") —
+ *          `secaoOndeAparece` (z.string() LIVRE do extractor) NÃO é
+ *          interpolado (C1 3ª: vazava verbatim);
  *        - pontoDeAtencao → template por `categoria` (enum).
- *      Slots: APENAS campos ESTRUTURADOS não-jurídico-de-status (nome de
- *      seção). NUNCA strings livres de `descricao`/`porQueAmbiguo`/etc.
- *   3. Nenhuma string livre produzida por LLM (extractor OU drafter)
- *      descrevendo status legal chega ao documento. Todo caminho segue o
- *      estilo do "neutro determinístico" + as frases-template de revogação
- *      quando (e só quando) statusVerificado='revogada' e match único.
+ *      INVARIANTE EXAUSTIVO (não whack-a-mole de canal): todo caractere do
+ *      `oficio.markdown` é (a) literal fixo de template, (b) valor de enum
+ *      restrito (`incoerencia.tipo`, `pontoDeAtencao.categoria`, `tipo`),
+ *      (c) escalar NÃO-LLM (índice/contagem/host curado de URL de baseline),
+ *      ou (d) frase-template determinística de vigência. NENHUMA string de
+ *      texto livre de LLM — do modelo do Drafter OU de QUALQUER campo
+ *      `z.string()` livre da extração (extractor) ou do verifier
+ *      (`fonteVerificacao` de grounding) — é interpolada, em lugar nenhum.
+ *   3. Nenhuma string livre produzida por LLM (extractor, verifier OU
+ *      drafter) chega ao documento. Todo caminho segue o estilo do "neutro
+ *      determinístico" + as frases-template de revogação quando (e só
+ *      quando) statusVerificado='revogada' e match único; a proveniência da
+ *      revogação é frase FIXA — só cita a fonte (e só o HOST) quando a
+ *      origem é comprovadamente a baseline curada (revogada-* de
+ *      `data/norma-baseline.json`), nunca a string de grounding.
  *   4. BACKSTOP LÉXICO = TRIPWIRE defensivo, NÃO a garantia. A garantia é a
  *      AUSÊNCIA de prosa livre (não existe canal por onde o modelo escreva
  *      texto no documento). O scan é mantido no adapter e no Tier 0: se
@@ -64,6 +82,8 @@ import type {
   LeiNoOficio,
 } from '../../domain/ports.ts';
 import { getConfig } from '../../infrastructure/config.ts';
+import { matchNorma } from '../../domain/norma-baseline.ts';
+import { categoriaParaStatus } from '../../domain/categoria-status.ts';
 import { montarPrompt, SYSTEM_PROMPT } from './prompt.ts';
 
 /**
@@ -139,13 +159,61 @@ function perguntaNeutraNorma(l: LeiNoOficio): string {
 }
 
 /**
+ * Host curado de uma URL de baseline (classe (c): escalar não-LLM derivado
+ * de dado curado, NÃO prosa). Só é chamada quando a origem é comprovadamente
+ * a baseline curada (`fonteBaseline === true`). Renderiza APENAS o
+ * domínio/host (ex.: `planalto.gov.br`), nunca texto arbitrário: mesmo a
+ * fonte curada não é interpolada como prosa livre. `null` se não for uma URL
+ * http(s) parseável ou se o host não casar a allowlist de domínios oficiais.
+ */
+const HOSTS_OFICIAIS =
+  /(^|\.)(planalto\.gov\.br|gov\.br|in\.gov\.br|lexml\.gov\.br|senado\.leg\.br|camara\.leg\.br)$/i;
+
+function hostCuradoSeguro(fonte: string | null): string | null {
+  if (!fonte) return null;
+  let host: string;
+  try {
+    const u = new URL(fonte.trim());
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    host = u.hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+  return HOSTS_OFICIAIS.test(host) ? host : null;
+}
+
+/**
  * Frase-afirmação TEMPLATE de revogação — única forma de afirmar revogação
  * no ofício. Só é emitida quando o match foi ÚNICO e statusVerificado=
  * 'revogada'. É o ÚNICO ponto onde o léxico de vigência é introduzido, de
  * forma 100% controlada pelo adapter (não pelo modelo).
+ *
+ * INVARIANTE EXAUSTIVO (C1 3ª): `fonteVerificacao` é `z.string()` LIVRE no
+ * caminho de grounding (VerdictSchema.fonte do verifier — string do LLM) e
+ * NUNCA pode ser interpolada. A frase de proveniência é determinística e
+ * FIXA ("conforme verificação de vigência registrada na análise"). Só quando
+ * a origem é comprovadamente a BASELINE CURADA (`fonteBaseline === true`,
+ * categoria revogada-* de `data/norma-baseline.json`) é admitida a citação
+ * de fonte — e ainda assim renderizada de forma CONTROLADA: apenas o
+ * domínio/host (classe (c), escalar não-LLM), nunca o texto arbitrário.
  */
-function templateRevogada(l: LeiNoOficio, fonte: string | null): string {
-  const fonteRef = fonte ? `conforme ${fonte}` : 'conforme verificação realizada';
+function templateRevogada(
+  l: LeiNoOficio,
+  fonte: string | null,
+  fonteBaseline: boolean
+): string {
+  // Frase de proveniência FIXA — nunca embute a string livre do verifier.
+  let fonteRef = 'conforme verificação de vigência registrada na análise';
+  if (fonteBaseline) {
+    // Origem comprovadamente curada: pode citar a fonte, mas só o host
+    // (escalar não-LLM derivado de dado curado), nunca texto arbitrário.
+    const host = hostCuradoSeguro(fonte);
+    if (host) {
+      fonteRef =
+        `conforme verificação de vigência registrada na análise ` +
+        `(fonte oficial: ${host})`;
+    }
+  }
   return (
     `**Norma revogada.** A norma ${refLei(l.numero, l.ano)} encontra-se ` +
     `revogada, ${fonteRef}. Solicita-se esclarecimento sobre qual o regime ` +
@@ -205,19 +273,22 @@ function templateIncoerencia(
 }
 
 /**
- * Template determinístico para trecho ambíguo. Único slot: `secaoOndeAparece`
- * (campo ESTRUTURADO curto — nome de seção, não prosa de status). Ainda assim
- * passa pelo tripwire por garantia (se uma seção tiver léxico, neutraliza).
+ * Template determinístico para trecho ambíguo. SEM slot dinâmico de prosa:
+ * `secaoOndeAparece` é `z.string()` LIVRE do extractor (schema.ts) — prosa
+ * de status poderia vazar por aí (C1 3ª: provado verbatim no markdown,
+ * guardado só pelo tripwire léxico que a SPEC PROÍBE como garantia). A
+ * localização útil ao leitor é dada por REFERÊNCIA POR ÍNDICE não-LLM
+ * ("ponto nº N da análise") — número (classe (c)), nunca texto livre.
+ *
+ * @param indiceAnalise índice 0-based do ponto na ordem do ofício; o leitor
+ * humano cruza com a análise estruturada (não-LLM).
  */
-function templateTrechoAmbiguo(secaoOndeAparece: string): string {
-  const secao = temLexicoVigencia(secaoOndeAparece)
-    ? 'seção indicada na análise'
-    : secaoOndeAparece;
+function templateTrechoAmbiguo(indiceAnalise: number): string {
   return (
-    `**Ponto que demanda esclarecimento (${secao}).** Identificou-se ` +
-    `ambiguidade de redação no instrumento convocatório que dificulta a ` +
-    `correta formulação das propostas. Solicita-se esclarecimento quanto ` +
-    `à redação do referido ponto.`
+    `**Ponto que demanda esclarecimento (ponto nº ${indiceAnalise + 1} da ` +
+    `análise).** Identificou-se ambiguidade de redação no instrumento ` +
+    `convocatório que dificulta a correta formulação das propostas. ` +
+    `Solicita-se esclarecimento quanto à redação do referido ponto.`
   );
 }
 
@@ -266,6 +337,12 @@ type Lookup =
       tipo: 'unica';
       revogadaVerificada: boolean;
       fonteVerificacao: string | null;
+      // `true` SÓ quando a lei casa a baseline CURADA (`matchNorma`) numa
+      // categoria revogada-* (revogada-notoria/revogada-confirmada). Nesse
+      // caso `fonteVerificacao` é dado curado de `data/norma-baseline.json`
+      // — não a string livre de grounding do verifier. Distingue o canal
+      // seguro (baseline) do canal de string livre (grounding).
+      fonteBaseline: boolean;
     };
 
 /**
@@ -292,10 +369,24 @@ function lookupLei(
     return { tipo: 'naoIdentificavel' };
   }
   const m = matches[0];
+  // Re-derivação determinística da PROVENIÊNCIA da fonte: a lei só conta
+  // como "fonte baseline curada" se `matchNorma` (mesmo lookup curado do
+  // Verifier/Tier 0) a resolve numa categoria revogada-* de
+  // `data/norma-baseline.json`. Caso contrário (cauda → grounding), a
+  // `fonteVerificacao` é string LIVRE do LLM verifier e NUNCA pode citar-se.
+  const hit = matchNorma({
+    numero: m.numero,
+    ano: m.ano,
+    escopo: m.escopo,
+    tipoNorma: m.tipoNorma,
+  });
+  const fonteBaseline =
+    hit !== null && categoriaParaStatus(hit.categoria) === 'revogada';
   return {
     tipo: 'unica',
     revogadaVerificada: m.statusVerificado === 'revogada',
     fonteVerificacao: m.fonteVerificacao,
+    fonteBaseline,
   };
 }
 
@@ -367,8 +458,13 @@ export class GeminiDrafter implements DrafterPort {
     // for ÚNICO e statusVerificado='revogada'. O modelo NÃO escreve a frase;
     // ela é montada por `templateRevogada` abaixo.
     const leisCitadas: LeiNoOficio[] = [];
-    // numero|ano → fonteVerificacao (para a frase-template de revogação).
-    const fontePorLei = new Map<string, string | null>();
+    // numero|ano → proveniência da fonte (para a frase-template de
+    // revogação). `fonteBaseline` distingue dado curado seguro (baseline)
+    // da string LIVRE de grounding do verifier (NUNCA citável).
+    const fontePorLei = new Map<
+      string,
+      { fonte: string | null; fonteBaseline: boolean }
+    >();
 
     for (const proposta of object.leisCitadas) {
       const lk = lookupLei(e, proposta.numero, proposta.ano);
@@ -390,7 +486,9 @@ export class GeminiDrafter implements DrafterPort {
       });
       fontePorLei.set(
         `${proposta.numero}|${proposta.ano}`,
-        lk.tipo === 'unica' ? lk.fonteVerificacao : null
+        lk.tipo === 'unica'
+          ? { fonte: lk.fonteVerificacao, fonteBaseline: lk.fonteBaseline }
+          : { fonte: null, fonteBaseline: false }
       );
     }
 
@@ -417,7 +515,10 @@ export class GeminiDrafter implements DrafterPort {
       } else if (sel.fonte === 'trechoAmbiguo') {
         const amb = e.trechosAmbiguos[sel.indice];
         if (!amb) continue;
-        pontos.push(templateTrechoAmbiguo(amb.secaoOndeAparece));
+        // Referência por ÍNDICE não-LLM: a posição que este ponto ocupará
+        // no corpo (1-based via `montarMarkdown`). NÃO interpola
+        // `amb.secaoOndeAparece` (z.string() livre do extractor — C1 3ª).
+        pontos.push(templateTrechoAmbiguo(pontos.length));
         vistos.add(chave);
       } else {
         const p = e.pontosDeAtencao[sel.indice];
@@ -433,8 +534,13 @@ export class GeminiDrafter implements DrafterPort {
     // introduz léxico de revogação, e só sob match ÚNICO + verificado.
     for (const l of leisCitadas) {
       if (l.afirmacaoVigencia === 'revogada') {
-        const fonte = fontePorLei.get(`${l.numero}|${l.ano}`) ?? null;
-        pontos.push(templateRevogada(l, fonte));
+        const prov = fontePorLei.get(`${l.numero}|${l.ano}`) ?? {
+          fonte: null,
+          fonteBaseline: false,
+        };
+        pontos.push(
+          templateRevogada(l, prov.fonte, prov.fonteBaseline)
+        );
       } else {
         pontos.push(perguntaNeutraNorma(l));
       }

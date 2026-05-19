@@ -239,7 +239,50 @@ describe('GeminiDrafter — contenção estrutural REAL (model injetado, sem red
     const lei = oficio!.leisCitadas.find((l) => l.numero === '8666');
     expect(lei!.afirmacaoVigencia).toBe('revogada');
     expect(oficio!.markdown).toMatch(/encontra-se revogada/i);
-    expect(oficio!.markdown).toMatch(/norma-baseline\.json/);
+    // C1 3ª: a frase de proveniência é FIXA e determinística. O campo
+    // `fonteVerificacao` (z.string() livre) NUNCA é interpolado verbatim —
+    // nem mesmo o literal 'norma-baseline.json' do fixture.
+    expect(oficio!.markdown).not.toContain('norma-baseline.json');
+    expect(oficio!.markdown).toMatch(
+      /conforme verificação de vigência registrada na análise/i
+    );
+  });
+
+  it('(b-host) lei revogada-baseline com fonteVerificacao = URL oficial → cita só o HOST (escalar não-LLM), nunca prosa', async () => {
+    // Caminho baseline-hit: 8666/1993 casa `matchNorma` (revogada-notoria) e
+    // a fonteVerificacao é a URL curada real → cita só o domínio.
+    const leiComUrl = {
+      ...leiRevogada,
+      fonteVerificacao:
+        'https://www.planalto.gov.br/ccivil_03/leis/l8666cons.htm',
+    };
+    const e = baseExtraction({
+      leisReferenciadas: [leiComUrl],
+      incoerencias: [
+        {
+          tipo: 'lei-revogada',
+          descricao: 'Lei 8.666/1993 revogada.',
+          severidade: 'alta',
+        },
+      ],
+    });
+    const drafter = new GeminiDrafter(
+      fakeModel({
+        tipo: 'esclarecimento',
+        selecoes: [{ fonte: 'incoerencia', indice: 0 }],
+        leisCitadas: [
+          { numero: '8666', ano: 1993, afirmacaoVigencia: 'revogada' },
+        ],
+      }) as never
+    );
+    const oficio = await drafter.redigir(e);
+    expect(oficio).not.toBeNull();
+    const md = oficio!.markdown;
+    expect(md).toMatch(/encontra-se revogada/i);
+    // Só o host, não a URL/path completa (escalar não-LLM derivado de curado).
+    expect(md).toContain('www.planalto.gov.br');
+    expect(md).not.toContain('/ccivil_03/');
+    expect(md).not.toContain('l8666cons.htm');
   });
 
   it('(c) sem incoerências/ambíguos/manifestação → retorna null (gate B não dispara)', async () => {
@@ -651,5 +694,232 @@ describe('GeminiDrafter — ADVERSARIAL: prosa livre estruturalmente impossível
     );
     const oficio = await drafter.redigir(e);
     expect(oficio).not.toBeNull();
+  });
+});
+
+/**
+ * TDD ADVERSARIAL DE AUSÊNCIA ESTRUTURAL (C1 3ª review).
+ *
+ * Diagnóstico: o canal do MODELO está fechado (schema strip). Mas restam
+ * canais de STRING LIVRE DE LLM A MONTANTE da extração (campos `z.string()`
+ * livres do extractor / verifier) que eram interpolados verbatim no ofício
+ * externo, guardados só pelo TRIPWIRE léxico — que a SPEC PROÍBE como
+ * garantia. Estes testes injetam prosa de status SEM léxico que o tripwire
+ * pega (o tripwire fica silencioso) e asseveram AUSÊNCIA ESTRUTURAL: a
+ * string injetada NÃO aparece no `oficio.markdown` (toContain === false) e o
+ * ofício continua válido. Provam a regressão (RED) e travam o fix (GREEN).
+ *
+ * Princípio (invariante exaustivo): todo caractere de `oficio.markdown` é
+ * (a) literal de template, (b) enum restrito, (c) escalar não-LLM, ou (d)
+ * frase-template determinística de vigência. NENHUMA string de texto livre
+ * de LLM — do modelo do Drafter OU de campo `z.string()` livre da extração.
+ *
+ * Prosa de status SEM léxico que o regex de tripwire captura. Verificado:
+ * `LEXICO_VIGENCIA.test(x) === false` para cada uma (asseverado abaixo).
+ */
+const PROSA_STATUS_SEM_LEXICO = [
+  'tacitamente afastada pelo novo marco legal',
+  'já não produz qualquer efeito jurídico no ordenamento',
+  'não se aplica ao presente certame por força da disciplina superveniente',
+  'foi tacitamente afastada e perdeu sua função normativa',
+];
+
+describe('GeminiDrafter — AUSÊNCIA ESTRUTURAL: zero string livre de LLM a montante', () => {
+  it('as iscas de status NÃO casam o tripwire (senão o teste seria trivial)', () => {
+    for (const p of PROSA_STATUS_SEM_LEXICO) {
+      expect(LEXICO_VIGENCIA.test(p)).toBe(false);
+    }
+  });
+
+  // --- Canal 1: trechoAmbiguo.secaoOndeAparece (z.string() livre do extractor) ---
+  for (const isca of PROSA_STATUS_SEM_LEXICO) {
+    it(`secaoOndeAparece não vaza prosa de status (sem léxico): "${isca.slice(0, 32)}…"`, async () => {
+      const e = baseExtraction({
+        leisReferenciadas: [leiContestada],
+        trechosAmbiguos: [
+          {
+            trechoLiteral: 'critério de julgamento',
+            porQueAmbiguo: 'redação dúbia',
+            // Campo z.string() LIVRE do extractor — prosa de status injetada.
+            secaoOndeAparece: `Item 5 — a IN 05/2017 ${isca}`,
+          },
+        ],
+      });
+      const drafter = new GeminiDrafter(
+        fakeModel({
+          tipo: 'esclarecimento',
+          selecoes: [{ fonte: 'trechoAmbiguo', indice: 0 }],
+          leisCitadas: [
+            { numero: '5', ano: 2017, afirmacaoVigencia: 'nenhuma' },
+          ],
+        }) as never
+      );
+
+      const oficio = await drafter.redigir(e);
+      expect(oficio).not.toBeNull();
+      const md = oficio!.markdown;
+      // AUSÊNCIA ESTRUTURAL: a prosa livre injetada não está no documento.
+      expect(md).not.toContain(isca);
+      expect(md).not.toContain('IN 05/2017');
+      expect(md).not.toContain('05/2017');
+      // Ofício continua válido (corpo templated, fecho presente).
+      expect(md.trim().length).toBeGreaterThan(0);
+      expect(md).toMatch(/solicita-se esclarecimento/i);
+      expect(
+        oficio!.leisCitadas.every((l) => l.afirmacaoVigencia !== 'revogada')
+      ).toBe(true);
+    });
+  }
+
+  it('secaoOndeAparece benigno também não é interpolado (referência por índice, não prosa)', async () => {
+    const e = baseExtraction({
+      leisReferenciadas: [leiContestada],
+      trechosAmbiguos: [
+        {
+          trechoLiteral: 'critério de julgamento',
+          porQueAmbiguo: 'redação dúbia',
+          secaoOndeAparece: 'CLÁUSULA SÉTIMA — HABILITAÇÃO TÉCNICA XYZZY',
+        },
+      ],
+    });
+    const drafter = new GeminiDrafter(
+      fakeModel({
+        tipo: 'esclarecimento',
+        selecoes: [{ fonte: 'trechoAmbiguo', indice: 0 }],
+        leisCitadas: [],
+      }) as never
+    );
+    const oficio = await drafter.redigir(e);
+    expect(oficio).not.toBeNull();
+    // Nenhum caractere de prosa livre do extractor entra — nem nome de seção.
+    expect(oficio!.markdown).not.toContain('XYZZY');
+    expect(oficio!.markdown).not.toContain('CLÁUSULA SÉTIMA');
+    // Em vez disso, referência por ÍNDICE não-LLM ("ponto nº 1 da análise").
+    expect(oficio!.markdown).toMatch(/ponto n[º°]\s*1\b/i);
+  });
+
+  // --- Canal 2: fonteVerificacao de GROUNDING (VerdictSchema.fonte z.string() do verifier) ---
+  /**
+   * Lei de CAUDA (não está em `data/norma-baseline.json`) com
+   * `statusVerificado:'revogada'` vindo de GROUNDING — sua `fonteVerificacao`
+   * é a string LIVRE `VerdictSchema.fonte` do LLM verifier. `matchNorma` não
+   * a resolve (não-baseline) → `fonteBaseline=false` → NUNCA citável.
+   */
+  const leiCaudaGroundingRevogada = {
+    descricao: 'Decreto Municipal nº 4.412/2017 (cauda obscura)',
+    escopo: 'municipal' as const,
+    tipoNorma: 'decreto' as const,
+    numero: '4412',
+    ano: 2017,
+    contextoNoEdital: 'Regulamento de credenciamento citado no edital',
+    revogada: true,
+    statusVerificado: 'revogada' as const,
+    fonteVerificacao: 'norma-baseline.json',
+  };
+
+  it('fonteVerificacao de GROUNDING (string livre do LLM verifier) não é interpolada no template de revogação', async () => {
+    const grounding =
+      'fonte: a norma foi tacitamente afastada conforme análise web não auditada';
+    const e = baseExtraction({
+      leisReferenciadas: [
+        { ...leiCaudaGroundingRevogada, fonteVerificacao: grounding },
+      ],
+      incoerencias: [
+        {
+          tipo: 'lei-revogada',
+          descricao: 'Decreto Municipal 4.412/2017 revogado.',
+          severidade: 'alta',
+        },
+      ],
+    });
+    const drafter = new GeminiDrafter(
+      fakeModel({
+        tipo: 'esclarecimento',
+        selecoes: [{ fonte: 'incoerencia', indice: 0 }],
+        leisCitadas: [
+          { numero: '4412', ano: 2017, afirmacaoVigencia: 'revogada' },
+        ],
+      }) as never
+    );
+
+    const oficio = await drafter.redigir(e);
+    expect(oficio).not.toBeNull();
+    const md = oficio!.markdown;
+    // A frase-template de revogação É emitida (lei revogada verificada)…
+    expect(md).toMatch(/encontra-se revogada/i);
+    // …mas a string de grounding livre do LLM NÃO é interpolada.
+    expect(md).not.toContain(grounding);
+    expect(md).not.toContain('não auditada');
+    expect(md).not.toContain('tacitamente afastada');
+    // Proveniência fixa, sem embutir a string.
+    expect(md).toMatch(
+      /conforme verificação de vigência registrada na análise/i
+    );
+    expect(md.trim().length).toBeGreaterThan(0);
+  });
+
+  it('fonteVerificacao de grounding mesmo SEM léxico (prosa neutra) não entra no ofício', async () => {
+    const grounding = 'verificação: a norma já não produz qualquer efeito jurídico';
+    const e = baseExtraction({
+      leisReferenciadas: [
+        { ...leiCaudaGroundingRevogada, fonteVerificacao: grounding },
+      ],
+      incoerencias: [
+        {
+          tipo: 'lei-revogada',
+          descricao: 'Decreto Municipal 4.412/2017 revogado.',
+          severidade: 'alta',
+        },
+      ],
+    });
+    const drafter = new GeminiDrafter(
+      fakeModel({
+        tipo: 'esclarecimento',
+        selecoes: [{ fonte: 'incoerencia', indice: 0 }],
+        leisCitadas: [
+          { numero: '4412', ano: 2017, afirmacaoVigencia: 'revogada' },
+        ],
+      }) as never
+    );
+    const oficio = await drafter.redigir(e);
+    expect(oficio).not.toBeNull();
+    expect(oficio!.markdown).not.toContain(grounding);
+    expect(oficio!.markdown).not.toContain('já não produz qualquer efeito');
+    expect(oficio!.markdown).toMatch(/encontra-se revogada/i);
+  });
+
+  it('fonteVerificacao de grounding que PARECE URL mas host não-oficial → não cita (não-baseline + allowlist)', async () => {
+    // Mesmo URL bem-formada: se a lei é cauda (não-baseline) NUNCA cita;
+    // e o host teria de passar a allowlist oficial de qualquer forma.
+    const e = baseExtraction({
+      leisReferenciadas: [
+        {
+          ...leiCaudaGroundingRevogada,
+          fonteVerificacao: 'https://blog-juridico-aleatorio.com/post/123',
+        },
+      ],
+      incoerencias: [
+        {
+          tipo: 'lei-revogada',
+          descricao: 'Decreto Municipal 4.412/2017 revogado.',
+          severidade: 'alta',
+        },
+      ],
+    });
+    const drafter = new GeminiDrafter(
+      fakeModel({
+        tipo: 'esclarecimento',
+        selecoes: [{ fonte: 'incoerencia', indice: 0 }],
+        leisCitadas: [
+          { numero: '4412', ano: 2017, afirmacaoVigencia: 'revogada' },
+        ],
+      }) as never
+    );
+    const oficio = await drafter.redigir(e);
+    expect(oficio).not.toBeNull();
+    expect(oficio!.markdown).not.toContain('blog-juridico-aleatorio');
+    expect(oficio!.markdown).toMatch(
+      /conforme verificação de vigência registrada na análise/i
+    );
   });
 });
