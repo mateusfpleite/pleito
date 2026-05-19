@@ -40,6 +40,9 @@ function analyses(...rs: AnaliseRegistro[]): AnalysisRepo {
     async buscarPorJobId(jobId) {
       return rs.find((r) => r.jobId === jobId) ?? null;
     },
+    async registrarOficioExportado() {
+      throw new Error('n/a');
+    },
   };
 }
 
@@ -150,6 +153,7 @@ describe('GET /api/status/:id', () => {
         extracao: extracaoMin,
         oficioGerado: null,
         oficioExportado: null,
+        oficioExportadoEm: null,
       }),
     });
     const res = await GET(req(), { params: Promise.resolve({ id: 'j3' }) });

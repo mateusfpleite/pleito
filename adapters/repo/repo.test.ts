@@ -279,6 +279,7 @@ describe('PrismaAnalysisRepo', () => {
       extracao,
       oficioGerado: oficio,
       oficioExportado: null,
+      oficioExportadoEm: null,
     });
 
     expect(salvo.id).toBeTruthy();
@@ -300,10 +301,12 @@ describe('PrismaAnalysisRepo', () => {
       extracao: baseExtraction({ municipio: 'Jaborandi', uf: 'BA' }),
       oficioGerado: null,
       oficioExportado: null,
+      oficioExportadoEm: null,
     });
     const buscado = await repo.buscarPorId(salvo.id);
     expect(buscado!.oficioGerado).toBeNull();
     expect(buscado!.oficioExportado).toBeNull();
+    expect(buscado!.oficioExportadoEm).toBeNull();
   });
 
   it('buscarPorId devolve null para id inexistente', async () => {
@@ -320,6 +323,7 @@ describe('PrismaAnalysisRepo', () => {
       extracao: baseExtraction({ municipio: 'Niterói', uf: 'RJ' }),
       oficioGerado: null,
       oficioExportado: null,
+      oficioExportadoEm: null,
     });
     const achado = await repo.buscarPorJobId('job-77');
     expect(achado).not.toBeNull();
@@ -341,6 +345,7 @@ describe('PrismaAnalysisRepo', () => {
       extracao: baseExtraction({ municipio: 'Antiga', uf: 'AL' }),
       oficioGerado: null,
       oficioExportado: null,
+      oficioExportadoEm: null,
     });
     // Força createdAt mais novo na 2ª linha (o fake materializa
     // createdAt a partir de data.createdAt quando presente).
@@ -362,6 +367,36 @@ describe('PrismaAnalysisRepo', () => {
     expect(achado!.id).toBe((nova as { id: string }).id);
     expect(achado!.id).not.toBe(antiga.id);
     expect(achado!.municipio).toBe('Nova');
+  });
+
+  it('registrarOficioExportado grava o texto editado + carimbo (Phase 14 / §9)', async () => {
+    const repo = new PrismaAnalysisRepo(fakePrisma());
+    const salvo = await repo.salvar({
+      jobId: 'job-exp',
+      municipio: 'Dom Basílio',
+      uf: 'BA',
+      extracao: baseExtraction({ municipio: 'Dom Basílio', uf: 'BA' }),
+      oficioGerado: oficio,
+      oficioExportado: null,
+      oficioExportadoEm: null,
+    });
+    expect(salvo.oficioExportado).toBeNull();
+    expect(salvo.oficioExportadoEm).toBeNull();
+
+    const texto = '# Ofício editado\n\nTexto final da Stefany.';
+    const atualizado = await repo.registrarOficioExportado(
+      salvo.id,
+      texto
+    );
+    // O texto editado fica PERSISTIDO; o JSON gerado é preservado p/ diff.
+    expect(atualizado.oficioExportado).toBe(texto);
+    expect(atualizado.oficioExportadoEm).toBeInstanceOf(Date);
+    expect(atualizado.oficioGerado).toEqual(oficio);
+
+    // Round-trip: a leitura subsequente devolve o texto persistido.
+    const relido = await repo.buscarPorId(salvo.id);
+    expect(relido!.oficioExportado).toBe(texto);
+    expect(relido!.oficioExportadoEm).toBeInstanceOf(Date);
   });
 });
 

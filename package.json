@@ -31,6 +31,9 @@
     "unzipper": "^0.12.3",
     "zod": "^4.4.3"
   },
+  "optionalDependencies": {
+    "playwright-core": "^1.49.0"
+  },
   "devDependencies": {
     "@types/node": "^25.7.0",
     "@types/react": "^19.2.14",

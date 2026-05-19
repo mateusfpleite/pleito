@@ -89,15 +89,68 @@ function Th({ children }: { children: React.ReactNode }) {
   );
 }
 
-function OficioEditavel({ oficio }: { oficio: OficioGerado }) {
+/**
+ * Dispara o export PDF on-demand (Phase 14, §9). O PDF é projeção
+ * derivada — baixado, NUNCA persistido. Para `oficio`, manda o TEXTO
+ * EDITADO da textarea: o servidor persiste esse texto em
+ * `oficioExportado` e renderiza o PDF a partir dele (não do JSON).
+ */
+async function baixarPdf(
+  jobId: string,
+  tipo: 'relatorio' | 'oficio',
+  textoOficio?: string
+): Promise<void> {
+  const res = await fetch(`/api/export/${jobId}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ tipo, textoOficio }),
+  });
+  if (!res.ok) {
+    const b = (await res.json().catch(() => ({}))) as { erro?: string };
+    throw new Error(b.erro ?? `falha no export (HTTP ${res.status})`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${tipo}-${jobId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function OficioEditavel({
+  oficio,
+  jobId,
+}: {
+  oficio: OficioGerado;
+  jobId: string;
+}) {
   const [ed, setEd] = useState<EdicaoOficio>(() =>
     inicializarEdicao(oficio.markdown)
   );
+  const [exportando, setExportando] = useState(false);
+  const [erroExport, setErroExport] = useState<string | null>(null);
+
+  async function exportarOficio() {
+    setExportando(true);
+    setErroExport(null);
+    try {
+      // Envia o texto ATUAL da textarea — o que a Stefany vê e aprovou.
+      await baixarPdf(jobId, 'oficio', ed.texto);
+    } catch (e) {
+      setErroExport(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExportando(false);
+    }
+  }
+
   return (
     <div>
       <p style={{ fontSize: 13, color: '#555', marginTop: 0 }}>
-        Rascunho de <strong>{oficio.tipo}</strong>. Revise e ajuste antes
-        de exportar (o PDF é gerado sob demanda — próxima fase).
+        Rascunho de <strong>{oficio.tipo}</strong>. Revise e ajuste; ao
+        exportar, o PDF é gerado sob demanda a partir do texto abaixo.
       </p>
       <textarea
         value={ed.texto}
@@ -136,12 +189,80 @@ function OficioEditavel({ oficio }: { oficio: OficioGerado }) {
         >
           Reverter ao gerado
         </button>
+        <button
+          type="button"
+          onClick={() => void exportarOficio()}
+          disabled={exportando}
+          style={{
+            padding: '6px 12px',
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: exportando ? 'default' : 'pointer',
+          }}
+        >
+          {exportando ? 'Exportando…' : 'Exportar ofício (PDF)'}
+        </button>
         {foiEditado(ed) && (
           <span style={{ fontSize: 12, color: '#8a5a00' }}>
-            Editado (alterações não exportadas)
+            Editado (será o texto exportado)
           </span>
         )}
       </div>
+      {erroExport && (
+        <div
+          role="alert"
+          style={{
+            marginTop: 8,
+            fontSize: 12,
+            color: '#a31515',
+          }}
+        >
+          Falha ao exportar: {erroExport}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExportarRelatorio({ jobId }: { jobId: string }) {
+  const [exportando, setExportando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  async function exportar() {
+    setExportando(true);
+    setErro(null);
+    try {
+      await baixarPdf(jobId, 'relatorio');
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExportando(false);
+    }
+  }
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <button
+        type="button"
+        onClick={() => void exportar()}
+        disabled={exportando}
+        style={{
+          padding: '8px 14px',
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: exportando ? 'default' : 'pointer',
+        }}
+      >
+        {exportando
+          ? 'Gerando relatório…'
+          : 'Exportar relatório (PDF)'}
+      </button>
+      {erro && (
+        <span
+          role="alert"
+          style={{ marginLeft: 10, fontSize: 12, color: '#a31515' }}
+        >
+          Falha: {erro}
+        </span>
+      )}
     </div>
   );
 }
@@ -149,13 +270,16 @@ function OficioEditavel({ oficio }: { oficio: OficioGerado }) {
 export function Dashboard({
   extracao,
   oficio,
+  jobId,
 }: {
   extracao: EditalExtraction;
   oficio: OficioGerado | null;
+  jobId: string;
 }) {
   const e = extracao;
   return (
     <div>
+      <ExportarRelatorio jobId={jobId} />
       <Painel titulo="Cabeçalho" colapsavel={false}>
         <Grade>
           <Campo rotulo="Município/UF">
@@ -454,7 +578,7 @@ export function Dashboard({
           destaque
           colapsavel={false}
         >
-          <OficioEditavel oficio={oficio} />
+          <OficioEditavel oficio={oficio} jobId={jobId} />
         </Painel>
       )}
     </div>

@@ -106,7 +106,16 @@ export type AnaliseRegistro = {
   uf: string;
   extracao: EditalExtraction;
   oficioGerado: OficioGerado | null;
+  /**
+   * Texto do ofício EXACTAMENTE como exportado pela Stefany (a textarea
+   * editável da Phase 13). Persistido no ATO do export (Phase 14) — o
+   * diff `oficioGerado` × `oficioExportado` é sinal-ouro de eval (§11b).
+   * O PDF do ofício é renderizado a partir DESTE texto, nunca regenerado
+   * do JSON/markdown original (SPEC §9 — persistir conteúdo, nunca o PDF).
+   */
   oficioExportado: string | null;
+  /** Carimbo de tempo do export do ofício (null até o 1º export). */
+  oficioExportadoEm: Date | null;
 };
 
 /** Repositório de análises (adapters/repo, único a tocar Prisma). */
@@ -120,6 +129,16 @@ export interface AnalysisRepo {
    * jobId; a UI nunca conhece o id da Analysis — só o do Job.
    */
   buscarPorJobId(jobId: string): Promise<AnaliseRegistro | null>;
+  /**
+   * Persiste o texto editado do ofício no ATO do export (Phase 14, §9):
+   * grava `oficioExportado` + `oficioExportadoEm`. O PDF é então
+   * renderizado a partir do texto AGORA persistido — nunca regenerado do
+   * JSON. Devolve o registro atualizado.
+   */
+  registrarOficioExportado(
+    id: string,
+    texto: string
+  ): Promise<AnaliseRegistro>;
 }
 
 export type JobStatus = 'pending' | 'running' | 'done' | 'erro';

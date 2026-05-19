@@ -40,7 +40,10 @@ export async function drenarFila(deps: DrenarDeps): Promise<void> {
         uf: extracao.uf,
         extracao,
         oficioGerado: oficio ?? null,
+        // PDF é projeção derivada (§9): o ofício só é "exportado" quando
+        // a Stefany clica exportar (Phase 14) — aqui ainda não há texto.
         oficioExportado: null,
+        oficioExportadoEm: null,
       });
       await deps.jobRepo.marcarConcluido(job.id);
     } catch (e) {

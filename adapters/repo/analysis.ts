@@ -25,6 +25,7 @@ type AnalysisRow = {
   extractionJson: unknown;
   oficioGerado: unknown;
   oficioExportado: string | null;
+  oficioExportadoEm: Date | null;
 };
 
 function paraRegistro(row: AnalysisRow): AnaliseRegistro {
@@ -36,6 +37,7 @@ function paraRegistro(row: AnalysisRow): AnaliseRegistro {
     extracao: row.extractionJson as EditalExtraction,
     oficioGerado: (row.oficioGerado as OficioGerado | null) ?? null,
     oficioExportado: row.oficioExportado ?? null,
+    oficioExportadoEm: row.oficioExportadoEm ?? null,
   };
 }
 
@@ -80,5 +82,26 @@ export class PrismaAnalysisRepo implements AnalysisRepo {
       orderBy: { createdAt: 'desc' },
     })) as AnalysisRow | null;
     return row ? paraRegistro(row) : null;
+  }
+
+  /**
+   * Phase 14 / §9: o EXPORT do ofício persiste o texto editado pela
+   * Stefany ANTES de renderizar o PDF. Grava `oficioExportado` +
+   * `oficioExportadoEm=now()` e devolve o registro atualizado. O caller
+   * (handler de export) renderiza o PDF a partir deste texto persistido —
+   * nunca regenera do JSON/markdown original.
+   */
+  async registrarOficioExportado(
+    id: string,
+    texto: string
+  ): Promise<AnaliseRegistro> {
+    const row = (await this.prisma.analysis.update({
+      where: { id },
+      data: {
+        oficioExportado: texto,
+        oficioExportadoEm: new Date(),
+      },
+    })) as AnalysisRow;
+    return paraRegistro(row);
   }
 }

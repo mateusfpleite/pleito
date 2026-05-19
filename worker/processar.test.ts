@@ -135,6 +135,13 @@ function fakeAnalysisRepo(): AnalysisRepo & { saved: AnaliseRegistro[] } {
     async buscarPorJobId(jobId) {
       return saved.find((r) => r.jobId === jobId) ?? null;
     },
+    async registrarOficioExportado(id, texto) {
+      const r = saved.find((x) => x.id === id);
+      if (!r) throw new Error(`análise ${id} inexistente`);
+      r.oficioExportado = texto;
+      r.oficioExportadoEm = new Date();
+      return r;
+    },
   };
 }
 

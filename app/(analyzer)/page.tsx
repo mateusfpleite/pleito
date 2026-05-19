@@ -246,7 +246,7 @@ export default function AnalyzerPage() {
         </div>
       )}
 
-      {state.fase === 'concluido' && state.resultado && (
+      {state.fase === 'concluido' && state.resultado && state.jobId && (
         <>
           <div
             style={{
@@ -270,6 +270,7 @@ export default function AnalyzerPage() {
           <Dashboard
             extracao={state.resultado.extracao}
             oficio={state.resultado.oficioGerado}
+            jobId={state.jobId}
           />
         </>
       )}
