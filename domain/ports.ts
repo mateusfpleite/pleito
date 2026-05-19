@@ -7,7 +7,11 @@
  *   Preprocessor → Extractor → gate A → NormaVerifier? → RiskAnalyst
  *   → gate B → Drafter? → grava (AnalysisRepo) + Telemetria.
  */
-import type { EditalExtraction, FonteMeta } from './schema.ts';
+import type {
+  EditalExtraction,
+  ExtractorOutput,
+  FonteMeta,
+} from './schema.ts';
 
 export type { FonteMeta };
 
@@ -34,12 +38,15 @@ export interface PreprocessorPort {
 }
 
 /**
- * 2. Extractor — Gemini Flash, sem tool. Produz schema v3.
- * Flags `revogada` são PROVISÓRIAS (palpite); `statusVerificado` fica no
- * default `nao-verificado` até passar pelo NormaVerifier.
+ * 2. Extractor — Gemini Flash, sem tool. Produz `ExtractorOutput`
+ * (schema v3 SEM `pontosDeAtencao`). Esse campo é do Risk Analyst (step 5,
+ * SPEC §4) — o Extractor NÃO o produz; o `application/` recompõe o
+ * `EditalExtraction` completo com `pontosDeAtencao: []` antes do Risk
+ * Analyst preenchê-lo. Flags `revogada` são PROVISÓRIAS (palpite);
+ * `statusVerificado` fica no default `nao-verificado` até o NormaVerifier.
  */
 export interface ExtractorPort {
-  extrair(texto: string, fonte: FonteMeta): Promise<EditalExtraction>;
+  extrair(texto: string, fonte: FonteMeta): Promise<ExtractorOutput>;
 }
 
 /**

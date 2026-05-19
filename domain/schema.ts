@@ -310,6 +310,25 @@ export const EditalExtractionSchema = z.object({
 export type EditalExtraction = z.infer<typeof EditalExtractionSchema>;
 
 /**
+ * Schema do **output do Extractor** (pipeline step 2). Omite
+ * `pontosDeAtencao`: esse campo é responsabilidade do **Risk Analyst**
+ * (step 5 — SPEC §4), não do Extractor. Forçar o Gemini a preenchê-lo no
+ * `generateObject` da extração faria o modelo fabricar pontos de atenção
+ * (dado inventado no meio do pipeline). O `application/` recompõe o
+ * `EditalExtraction` completo adicionando `pontosDeAtencao: []` (placeholder
+ * explícito), que o Risk Analyst preenche a jusante.
+ *
+ * `leisReferenciadas[].statusVerificado` tem `.default('nao-verificado')`,
+ * então o Zod o preenche no parse mesmo o extractor não o emitindo
+ * (responsabilidade do Norma Verifier, step 4).
+ */
+export const ExtractorOutputSchema = EditalExtractionSchema.omit({
+  pontosDeAtencao: true,
+});
+
+export type ExtractorOutput = z.infer<typeof ExtractorOutputSchema>;
+
+/**
  * Metadados da fonte do edital, propagados pelo Preprocessor para o Extractor
  * (origem do arquivo, OCR aplicado, paginação). Distinto do `fonte` do schema,
  * que é o que o LLM declara — `FonteMeta` é o que o pipeline observa.
